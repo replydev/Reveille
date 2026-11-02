@@ -131,7 +131,7 @@ No emoji. The `✓` / `✗` text glyphs in ReliabilityScreen are replaced by ico
 3. **"Next 14 days"** header (15 sp/600) with the alarm count on the right in `Muted`.
 4. **Timeline** is grouped by date. Each group is a row with a 1 dp `SurfaceHigh` top divider and 12 dp vertical padding.
    - Left column (44 dp wide, centred): 11 sp uppercase weekday in `Muted` above a 20 sp day number.
-   - Right column: one row per occurrence (min 40 dp). Each row has the time (20 sp, 62 dp wide), the policy colour square, the label, an optional note in 12 sp `Muted` ("every 2 wk", "one-off", "replaced"), and a trailing text button ("Skip" / "Unskip" / "Edit") in `Muted`.
+   - Right column: one row per occurrence (min 40 dp). Each row has the time (20 sp, 62 dp wide), the policy colour square, the label, an optional note in 12 sp `Muted` ("every 2 wk", "one-off", "skipped"), and trailing text buttons in `Muted`: "Skip" / "Unskip", plus "Edit" before "Skip" on one-off rows.
    - Skipped rows use 45 % alpha with the time struck through.
    - A one-off row's colour is `Accent`.
 5. **FAB**: extended, 56 dp, radius 18, `Accent` fill, "+ One-off alarm". It sits 16 dp above the nav bar.
@@ -202,12 +202,26 @@ No emoji. The `✓` / `✗` text glyphs in ReliabilityScreen are replaced by ico
 - **4×2**: `#0F1216` background, radius 28. Top row: an `Accent` dot with "Next wake-up", and the relative time on the right. Then the time at about 56 sp/300 and "Tomorrow · Work". A "Skip" pill on the right runs the existing `SkipNextAction`.
 - **2×2**: `Accent` background with `OnAccent` text, the app mark top-left, the time at 44 sp, and "Tue · Work".
 - **Unhealthy state**: the same 2×2 layout on dark with a `DangerLine` border, "⚠ 1 issue" in `DangerText` (use the icon, not the glyph), and "Tap to fix".
-- **Empty**: "No alarms in the next 14 days" with a round + button that opens the one-off editor.
+- **Empty**: "No alarms set" with a round + button that opens the one-off editor. (Not "in the next 14 days": the widget shows the armed alarm, which can be further away.)
+- **4×1 with an alarm**: one row with the time, "Tomorrow · Work" and Skip. A failing check on 4×2 swaps "Next wake-up" for "N issues" and adds the `DangerLine` frame.
 - Glance can't load custom fonts, so use the system sans with `FontWeight.Light` for the big time. Use `SizeMode.Responsive` to pick the layout.
 
 ---
 
-## 4. Suggested implementation order (one PR each)
+## 4. Implementation notes
+
+Decisions made while building the redesign, which the mockups do not show:
+
+- **Header position.** The mockups have no status bar, so headers are placed at their absolute offset from the top of the screen (52 dp for tabs, 44 dp for the editor top bar), or 8 dp below the status bar when it is taller.
+- **Line heights.** Compose does not shrink a single line below its font metrics, so the display times use `Modifier.lineBox(style, em)` (in `Type.kt`) to reproduce CSS `line-height: 0.9` / `1`.
+- **Timeline.** One-off rows keep both Edit and Skip (Skip deletes it with Undo). Skipped rows read "skipped"; alarms replaced by a one-off are not in the timeline at all.
+- **Hero card.** "Skip this one" appears when the shown occurrence is on the timeline (not for a snooze or an overdue alarm). The day comes from `TimeText.dayAndTime`, so the policy card reads "Active · next Tomorrow 06:30".
+- **Policy editor.** Every rule card is shown expanded (the collapsed style is not built). "Active from/until" opens the date picker on tap and has a × to clear it; pause dates are underlined to show they are tappable.
+- **Health.** The old intro paragraph is gone; the summary line replaces it. Passing manual checks read "HyperOS" (Xiaomi checks) or "Confirmed" (others), and tapping one offers "Mark as not done".
+- **Ringing.** The circles share a centre at 560/844 of the screen height and pulse (2.4 s, ±6 %) unless the system animator scale is 0.
+- **Widgets.** The time uses the system `sans-serif-light`; a failing-checks tap opens Health.
+
+## 5. Suggested implementation order (one PR each)
 1. Theme: tokens, fonts and `ReveilleTheme`. Switch off dynamic colour.
 2. Navigation: bottom bar, tab routes, and the one-off editor as a bottom sheet.
 3. Today screen.

@@ -14,7 +14,7 @@ An Android alarm clock for schedules the stock Clock app can't express, built so
   - A fallback notification rings by itself if the ringing service can't start.
   - Alarms work after a reboot, even before the first unlock.
   - Alarms up to 30 minutes late still ring; older ones raise a "Missed alarm" notification.
-  - A Reliability screen walks through Android and Xiaomi HyperOS settings and lets you ring a test alarm.
+  - The Health tab walks through Android and Xiaomi HyperOS settings and lets you ring a test alarm.
 
 ## Requirements
 
@@ -64,7 +64,7 @@ To build a signed APK locally, set `REVEILLE_KEYSTORE_FILE`, `REVEILLE_KEYSTORE_
 ## First run
 
 1. Grant notification permission when asked.
-2. Open **Reliability** from Home's top bar (the red banner on Home links there too) and make every item green. On Xiaomi/Redmi/POCO phones that includes Autostart, battery saver "No restrictions", lock-screen and pop-up permissions, and locking Reveille in Recents.
+2. Open **Health** from the bottom bar (the red "issues" pill on Today links there too) and make every item green. On Xiaomi/Redmi/POCO phones that includes Autostart, battery saver "No restrictions", lock-screen and pop-up permissions, and locking Reveille in Recents.
 3. Tap **Ring a test alarm in 2 minutes**, lock the phone and wait.
 
 If Reveille is force-stopped, Android deletes its alarms until you open the app again (tapping the widget counts).
@@ -85,4 +85,4 @@ Kotlin · Jetpack Compose (Material 3) · Room · DataStore · WorkManager · Gl
 
 ## License
 
-Licensed under the [Apache License, Version 2.0](LICENSE).
+Licensed under the [Apache License, Version 2.0](LICENSE). The bundled Geist and Geist Mono fonts are under the SIL Open Font License 1.1 ([licenses/Geist-OFL.txt](licenses/Geist-OFL.txt)).
