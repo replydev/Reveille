@@ -13,6 +13,7 @@ import com.replydev.reveille.data.ReveilleDatabase
 import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.data.SchedulerState
 import com.replydev.reveille.data.SettingsStore
+import com.replydev.reveille.reliability.ReliabilityChecker
 
 /** Manual dependency wiring. Everything that alarm delivery touches lives in device-protected storage. */
 class AppContainer(context: Context) {
@@ -28,6 +29,7 @@ class AppContainer(context: Context) {
     val schedulerState: SchedulerState by lazy { SchedulerState(preferences) }
     val settings: SettingsStore by lazy { SettingsStore(preferences) }
     val notifier: Notifier by lazy { Notifier(app) }
+    val reliability: ReliabilityChecker by lazy { ReliabilityChecker(app, settings) }
 
     val repository: ScheduleRepository by lazy {
         ScheduleRepository(database.scheduleDao()) { scheduler.rearm("schedule changed") }
