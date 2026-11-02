@@ -67,6 +67,8 @@ class ReveilleType(
     val displayXl: TextStyle = style(124, FontWeight.Light, -0.05),
     val displayL: TextStyle = style(84, FontWeight.Light, -0.04),
     val displayM: TextStyle = style(72, FontWeight.Light, -0.04),
+    /** The ":" between the one-off hour and minute boxes. */
+    val displayColon: TextStyle = style(56, FontWeight.Light),
     val displayS: TextStyle = style(48, FontWeight.Light, -0.03),
     /** "None scheduled" in the hero, where a time would be. */
     val headline: TextStyle = style(34, FontWeight.Light, -0.02),
@@ -76,6 +78,9 @@ class ReveilleType(
     val titleS: TextStyle = style(17, FontWeight.SemiBold),
     val timeRow: TextStyle = style(20),
     val timeRule: TextStyle = style(22),
+    val timeSmall: TextStyle = style(18),
+    /** Text typed into the one-off label field. */
+    val input: TextStyle = style(16),
     val bodyL: TextStyle = style(15),
     /** Primary pill labels: Save, Set for …. */
     val button: TextStyle = style(16, FontWeight.SemiBold),

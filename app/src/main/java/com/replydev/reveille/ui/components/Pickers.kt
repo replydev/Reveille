@@ -16,6 +16,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerSelectionMode
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -38,9 +40,11 @@ import java.time.format.TextStyle as DayNameStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PickTimeDialog(initial: LocalTime, onDismiss: () -> Unit, onConfirm: (LocalTime) -> Unit) {
+fun PickTimeDialog(initial: LocalTime, onDismiss: () -> Unit, minuteFirst: Boolean = false, onConfirm: (LocalTime) -> Unit) {
     val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
     val state = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = is24Hour)
+    // Opened from the minute box: start on the minutes.
+    LaunchedEffect(state) { if (minuteFirst) state.selection = TimePickerSelectionMode.Minute }
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) }) { Text("OK") } },

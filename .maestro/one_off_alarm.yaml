@@ -7,7 +7,8 @@ name: One-off alarm
 - tapOn: "Label (optional)"
 - inputText: "Maestro one-off"
 - hideKeyboard
-- tapOn: "Save"
+- assertVisible: "Set for .*"
+- tapOn: "Set for .*"
 - assertVisible: "Tomorrow"
 - assertVisible: "Maestro one-off"
 - assertNotVisible: "None scheduled"
@@ -18,7 +19,7 @@ name: One-off alarm
 - assertVisible: "backup .*"
 - tapOn: "Edit"
 - assertVisible: "Edit alarm"
-- tapOn: "Delete"
+- tapOn: "Delete alarm"
 - assertVisible: "Delete alarm?"
 - tapOn:
     text: "Delete"
