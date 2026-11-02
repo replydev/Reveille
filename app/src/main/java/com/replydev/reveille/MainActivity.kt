@@ -10,14 +10,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.replydev.reveille.alarm.RingingActivity
 import com.replydev.reveille.alarm.RingingService
 import com.replydev.reveille.alarm.WatchdogWorker
+import com.replydev.reveille.ui.ReveilleNavHost
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import kotlinx.coroutines.launch
 
@@ -39,9 +36,7 @@ class MainActivity : ComponentActivity() {
         }
         WatchdogWorker.schedule(this)
         setContent {
-            ReveilleTheme {
-                Surface(Modifier.fillMaxSize()) { Text("Reveille") }
-            }
+            ReveilleTheme { ReveilleNavHost() }
         }
     }
 
