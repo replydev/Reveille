@@ -76,6 +76,8 @@ class ReveilleType(
     val titleM: TextStyle = style(18, FontWeight.SemiBold),
     val titleSheet: TextStyle = style(20, FontWeight.SemiBold),
     val titleS: TextStyle = style(17, FontWeight.SemiBold),
+    /** Titles inside cards (failing checks). */
+    val cardTitle: TextStyle = style(16, FontWeight.SemiBold),
     val timeRow: TextStyle = style(20),
     val timeRule: TextStyle = style(22),
     val timeSmall: TextStyle = style(18),
@@ -87,6 +89,7 @@ class ReveilleType(
     val body: TextStyle = style(14),
     /** Multi-line explanations (Policies intro, Health details): CSS line-height 1.45. */
     val paragraph: TextStyle = style(14).lineHeight(1.45),
+    val paragraphSmall: TextStyle = style(13).lineHeight(1.45),
     val caption: TextStyle = style(13),
     val small: TextStyle = style(12),
     val overline: TextStyle = style(12, FontWeight.SemiBold, 0.12),
