@@ -19,10 +19,12 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +53,8 @@ fun dayLetter(day: DayOfWeek): String = day.getDisplayName(DayNameStyle.NARROW, 
 @Composable
 fun ReveilleSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier, small: Boolean = false, enabled: Boolean = true) {
     val colors = ReveilleTheme.colors
+    // The small switch (44×26) sits in an 84 dp tile that is itself the touch target; it drops Material's 48 dp minimum.
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides if (small) 0.dp else LocalMinimumInteractiveComponentSize.current) {
     Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
@@ -66,6 +70,7 @@ fun ReveilleSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modi
             uncheckedBorderColor = colors.outlineStrong,
         ),
     )
+    }
 }
 
 /** − [value] + in a [ReveilleColors.surfaceHigh] pill. */

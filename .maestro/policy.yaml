@@ -10,9 +10,10 @@ name: Policy
 - hideKeyboard
 - runFlow:
     when:
-      notVisible: "Remove"
+      notVisible: "Remove alarm time"
     commands:
-      - tapOn: "Add alarm time"
+      - tapOn: "\\+ Alarm time"
+- assertVisible: "Next: .*"
 - tapOn: "Save"
 - assertVisible: "Work"
 - tapOn: "Today"
@@ -24,9 +25,10 @@ name: Policy
 - assertVisible: "Edit policy"
 - back
 - tapOn: "Policies"
+- assertVisible: "Active · next .*"
 - tapOn: "Work"
 - assertVisible: "Edit policy"
-- tapOn: "Delete"
+- tapOn: "Delete policy"
 - assertVisible: "Delete policy?"
 - tapOn:
     text: "Delete"

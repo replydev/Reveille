@@ -19,7 +19,8 @@ const val POLICY_LOOKAHEAD_DAYS = 14
 private val sameYear = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
 private val otherYear = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
 
-private fun shortDate(date: LocalDate, today: LocalDate): String =
+/** "23 Dec", or "6 Jan 2027" outside the current year. */
+fun shortDate(date: LocalDate, today: LocalDate): String =
     date.format(if (date.year == today.year) sameYear else otherYear)
 
 /** Why a policy does not ring today ("Off", "Ended 3 Oct", "Starts 10 Nov", "Paused, resumes 6 Jan"), or null if it is active. */

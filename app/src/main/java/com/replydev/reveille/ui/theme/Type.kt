@@ -77,6 +77,8 @@ class ReveilleType(
     val timeRow: TextStyle = style(20),
     val timeRule: TextStyle = style(22),
     val bodyL: TextStyle = style(15),
+    /** Primary pill labels: Save, Set for …. */
+    val button: TextStyle = style(16, FontWeight.SemiBold),
     val body: TextStyle = style(14),
     /** Multi-line explanations (Policies intro, Health details): CSS line-height 1.45. */
     val paragraph: TextStyle = style(14).lineHeight(1.45),

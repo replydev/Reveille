@@ -1,5 +1,6 @@
 package com.replydev.reveille.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,6 +11,9 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.graphics.Color
+import com.replydev.reveille.R
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -103,6 +107,20 @@ fun TabHeader(
 fun belowStatusBar(fromScreenTop: Dp): Dp {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     return (fromScreenTop - statusBar).coerceAtLeast(8.dp)
+}
+
+/** The top bar of a pushed editor: Back, the [title], and icon [actions] (each with a content description). */
+@Composable
+fun EditorTopBar(title: String, onBack: () -> Unit, actions: @Composable RowScope.() -> Unit = {}) {
+    Row(
+        Modifier.fillMaxWidth().background(ReveilleTheme.colors.bg).statusBarsPadding().padding(start = 8.dp, end = 8.dp, top = belowStatusBar(44.dp), bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        IconCircleButton(R.drawable.ic_back, "Back", onBack, size = 48.dp, iconSize = 22.dp, container = Color.Transparent, tint = ReveilleTheme.colors.onBg)
+        Text(title, Modifier.weight(1f), style = ReveilleTheme.type.titleM, color = ReveilleTheme.colors.onBg)
+        actions()
+    }
 }
 
 @Composable
