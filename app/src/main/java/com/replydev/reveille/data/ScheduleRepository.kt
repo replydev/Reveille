@@ -2,8 +2,10 @@ package com.replydev.reveille.data
 
 import com.replydev.reveille.engine.ScheduleSnapshot
 import com.replydev.reveille.engine.Source
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 /** All schedule writes go through here; each write calls [onChanged] so the scheduler re-arms. */
@@ -23,28 +25,28 @@ class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: su
     suspend fun oneOff(id: Long): OneOffEntity? = dao.oneOff(id)
 
     suspend fun savePolicy(policy: PolicyEntity, rules: List<RuleEntity>, pauses: List<PauseEntity>): Long =
-        dao.savePolicy(policy, rules, pauses).also { onChanged() }
+        dao.savePolicy(policy, rules, pauses).also { rearmAfterWrite() }
 
     suspend fun deletePolicy(id: Long) {
         dao.deletePolicy(id)
-        onChanged()
+        rearmAfterWrite()
     }
 
     suspend fun setPolicyEnabled(id: Long, enabled: Boolean) {
         dao.setPolicyEnabled(id, enabled)
-        onChanged()
+        rearmAfterWrite()
     }
 
-    suspend fun saveOneOff(oneOff: OneOffEntity): Long = dao.saveOneOff(oneOff).also { onChanged() }
+    suspend fun saveOneOff(oneOff: OneOffEntity): Long = dao.saveOneOff(oneOff).also { rearmAfterWrite() }
 
     suspend fun deleteOneOff(id: Long) {
         dao.deleteOneOff(id)
-        onChanged()
+        rearmAfterWrite()
     }
 
     suspend fun unskip(policyId: Long, date: LocalDate) {
         dao.deleteSkip(policyId, date)
-        onChanged()
+        rearmAfterWrite()
     }
 
     /**
@@ -64,7 +66,7 @@ class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: su
                 is Source.OneOffAlarm -> changed = dao.deleteOneOff(source.oneOffId) > 0 || changed
             }
         }
-        if (changed && notify) onChanged()
+        if (changed && notify) rearmAfterWrite()
         return changed
     }
 
@@ -73,4 +75,10 @@ class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: su
         dao.deleteOneOffsBefore(today)
         dao.deleteSkipsBefore(today)
     }
+
+    /**
+     * Runs [onChanged] even if the caller is cancelled (e.g. the screen that saved was closed): once a write is
+     * committed, AlarmManager must be updated, or it would keep ringing at the old time.
+     */
+    private suspend fun rearmAfterWrite() = withContext(NonCancellable) { onChanged() }
 }

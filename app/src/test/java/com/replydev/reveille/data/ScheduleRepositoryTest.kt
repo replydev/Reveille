@@ -3,6 +3,9 @@ package com.replydev.reveille.data
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -65,5 +68,26 @@ class ScheduleRepositoryTest {
 
         assertTrue(repository.snapshot().skips.isEmpty())
         assertEquals(0, changes)
+    }
+
+    @Test
+    fun committedWriteStillRearmsWhenTheCallerIsCancelled() = runBlocking {
+        val started = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var rearmed = false
+        val slow = ScheduleRepository(db.scheduleDao()) {
+            started.complete(Unit)
+            release.await()
+            rearmed = true
+        }
+        val job = launch { slow.saveOneOff(OneOffEntity(date = LocalDate.parse("2026-11-03"), time = LocalTime.of(7, 0))) }
+        started.await()
+        // The screen is left mid-save: the write is committed, the re-arm must still finish.
+        job.cancel()
+        release.complete(Unit)
+        job.cancelAndJoin()
+
+        assertEquals(1, slow.snapshot().oneOffs.size)
+        assertTrue(rearmed)
     }
 }
