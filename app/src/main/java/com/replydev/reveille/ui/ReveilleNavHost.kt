@@ -13,6 +13,7 @@ import com.replydev.reveille.ui.home.HomeScreen
 import com.replydev.reveille.ui.oneoff.OneOffEditorScreen
 import com.replydev.reveille.ui.policies.PoliciesScreen
 import com.replydev.reveille.ui.policies.PolicyEditorScreen
+import com.replydev.reveille.ui.reliability.ReliabilityScreen
 import com.replydev.reveille.ui.settings.SettingsScreen
 
 object Routes {
@@ -50,6 +51,7 @@ fun ReveilleNavHost() {
             OneOffEditorScreen(id = entry.arguments?.getLong("id") ?: 0L, onDone = { nav.leave(entry) })
         }
         composable(Routes.SETTINGS) { entry -> SettingsScreen(onBack = { nav.leave(entry) }) }
+        composable(Routes.RELIABILITY) { entry -> ReliabilityScreen(onBack = { nav.leave(entry) }) }
     }
 }
 
