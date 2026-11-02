@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Reveille</string>
+    <string name="widget_description">Shows your next wake-up</string>
+</resources>
