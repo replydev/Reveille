@@ -25,7 +25,7 @@ Run all four (test, test, lint, assemble) before committing. For UI changes, als
 
 - Setup: `brew install mobile-dev-inc/tap/maestro`; emulator `reveille` (Pixel 8, API 35 `google_apis` arm64). Start it headless with `$ANDROID_HOME/emulator/emulator -avd reveille -no-window -no-audio -no-boot-anim &`.
 - Set `MAESTRO_CLI_NO_ANALYTICS=1` to keep Maestro from sending analytics.
-- Select elements by their visible text; buttons are text labels, so no test tags are needed. When a label appears twice (the top-bar "Delete" and the confirm dialog's "Delete"), anchor it with `below:`.
+- Select elements by their visible text or, for icon-only buttons, their `contentDescription`. Top-level screens are reached through the bottom bar ("Today", "Policies", "Health", "Settings"). When a label appears twice, anchor it with `below:`.
 - `maestro hierarchy` dumps what is on screen; `adb exec-out screencap -p > shot.png` takes a screenshot.
 - To check motion, record with `adb shell screenrecord`, then tile the distinct frames: `ffmpeg -i nav.mp4 -vf "mpdecimate,setpts=N/FRAME_RATE/TB,scale=270:-1,tile=8x2" -frames:v 1 grid.png`.
 - An emulator cannot prove HyperOS kills, Direct Boot ringing or full-screen intents; those still need a real phone.
@@ -44,7 +44,18 @@ Run all four (test, test, lint, assemble) before committing. For UI changes, als
   - `reliability/`: permission, battery and HyperOS checks.
   - `widget/`: Glance widget. It renders the persisted armed alarm and never computes its own.
   - `ui/`: Compose screens. Writes go through `ScreenSession`, which launches in `AppContainer.appScope`, never the screen's scope.
+  - `ui/theme/`: `Color.kt` (fixed dark palette + `ReveilleColors` CompositionLocal), `Type.kt` (Geist / Geist Mono, tabular numerals), `Theme.kt`, `Motion.kt`. No dynamic colour.
 - `AppContainer.kt`: manual DI. No DI framework.
+
+## Design
+
+The UI follows `docs/design/README.md` (tokens, components, per-screen spec) and the mockups in `docs/design/mockups/*.dc.html` (1 CSS px = 1 dp/sp; sample data is in each file's `renderVals()`). Canvas: https://claude.ai/artifact/9ZYXbAyXxZyZL3u5RVp2pu.
+
+- Use the tokens in `ui/theme/` and the shared components in `ui/components/`. Never hard-code a hex colour or font size in a screen.
+- Dark-only, fixed palette; `Accent` (#FFB547) is the single accent. Policy colours come from `policyColor(id)`, not the database.
+- Navigation: a bottom bar with Today / Policies / Health / Settings. The editors are pushed screens (policy) or a bottom sheet (one-off) without the bar.
+- Cards are flat (1 dp outline, no elevation). Touch targets are ≥ 44 dp. Text meets 4.5:1 contrast; `Faint` is never used for body text.
+- When a screen changes, update its mockup and the spec if the design itself changed, not just the code.
 
 ## Invariants (don't break these)
 
@@ -67,7 +78,7 @@ Run all four (test, test, lint, assemble) before committing. For UI changes, als
 ## Conventions
 
 - Kotlin official style. Match the surrounding code's comment density and naming. UI strings are English and hard-coded.
-- No Material icons artifact; buttons use text labels.
+- No Material icons artifact: icons are hand-written vector drawables in `res/drawable/ic_*.xml`. Icon-only buttons always have a `contentDescription`, which is also what Maestro selects on.
 - Commits: conventional style (`feat(alarm): …`, `fix(ui): …`, `docs: …`), unsigned. **No AI attribution lines or Co-Authored-By trailers.**
 - Commit types drive releases: merging to `main` publishes a release for `feat` (minor), `fix`/`perf` (patch) and `!`/`BREAKING CHANGE` (major); `docs`, `chore`, `ci`, `test`, `refactor` and `build` don't release. Pick the type deliberately.
 - Never commit keystores (`*.jks`, `*.keystore` are git-ignored). Release signing only happens in CI from secrets.
