@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reveille build report, 2 Nov 2026</title>
+<style>
+  :root { --fg:#1d2330; --muted:#5b6475; --bg:#fbfbfd; --card:#fff; --line:#e3e6ee; --ok:#1f7a4d; --warn:#9a5b00; --accent:#1e3a5f; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e8ee; --muted:#a3abbb; --bg:#14171d; --card:#1c2029; --line:#2c3240; --ok:#5cc28f; --warn:#e0a54a; --accent:#8fb4e0; } }
+  body { font: 15px/1.55 -apple-system, system-ui, sans-serif; color:var(--fg); background:var(--bg); max-width: 920px; margin: 40px auto; padding: 0 20px; }
+  h1 { font-size: 26px; margin: 0 0 4px; } h2 { font-size: 18px; margin: 32px 0 10px; color: var(--accent); }
+  .sub { color: var(--muted); margin-bottom: 24px; }
+  .tiles { display:grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .tile { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .tile b { display:block; font-size: 24px; } .tile span { color: var(--muted); font-size: 13px; }
+  table { width:100%; border-collapse: collapse; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  th, td { text-align:left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .ok { color: var(--ok); font-weight:600; } .warn { color: var(--warn); font-weight:600; }
+  code { font: 13px ui-monospace, Menlo, monospace; }
+  li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<h1>Reveille: implementation report</h1>
+<div class="sub">Branch <code>feat/reveille-v1</code> · 37 commits · 96 files · +8,087 lines · 2 Nov 2026</div>
+
+<div class="tiles">
+  <div class="tile"><b class="ok">306</b><span>unit tests, 0 failures</span></div>
+  <div class="tile"><b>57 / 249</b><span>engine / app tests</span></div>
+  <div class="tile"><b class="ok">0</b><span>lint errors (2 known warnings)</span></div>
+  <div class="tile"><b>31, 33, 35</b><span>Android SDKs the alarm tests run on</span></div>
+</div>
+
+<h2>What was built</h2>
+<table>
+  <tr><th>Area</th><th>What it does</th></tr>
+  <tr><td>Scheduling engine (<code>:engine</code>)</td><td>Pure Kotlin. Policies of weekly rules (every N weeks, start/end dates, pauses, per-day skip), one-off alarms that replace or add to a day, correct daylight-saving handling, and a planner that rings or reports every overdue alarm.</td></tr>
+  <tr><td>Storage</td><td>Room and DataStore in device-protected storage, so alarms work after a reboot before you unlock. The alarm log is the single record of each alarm and is pruned after 60 days.</td></tr>
+  <tr><td>Alarm firing</td><td><code>setAlarmClock</code> main alarm plus a backup 2 minutes later. Ringing runs as a foreground service with a full-screen screen over the lock screen. A "ring guard" alarm re-rings until you dismiss or snooze. A fallback notification rings by itself if the service can't start. The bundled sound is used before unlock.</td></tr>
+  <tr><td>Recovery</td><td>Re-arms on boot (before unlock too), app update, time and time zone change, app open, widget update and a 6-hour watchdog. Alarms up to 30 minutes late are rung; older ones raise a "Missed alarm" notification. An alarm ringing during a force-stop is recovered when the app is next opened.</td></tr>
+  <tr><td>Reliability screen</td><td>Checks notifications, full-screen permission, alarm channels, exact alarms, battery optimization and alarm volume. HyperOS steps (Autostart, No restrictions, lock-screen and pop-up permissions, lock in Recents). Test alarm and alarm log.</td></tr>
+  <tr><td>Screens</td><td>Home 14-day timeline (skip, unskip, undo), policy list with status and editor, one-off editor with quick date chips, Settings.</td></tr>
+  <tr><td>Widget</td><td>Next alarm with a Skip that only acts on the alarm it shows; warns when reliability checks fail.</td></tr>
+</table>
+
+<h2>Bugs the reviews caught before shipping</h2>
+<table>
+  <tr><th>Problem</th><th>Effect if shipped</th><th>Status</th></tr>
+  <tr><td>Planner only knew the one registered alarm</td><td>A second alarm inside a reboot or outage was lost silently</td><td class="ok">Fixed</td></tr>
+  <tr><td>A date function needing Android 14, and an exact-alarm permission missing on Android 12</td><td>No alarm ever armed on Android 12 or 13</td><td class="ok">Fixed</td></tr>
+  <tr><td>Alarm logged as fired before ringing had started</td><td>An OEM kill mid-ring lost the alarm silently</td><td class="ok">Fixed (ring guard)</td></tr>
+  <tr><td>Snooze stopped the sound before saving</td><td>A failed save meant no snooze at all</td><td class="ok">Fixed</td></tr>
+  <tr><td>Widget Skip acted on whatever alarm was set</td><td>A double tap skipped two alarms</td><td class="ok">Fixed</td></tr>
+  <tr><td>Saves ran in the screen's coroutine scope</td><td>Leaving a screen mid-save left the old alarm time set</td><td class="ok">Fixed</td></tr>
+  <tr><td>Rule ids changed on every policy save</td><td>Editing a policy while one of its alarms rang could ring it twice</td><td class="ok">Fixed</td></tr>
+  <tr><td>Ring guard not restored after a force-stop</td><td>An alarm ringing during a force-stop was lost silently</td><td class="ok">Fixed</td></tr>
+</table>
+
+<h2>Known limits (by design)</h2>
+<ul>
+  <li>Force-stop deletes all alarms until Reveille is opened again. Tapping the widget counts; restarting the phone does not.</li>
+  <li>Skipping a policy alarm skips that policy for the whole day.</li>
+  <li>While an alarm is unresolved, the ring guard's time shows as the "next alarm" in the status bar.</li>
+</ul>
+
+<h2>Still to verify on the HyperOS phone (plan Task 19)</h2>
+<ol>
+  <li>Test alarm with the screen off and the phone locked: sound, full-screen screen, Snooze and Dismiss from both the screen and the notification.</li>
+  <li>Reboot without unlocking, with an alarm due during the reboot and another due later. Needs Autostart on.</li>
+  <li>Swipe Reveille from Recents, then check <code>adb shell dumpsys alarm</code> to see whether HyperOS cleared its alarms. Also try battery saver, Ultra battery saver and an overnight idle.</li>
+  <li><code>am kill</code> while ringing: it should re-ring within about 90 s. <code>am force-stop</code> while ringing, then open the app within 30 minutes: it should re-ring about 10 s later.</li>
+  <li>The settings links open the right HyperOS screens, and the fallback sound plays in Do Not Disturb and silent mode.</li>
+  <li>Time zone change; widget refresh after Skip, after a ring and after a long idle.</li>
+  <li>Your real setup: Work = 07:55 Mon–Wed and 08:55 Thu–Fri, plus a replace-day one-off at 09:30 next Thursday.</li>
+</ol>
+
+<h2>How to install</h2>
+<p><code>cd ~/Code/android-alarm-schedule &amp;&amp; ./gradlew :app:installDebug</code>, with USB debugging on.</p>
+</body>
+</html>
