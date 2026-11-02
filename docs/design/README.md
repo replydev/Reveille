@@ -45,6 +45,7 @@ Mockups are 390×844 CSS px. Treat 1 CSS px as 1 dp (and as 1 sp for text).
 | `OnAccent` | `#1A1205` | text and icons on `Accent` |
 | `AccentContainer` | `#2A2418` | active nav pill, icon tiles |
 | `AccentLine` | `#3A3020` | border of the focused rule card |
+| `AccentTint` | `#1A1810` | fill of accent notices (update card, update status row, alarm guard) |
 | `Danger` | `#FF7A66` | dot badges, failing segment |
 | `DangerText` | `#FF8A75` | warning text and icons, danger button background |
 | `DangerContainer` | `#1E1513` | warning card and pill background |

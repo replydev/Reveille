@@ -50,4 +50,16 @@ class InstallGuardTest {
         assertEquals(GuardResult.Ringing(ringing), InstallGuard.check(alarm(5), null, ringing, now))
         assertEquals(GuardResult.Ringing(ringing), InstallGuard.check(null, null, ringing, now))
     }
+
+    @Test
+    fun theTodayCardYieldsToHealthAndToAlarms() {
+        val release = TestReleases.release("v0.3.0")
+        assertEquals(true, showUpdateNotice(release, failingChecks = 0, guard = GuardResult.Allowed))
+        assertEquals(false, showUpdateNotice(null, 0, GuardResult.Allowed))
+        assertEquals(false, showUpdateNotice(release, 2, GuardResult.Allowed))
+        assertEquals(false, showUpdateNotice(release, -1, GuardResult.Allowed)) // checks could not run
+        assertEquals(false, showUpdateNotice(release, null, GuardResult.Allowed)) // not loaded yet
+        assertEquals(false, showUpdateNotice(release, 0, GuardResult.AlarmSoon(alarm(20))))
+        assertEquals(false, showUpdateNotice(release, 0, GuardResult.Ringing(alarm(0))))
+    }
 }

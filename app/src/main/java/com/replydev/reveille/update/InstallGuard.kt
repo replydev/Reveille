@@ -27,3 +27,10 @@ object InstallGuard {
         return if (next.at.isAfter(now.plus(WINDOW))) GuardResult.Allowed else GuardResult.AlarmSoon(next)
     }
 }
+
+/**
+ * Whether Today shows the update card for [nudge]: never while Health reports a failure (or hasn't loaded yet,
+ * [failingChecks] null), so Health always wins the user's attention, and never inside the guard window of an alarm.
+ */
+fun showUpdateNotice(nudge: Release?, failingChecks: Int?, guard: GuardResult): Boolean =
+    nudge != null && failingChecks == 0 && guard == GuardResult.Allowed

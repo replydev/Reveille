@@ -63,7 +63,11 @@ import com.replydev.reveille.ui.theme.animatedItem
 import com.replydev.reveille.ui.theme.lineBox
 import com.replydev.reveille.ui.theme.sourceColor
 import com.replydev.reveille.ui.theme.sourceKeyColor
+import com.replydev.reveille.ui.update.UpdateNotice
+import com.replydev.reveille.update.GuardResult
+import com.replydev.reveille.update.showUpdateNotice
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
@@ -90,6 +94,7 @@ fun HomeScreen(
     onNewOneOff: () -> Unit,
     onEditOneOff: (Long) -> Unit,
     onOpenPolicy: (Long) -> Unit,
+    onOpenUpdate: () -> Unit,
 ) {
     val container = LocalContext.current.container
     val repository = container.repository
@@ -112,6 +117,13 @@ fun HomeScreen(
     val today = now.atZone(zone).toLocalDate()
     val entries = remember(snapshot, now) { snapshot?.let { Timeline.build(it, now, zone, TIMELINE_DAYS) } ?: emptyList() }
     val intervals = remember(snapshot) { snapshot?.ruleIntervals() ?: emptyMap() }
+    val updates = container.updates
+    val updatePrefs by updates.store.prefs.collectAsStateWithLifecycle(initialValue = null)
+    val update = updatePrefs?.nudge(updates.installedVersionCode)
+    // Health wins the user's attention, and nothing about updates shows within 30 minutes of an alarm.
+    val updateGuard by produceState<GuardResult?>(null, update, armedState, ringing, now) {
+        value = if (update == null) null else updates.guard(now)
+    }
 
     TabScaffold(
         floatingActionButton = { ReveilleFab("One-off alarm", onClick = onNewOneOff) },
@@ -150,6 +162,16 @@ fun HomeScreen(
                         },
                         modifier = Modifier.animatedItem(this).padding(start = 16.dp, end = 16.dp, top = 8.dp),
                     )
+                }
+                if (update != null && updateGuard?.let { showUpdateNotice(update, failingChecks, it) } == true) {
+                    item(key = "update") {
+                        UpdateNotice(
+                            update,
+                            onView = onOpenUpdate,
+                            onDismiss = { container.appScope.launch { updates.store.dismiss(update.versionCode) } },
+                            modifier = Modifier.animatedItem(this).padding(start = 16.dp, end = 16.dp, top = 12.dp),
+                        )
+                    }
                 }
                 item(key = "upcoming-title") {
                     Row(

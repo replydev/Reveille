@@ -33,6 +33,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Edge to edge on Bg with light system-bar icons, in both system modes (the app is dark-only).
         enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
+        // Debug builds only: the Maestro update flow runs against canned releases, without the network.
+        if (BuildConfig.DEBUG && (intent.getBooleanExtra(EXTRA_FAKE_UPDATES, false) || intent.getStringExtra(EXTRA_FAKE_UPDATES) == "true")) {
+            container.updates.useFakeSource()
+        }
         if (savedInstanceState == null) {
             requestNotificationPermission()
             // Only on a fresh start: a recreated activity has already opened it.
@@ -79,6 +83,7 @@ class MainActivity : ComponentActivity() {
         const val OPEN_ONE_OFF = "oneoff"
         const val OPEN_HEALTH = "health"
         const val OPEN_UPDATE = "update"
+        private const val EXTRA_FAKE_UPDATES = "fake_updates"
     }
 
     /** POST_NOTIFICATIONS is a runtime permission from Android 13; before that notifications are on by default. */

@@ -2,7 +2,7 @@
 
 Reveille is sideloaded, so it checks GitHub Releases itself. It shows what's new, downloads the signed APK, verifies it, and hands it to Android's installer.
 
-Design lives on the canvas (https://claude.ai/artifact/9ZYXbAyXxZyZL3u5RVp2pu, row "Reveille — updates from GitHub"). The mockups are in `docs/design/mockups/Update*.dc.html`. Tokens and components are the ones in `docs/design/README.md`; this feature adds no new colours.
+Design lives on the canvas (https://claude.ai/artifact/9ZYXbAyXxZyZL3u5RVp2pu, row "Reveille — updates from GitHub"). The mockups are in `docs/design/mockups/Update*.dc.html`. Tokens and components are the ones in `docs/design/README.md`. The only new token is `AccentTint` (`#1A1810`), the fill of accent notices, which the mockups already used.
 
 | Mockup | What it shows | Where it lives |
 |---|---|---|
@@ -73,9 +73,10 @@ Design lives on the canvas (https://claude.ai/artifact/9ZYXbAyXxZyZL3u5RVp2pu, r
 
 ### Settings › Updates (`UpdateSettings.dc.html`)
 - **Status row (first).** Three variants:
-  - *Update available*: an `Accent` 40 dp icon tile with a download icon, "vX.Y.Z is available", "You have vA.B.C · released d MMM", and a "View" pill that opens the sheet. The row background is `#1A1810`, the same tint as `AccentLine`'s container.
+  - *Update available*: an `Accent` 40 dp icon tile with a download icon, "vX.Y.Z is available", "You have vA.B.C · released d MMM", and a "View" pill that opens the sheet. The row background is `AccentTint` (`#1A1810`).
   - *Up to date*: the same row without the tint. Use a `Success` check tile and "You're up to date · vA.B.C".
   - *Debug*: a muted tile with "Updates are off in debug builds".
+- A skipped release still shows here as *Update available* (Skip only silences the notification, the Today card and the nav dot), so it can be installed later.
 - **Check automatically** switch, subline "Once a day, on any network". Turning it off cancels the worker.
 - **Notify me** switch, subline "A quiet notification when a release is found".
 - **Last checked** row with a relative/day time ("Today, 09:12", or "Never") and an outlined "Check now" pill.
@@ -87,7 +88,7 @@ Design lives on the canvas (https://claude.ai/artifact/9ZYXbAyXxZyZL3u5RVp2pu, r
 
 ### Today notice (`UpdateToday.dc.html`)
 - When an update exists that is not skipped or dismissed, show a slim card under the next-wake-up card:
-  - `#1A1810` fill, `AccentLine` border, radius 20;
+  - `AccentTint` fill, `AccentLine` border, radius 20;
   - an `AccentContainer` icon tile;
   - "Update ready: vX.Y.Z" (14/600) above the first feature or fix bullet, ellipsized;
   - "View" in `Accent`, plus a 40 dp × button that sets `dismissedVersionCode`.
@@ -117,7 +118,8 @@ Design lives on the canvas (https://claude.ai/artifact/9ZYXbAyXxZyZL3u5RVp2pu, r
 | Verifying | Same card, indeterminate bar, "Verifying…" | none |
 | Ready | `Success` shield-check, "Verified", "SHA-256 and signing key match" | **Install** (`Accent` pill) |
 | NeedsPermission | Lock icon in `Accent`, "Allow Reveille to install apps", "Android asks once. Turn on "Allow from this source", then come back." | Open settings (outlined). On resume, re-check and go to Ready |
-| AlarmSoon | `#1A1810` card, clock icon, "{label} rings in N min", "Updates wait until it has rung. We'll remind you after HH:MM." | **Remind me** (sets `remindAfter` = alarm + 5 min, closes), Install anyway (hidden while ringing) |
+| AlarmSoon | `AccentTint` card, `AccentLine` border, clock icon, "{label} rings in N min", "Updates wait until it has rung. We'll remind you after HH:MM." | **Remind me** (sets `remindAfter` = alarm + 5 min, closes), Install anyway (hidden while ringing) |
+| AlarmSoon while ringing | Same card, "{label} is ringing" | **Remind me** only |
 | Failed | Danger card, warning icon, "Checksum didn't match", "Signature didn't match" or "Download failed", body "The download was deleted and nothing was installed. Your alarms are unaffected." | Try again |
 | Installing | System installer UI | (none) |
 
@@ -141,5 +143,5 @@ Design lives on the canvas (https://claude.ai/artifact/9ZYXbAyXxZyZL3u5RVp2pu, r
   - the worker is enqueued and cancelled when the toggle changes;
   - `MY_PACKAGE_REPLACED` re-arms (§1.4).
 - **Verifier:** test it with two tiny signed test APKs under `app/src/test/resources/`, one with a matching and one with a mismatching cert. If that is impractical, isolate the certificate comparison behind an interface and test that.
-- **Maestro:** a new flow `.maestro/update.yaml` that uses the debug `FakeReleaseSource`. It goes: Settings → status row → sheet → Skip, then the card is gone. It must not need the network.
+- **Maestro:** a new flow `.maestro/update.yaml` that uses the debug `FakeReleaseSource`. Debug builds switch to it when `MainActivity` is launched with the extra `fake_updates=true` (Maestro `launchApp` `arguments`); release builds ignore the extra. The emulator reports failing Health checks, so the Today card's visibility rule (`showUpdateNotice`) is covered by a unit test rather than the flow. It goes: Settings → status row → sheet → Skip, then the card is gone. It must not need the network.
 - **Can't be proven on an emulator:** the real install over an existing release build, and alarms ringing after the update. Add these to the device checklist in `docs/reports/`.

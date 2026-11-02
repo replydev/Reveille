@@ -58,8 +58,12 @@ fun NavBarSpacer() {
     }
 }
 
+/**
+ * [healthBadge] (a `Danger` dot on Health) wins over [settingsBadge] (an `Accent` dot on Settings for an update): when
+ * both apply only Health's dot shows.
+ */
 @Composable
-fun ReveilleNavBar(selected: Tab?, onSelect: (Tab) -> Unit, healthBadge: Boolean, modifier: Modifier = Modifier) {
+fun ReveilleNavBar(selected: Tab?, onSelect: (Tab) -> Unit, healthBadge: Boolean, modifier: Modifier = Modifier, settingsBadge: Boolean = false) {
     val colors = ReveilleTheme.colors
     Column(modifier.fillMaxWidth().background(colors.navBg)) {
         Spacer(Modifier.fillMaxWidth().height(1.dp).background(colors.surfaceHigh))
@@ -68,20 +72,25 @@ fun ReveilleNavBar(selected: Tab?, onSelect: (Tab) -> Unit, healthBadge: Boolean
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             Tab.entries.forEach { tab ->
-                NavItem(tab, tab == selected, badge = tab == Tab.Health && healthBadge, onClick = { onSelect(tab) }, Modifier.weight(1f))
+                val badge = when (tab) {
+                    Tab.Health -> if (healthBadge) colors.danger else null
+                    Tab.Settings -> if (settingsBadge && !healthBadge) colors.accent else null
+                    else -> null
+                }
+                NavItem(tab, tab == selected, badge = badge, onClick = { onSelect(tab) }, Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun NavItem(tab: Tab, selected: Boolean, badge: Boolean, onClick: () -> Unit, modifier: Modifier) {
+private fun NavItem(tab: Tab, selected: Boolean, badge: Color?, onClick: () -> Unit, modifier: Modifier) {
     val colors = ReveilleTheme.colors
     Column(
         modifier
             .fillMaxHeight()
             .selectable(selected, role = Role.Tab, onClick = onClick)
-            .semantics(mergeDescendants = true) { if (badge) stateDescription = "Needs attention" }
+            .semantics(mergeDescendants = true) { if (badge != null) stateDescription = if (tab == Tab.Settings) "Update available" else "Needs attention" }
             .padding(top = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -91,7 +100,7 @@ private fun NavItem(tab: Tab, selected: Boolean, badge: Boolean, onClick: () -> 
             contentAlignment = Alignment.Center,
         ) {
             ReveilleIcon(tab.icon, null, tint = if (selected) colors.accent else colors.muted)
-            if (badge) Dot(colors.danger, Modifier.align(Alignment.TopEnd).offset(x = (-14).dp, y = 3.dp))
+            if (badge != null) Dot(badge, Modifier.align(Alignment.TopEnd).offset(x = (-14).dp, y = 3.dp))
         }
         Text(
             tab.label,

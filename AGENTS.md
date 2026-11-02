@@ -21,7 +21,7 @@ Run all four (test, test, lint, assemble) before committing. For UI changes, als
 
 ## UI testing (Maestro)
 
-`.maestro/` holds end-to-end flows driven by [Maestro](https://maestro.dev): `navigation.yaml`, `one_off_alarm.yaml`, `policy.yaml`. Each one starts from `subflows/launch_clean.yaml` (cleared state, all permissions granted). Only top-level files run as flows.
+`.maestro/` holds end-to-end flows driven by [Maestro](https://maestro.dev): `navigation.yaml`, `one_off_alarm.yaml`, `policy.yaml`, `update.yaml`. Each one starts from `subflows/launch_clean.yaml` (except `update.yaml`, which launches with the `fake_updates` argument so the debug build serves a canned release) (cleared state, all permissions granted). Only top-level files run as flows.
 
 - Setup: `brew install mobile-dev-inc/tap/maestro`; emulator `reveille` (Pixel 8, API 35 `google_apis` arm64). Start it headless with `$ANDROID_HOME/emulator/emulator -avd reveille -no-window -no-audio -no-boot-anim &`.
 - Set `MAESTRO_CLI_NO_ANALYTICS=1` to keep Maestro from sending analytics.

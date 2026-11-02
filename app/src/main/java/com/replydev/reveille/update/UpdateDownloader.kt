@@ -26,8 +26,8 @@ class UpdateDownloader(
     private val http: Http,
     private val connectTimeoutMs: Int = 10_000,
     private val readTimeoutMs: Int = 20_000,
-) {
-    suspend fun download(release: Release, onProgress: (Float) -> Unit): DownloadResult = withContext(Dispatchers.IO) {
+) : ApkDownloader {
+    override suspend fun download(release: Release, onProgress: (Float) -> Unit): DownloadResult = withContext(Dispatchers.IO) {
         clear()
         val expected = try {
             val response = http.get(release.sha256Url, mapOf("User-Agent" to USER_AGENT))
@@ -57,7 +57,7 @@ class UpdateDownloader(
     }
 
     /** Deletes every downloaded or partial APK. */
-    fun clear() {
+    override fun clear() {
         dir.listFiles()?.forEach { it.delete() }
     }
 

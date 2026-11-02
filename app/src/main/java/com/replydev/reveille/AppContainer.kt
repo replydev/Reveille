@@ -46,7 +46,7 @@ class AppContainer(context: Context) {
     val reliability: ReliabilityChecker by lazy { ReliabilityChecker(app, settings) }
 
     /** In-app updates. Never touched by the alarm path, and only after the first unlock. */
-    val updates: Updates by lazy { Updates(app) }
+    val updates: Updates by lazy { Updates(app, appScope, schedulerState) }
 
     val repository: ScheduleRepository by lazy {
         ScheduleRepository(database.scheduleDao()) { scheduler.rearm("schedule changed") }
