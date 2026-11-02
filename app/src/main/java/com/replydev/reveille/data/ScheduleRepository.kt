@@ -47,15 +47,20 @@ class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: su
         onChanged()
     }
 
-    /** Skips policy occurrences and deletes one-offs referenced by [sourceKeys]. */
+    /**
+     * Skips policy occurrences and deletes one-offs referenced by [sourceKeys]. Sources deleted in the meantime are
+     * ignored; [onChanged] runs only if something changed.
+     */
     suspend fun skipOccurrence(sourceKeys: List<String>) {
+        var changed = false
         sourceKeys.mapNotNull(Source::parse).forEach { source ->
             when (source) {
-                is Source.PolicyRule -> dao.insertSkip(SkipEntity(source.policyId, source.date))
-                is Source.OneOffAlarm -> dao.deleteOneOff(source.oneOffId)
+                is Source.PolicyRule ->
+                    if (dao.policyExists(source.policyId)) changed = dao.insertSkip(SkipEntity(source.policyId, source.date)) != -1L || changed
+                is Source.OneOffAlarm -> changed = dao.deleteOneOff(source.oneOffId) > 0 || changed
             }
         }
-        onChanged()
+        if (changed) onChanged()
     }
 
     /** Deletes one-offs and skips dated before [today]. Does not call [onChanged]: it runs inside a re-arm. */

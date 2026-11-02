@@ -115,4 +115,45 @@ class AlarmSchedulerTest {
         assertNull(state.armed())
         assertTrue(triggers().isEmpty())
     }
+
+    @Test
+    fun unclaimLetsALaterDeliveryClaimAndCatchesUp() = runBlocking {
+        addOneOff("2026-11-02", "06:30", "Early")
+        val armed = state.armed()!!
+        now = rome("2026-11-02", "06:30")
+        assertTrue(scheduler.claim(armed))
+        scheduler.unclaim(armed)
+        scheduler.rearm("ringing failed")
+        // Released occurrence is retried as a catch-up right away, and a later delivery can claim it.
+        assertEquals("Early", state.armed()?.label)
+        assertEquals(now.plusSeconds(1).toEpochMilli(), triggers().first())
+        assertTrue(scheduler.claim(armed))
+    }
+
+    @Test
+    fun unclaimedOccurrenceIsReportedMissedAfterTheLateWindow() = runBlocking {
+        addOneOff("2026-11-02", "06:30", "Early")
+        val armed = state.armed()!!
+        now = rome("2026-11-02", "06:30")
+        scheduler.claim(armed)
+        scheduler.unclaim(armed)
+        scheduler.rearm("ringing failed")
+        now = rome("2026-11-02", "07:01")
+        scheduler.rearm("ringing failed again")
+        assertNull(state.armed())
+        assertEquals(FireOutcome.MISSED, db.fireLogDao().observeRecent(1).first().single().outcome)
+    }
+
+    @Test
+    fun unclaimKeepsAUserOutcomeAndAcknowledgedFallbackIsNotRetried() = runBlocking {
+        addOneOff("2026-11-02", "06:30", "Early")
+        val armed = state.armed()!!
+        now = rome("2026-11-02", "06:31")
+        assertTrue(scheduler.claim(armed))
+        scheduler.acknowledgeFallback(armed)
+        scheduler.unclaim(armed)
+        assertEquals(FireOutcome.DISMISSED, db.fireLogDao().observeRecent(1).first().single().outcome)
+        scheduler.rearm("fallback dismissed")
+        assertNull(state.armed())
+    }
 }

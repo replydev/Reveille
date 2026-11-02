@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -24,6 +26,21 @@ class Notifier(private val context: Context) {
                 description = "Shown while an alarm rings. Keep this at high importance."
                 setSound(null, null)
                 enableVibration(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            },
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ALARM_FALLBACK, "Fallback alarms", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Rings by itself when the normal alarm cannot start. Keep this at high importance with sound."
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build(),
+                )
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 800, 600)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             },
         )
@@ -54,8 +71,46 @@ class Notifier(private val context: Context) {
             .build()
     }
 
-    /** Used when the foreground service could not start: the notification still offers Dismiss/Snooze. */
-    fun postRinging(ringing: Ringing) = post(RINGING_ID, ringingNotification(ringing))
+    /**
+     * Last resort when [RingingService] cannot ring: a notification whose channel plays the alarm sound itself, repeated
+     * ([Notification.FLAG_INSISTENT]) until the user opens the shade, taps or dismisses it. Dismissing (action or swipe)
+     * marks the occurrence handled via [AlarmReceiver.ACTION_FALLBACK_DISMISS]. Re-posting while it is shown (retries)
+     * does not restart the sound.
+     */
+    fun postFallbackAlarm(armed: Armed) {
+        val id = fallbackId(armed)
+        val open = PendingIntent.getActivity(
+            context,
+            REQUEST_FALLBACK_OPEN,
+            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val dismiss = PendingIntent.getBroadcast(
+            context,
+            id,
+            Intent(context, AlarmReceiver::class.java)
+                .setAction(AlarmReceiver.ACTION_FALLBACK_DISMISS)
+                .putExtra(AlarmScheduler.EXTRA_ARMED, armed.encode()),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_ALARM_FALLBACK)
+            .setSmallIcon(R.drawable.ic_alarm)
+            .setContentTitle(armed.label)
+            .setContentText("Alarm for ${localTime(armed)} (fallback)")
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setFullScreenIntent(open, true)
+            .setContentIntent(open)
+            .setDeleteIntent(dismiss)
+            .addAction(0, "Dismiss", dismiss)
+            .setOnlyAlertOnce(true)
+            .build()
+        notification.flags = notification.flags or Notification.FLAG_INSISTENT
+        post(id, notification)
+    }
+
+    fun cancelFallbackAlarm(armed: Armed) = manager.cancel(fallbackId(armed))
 
     fun showMissed(armed: Armed) {
         val text = "${armed.label} at ${localTime(armed)} did not ring. Open Reveille → Reliability."
@@ -87,16 +142,21 @@ class Notifier(private val context: Context) {
         }
     }
 
+    private fun fallbackId(armed: Armed): Int = FALLBACK_BASE_ID + Math.floorMod("${armed.key}@${armed.at}".hashCode(), 10_000)
+
     private fun localTime(armed: Armed): String = TimeText.time(armed.at.atZone(ZoneId.systemDefault()).toLocalTime())
 
     companion object {
         const val CHANNEL_ALARM = "alarm"
+        const val CHANNEL_ALARM_FALLBACK = "alarm_fallback"
         const val CHANNEL_ALERTS = "alerts"
         const val RINGING_ID = 1
         private const val SCHEDULING_FAILED_ID = 2
         private const val MISSED_BASE_ID = 1000
+        private const val FALLBACK_BASE_ID = 20_000
         private const val REQUEST_FULL_SCREEN = 10
         private const val REQUEST_OPEN_APP = 11
+        private const val REQUEST_FALLBACK_OPEN = 12
         private const val TAG = "Reveille"
     }
 }

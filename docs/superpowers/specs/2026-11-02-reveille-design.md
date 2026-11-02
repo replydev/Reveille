@@ -94,9 +94,16 @@ Single entry point `rearm(reason)`, called after any data change, after firing, 
 1. Acquires a partial wake lock.
 2. Starts `RingingService` (foreground, type `systemExempted`, permitted for apps holding `USE_EXACT_ALARM`; alarm-triggered FGS starts are exempt from background-start restrictions).
 3. `RingingService` plays the ringtone via `MediaPlayer` with `AudioAttributes.USAGE_ALARM` (ignores ringer/silent mode), vibrates, and posts a high-priority notification on an `IMPORTANCE_HIGH` alarm channel with a **full-screen intent** to `RingingActivity` and Dismiss/Snooze actions.
-4. Records `FireLog`, then calls `rearm()` so the next alarm is armed **before** the user interacts.
+4. Claims the occurrence in `FireLog` before step 2 (released again if the service cannot start, see below) and always calls `rearm()` so the next alarm is armed **before** the user interacts.
 
 If the full-screen intent is denied, the service still rings and the heads-up notification still has Dismiss/Snooze — sound never depends on the activity launching.
+
+**Fallback alarm notification.** A third channel, `alarm_fallback` (`IMPORTANCE_HIGH`, sound = default alarm sound with `USAGE_ALARM`, vibration, public on lock screen), lets a notification ring *by itself*. `Notifier.postFallbackAlarm` posts on it with category ALARM, `FLAG_INSISTENT` (sound repeats until the user opens the shade, taps or dismisses), a full-screen/content intent to `MainActivity` and a Dismiss action (also the delete intent) that records the occurrence as DISMISSED. It is used when:
+- `AlarmReceiver` cannot start `RingingService` (background-start refusal, OEM restriction). The receiver then **releases its claim** (deletes the FIRED fire-log row, only while still FIRED) so the occurrence is unhandled again; the `rearm()` that always follows (try/finally) catches it up at now + 1 s, retrying the service until it starts, the user dismisses the fallback, or the 30-min late window passes and it is reported missed. A snooze is consumed only once the service started.
+- `RingingService.startForeground` fails: the service posts the fallback and stops instead of pretending to ring.
+- No sound can be played (chosen ringtone and bundled sound both fail): the service keeps vibrating (even if vibration is off) and the fallback provides the sound.
+
+If claiming fails (database error), the alarm rings anyway: a duplicate ring beats a lost one.
 
 `RingingActivity`: shows over lock screen (`setShowWhenLocked`, `setTurnScreenOn`), big time + label, Dismiss and Snooze.
 

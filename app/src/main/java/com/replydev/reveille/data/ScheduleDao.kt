@@ -23,6 +23,9 @@ interface ScheduleDao {
     @Query("SELECT * FROM policy WHERE id = :id")
     suspend fun policy(id: Long): PolicyWithChildren?
 
+    @Query("SELECT EXISTS(SELECT 1 FROM policy WHERE id = :id)")
+    suspend fun policyExists(id: Long): Boolean
+
     @Query("SELECT * FROM one_off ORDER BY date, time")
     fun observeOneOffs(): Flow<List<OneOffEntity>>
 
@@ -76,11 +79,13 @@ interface ScheduleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveOneOff(oneOff: OneOffEntity): Long
 
+    /** Returns the number of deleted rows. */
     @Query("DELETE FROM one_off WHERE id = :id")
-    suspend fun deleteOneOff(id: Long)
+    suspend fun deleteOneOff(id: Long): Int
 
+    /** Returns -1 when the skip already exists. The policy must exist (foreign key). */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertSkip(skip: SkipEntity)
+    suspend fun insertSkip(skip: SkipEntity): Long
 
     @Query("DELETE FROM skip WHERE policyId = :policyId AND date = :date")
     suspend fun deleteSkip(policyId: Long, date: LocalDate)

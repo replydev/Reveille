@@ -66,21 +66,32 @@ class RingingService : Service() {
     }
 
     private fun ring(ringing: Ringing) {
+        val previous = current.value
         current.value = ringing
-        val notification = container.notifier.ringingNotification(ringing)
         try {
+            val notification = container.notifier.ringingNotification(ringing)
             startForeground(Notifier.RINGING_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
         } catch (e: Exception) {
-            Log.e(TAG, "startForeground failed; ringing without foreground status", e)
-            container.notifier.postRinging(ringing)
+            // Without foreground status the system kills us; don't pretend to ring. The fallback notification rings.
+            Log.e(TAG, "startForeground failed for ${ringing.armed.key}; posting fallback alarm", e)
+            current.value = previous
+            container.notifier.postFallbackAlarm(ringing.armed)
+            if (previous == null) stopSelf()
+            return
         }
         stopOutput()
         timeoutJob?.cancel()
-        acquireWakeLock()
+        runCatching { acquireWakeLock() }.onFailure { Log.e(TAG, "Cannot acquire wake lock", it) }
         scope.launch {
-            val settings = container.settings.current()
-            startSound(settings)
-            if (settings.vibrate) startVibration()
+            val settings = try {
+                container.settings.current()
+            } catch (e: Exception) {
+                Log.e(TAG, "Cannot read settings; ringing with defaults", e)
+                RingSettings()
+            }
+            val sound = startSound(ringing.armed, settings)
+            // Without sound, vibration is all this service has left: use it regardless of the setting.
+            if (settings.vibrate || !sound) runCatching { startVibration() }.onFailure { Log.e(TAG, "Cannot vibrate", it) }
             timeoutJob = launch {
                 delay(settings.maxRingMinutes.minutes)
                 snooze(auto = true)
@@ -119,12 +130,38 @@ class RingingService : Service() {
         }
     }
 
-    private fun startSound(settings: RingSettings) {
+    /** Returns false if no sound could be played; then the fallback notification provides it. */
+    private fun startSound(armed: Armed, settings: RingSettings): Boolean {
+        var created: MediaPlayer? = null
+        val player = try {
+            MediaPlayer().also {
+                created = it
+                playLooping(it, settings)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "No alarm sound could be played for ${armed.key}; posting fallback alarm", e)
+            runCatching { created?.release() }
+            container.notifier.postFallbackAlarm(armed)
+            return false
+        }
+        this.player = player
+        if (settings.volumeRamp) {
+            rampJob = scope.launch {
+                for (step in 1..RAMP_STEPS) {
+                    delay(1.seconds)
+                    val volume = RAMP_START_VOLUME + (1f - RAMP_START_VOLUME) * step / RAMP_STEPS
+                    player.setVolume(volume, volume)
+                }
+            }
+        }
+        return true
+    }
+
+    private fun playLooping(player: MediaPlayer, settings: RingSettings) {
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
-        val player = MediaPlayer()
         val chosen = runCatching {
             val uri = settings.ringtoneUri?.let(Uri::parse)
                 ?: RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM)
@@ -147,16 +184,6 @@ class RingingService : Service() {
         val startVolume = if (settings.volumeRamp) RAMP_START_VOLUME else 1f
         player.setVolume(startVolume, startVolume)
         player.start()
-        this.player = player
-        if (settings.volumeRamp) {
-            rampJob = scope.launch {
-                for (step in 1..RAMP_STEPS) {
-                    delay(1.seconds)
-                    val volume = RAMP_START_VOLUME + (1f - RAMP_START_VOLUME) * step / RAMP_STEPS
-                    player.setVolume(volume, volume)
-                }
-            }
-        }
     }
 
     @Suppress("DEPRECATION")
@@ -190,6 +217,7 @@ class RingingService : Service() {
     private fun stopRinging() {
         timeoutJob?.cancel()
         stopOutput()
+        current.value?.let { container.notifier.cancelFallbackAlarm(it.armed) }
         current.value = null
         wakeLock?.takeIf { it.isHeld }?.release()
         stopForeground(STOP_FOREGROUND_REMOVE)

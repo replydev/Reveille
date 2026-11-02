@@ -54,4 +54,16 @@ class ScheduleRepositoryTest {
         repository.cleanup(LocalDate.parse("2026-11-02"))
         assertEquals(0, changes)
     }
+
+    @Test
+    fun skipOccurrenceIgnoresDeletedSources() = runBlocking {
+        val policyId = repository.savePolicy(PolicyEntity(name = "Work"), emptyList(), emptyList())
+        repository.deletePolicy(policyId)
+        changes = 0
+
+        repository.skipOccurrence(listOf("P:$policyId:1:2026-11-02", "O:42"))
+
+        assertTrue(repository.snapshot().skips.isEmpty())
+        assertEquals(0, changes)
+    }
 }

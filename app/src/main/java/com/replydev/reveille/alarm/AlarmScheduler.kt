@@ -57,6 +57,21 @@ class AlarmScheduler(
     suspend fun claim(armed: Armed): Boolean =
         fireLog.insert(log(armed, FireOutcome.FIRED, firedAt = clock().toEpochMilli())) != -1L
 
+    /**
+     * Releases a [claim] whose ringing never started, so the next delivery can claim it again. The re-arm that
+     * follows sees the occurrence unhandled and catches it up (now + 1 s) until [ArmPlanner.LATE_RING_WINDOW] has
+     * passed; then it is reported missed. Never removes a row the user already acted on.
+     */
+    suspend fun unclaim(armed: Armed) = fireLog.delete(armed.key, armed.at.toEpochMilli())
+
+    /** The user dismissed a fallback alarm notification: the occurrence is handled and must not be retried. */
+    suspend fun acknowledgeFallback(armed: Armed) {
+        if (fireLog.insert(log(armed, FireOutcome.DISMISSED, firedAt = clock().toEpochMilli())) == -1L) {
+            recordOutcome(armed, FireOutcome.DISMISSED)
+        }
+        if (armed.isSnooze && state.snooze()?.key == armed.key) state.setSnooze(null)
+    }
+
     suspend fun recordOutcome(armed: Armed, outcome: FireOutcome) =
         fireLog.setOutcome(armed.key, armed.at.toEpochMilli(), outcome)
 
