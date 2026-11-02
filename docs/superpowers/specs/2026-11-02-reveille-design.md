@@ -16,7 +16,7 @@ Non-goals (v1): Play Store distribution, cloud sync/backup, per-policy sounds, h
 
 ## Platform & stack
 
-- App name: **Reveille**; application ID `dev.patane.reveille`.
+- App name: **Reveille**; application ID `com.replydev.reveille`.
 - Kotlin, Jetpack Compose (Material 3), Room, Glance (App Widget).
 - `minSdk 31` (Android 12), `targetSdk` = latest stable.
 - Sideloaded via `adb`. Uses `USE_EXACT_ALARM` (auto-granted, no user prompt; acceptable outside Play Store).
