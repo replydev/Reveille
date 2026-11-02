@@ -24,7 +24,7 @@ import com.replydev.reveille.ui.theme.ReveilleTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    /** A screen the widget asked for ([OPEN_ONE_OFF], [OPEN_HEALTH]); cleared once the nav host has opened it. */
+    /** A screen the widget or a notification asked for ([OPEN_ONE_OFF], [OPEN_HEALTH], [OPEN_UPDATE]); cleared once the nav host has opened it. */
     private var launchTarget by mutableStateOf<String?>(null)
 
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -48,6 +48,13 @@ class MainActivity : ComponentActivity() {
             }
         }
         WatchdogWorker.schedule(this)
+        container.appScope.launch {
+            try {
+                container.updates.syncSchedule()
+            } catch (e: Exception) {
+                Log.e("Reveille", "Could not schedule the update check", e)
+            }
+        }
         setContent {
             ReveilleTheme { ReveilleNavHost(launchTarget, onLaunched = { launchTarget = null }) }
         }
@@ -71,6 +78,7 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_OPEN = "open"
         const val OPEN_ONE_OFF = "oneoff"
         const val OPEN_HEALTH = "health"
+        const val OPEN_UPDATE = "update"
     }
 
     /** POST_NOTIFICATIONS is a runtime permission from Android 13; before that notifications are on by default. */
