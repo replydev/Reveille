@@ -72,6 +72,8 @@
   <li>The settings links open the right HyperOS screens, and the fallback sound plays in Do Not Disturb and silent mode.</li>
   <li>Time zone change; widget refresh after Skip, after a ring and after a long idle.</li>
   <li>Your real setup: Work = 07:55 Mon–Wed and 08:55 Thu–Fri, plus a replace-day one-off at 09:30 next Thursday.</li>
+  <li>In-app update over a real release: install the previous signed release APK from GitHub, open Settings › Updates › Check now, then Download and install. The first time, Android should ask once to "Allow from this source". The confirm dialog should name Reveille, and the app should restart on the new version with its policies intact. Also try Cancel in Android's dialog (back to Install), and a phone without Wi-Fi (the daily check waits for a network).</li>
+  <li>An alarm rings after an in-app update: set a one-off 35 minutes ahead, install the update, and don't open the app afterwards. <code>adb shell dumpsys alarm | grep reveille</code> should show it re-armed by <code>MY_PACKAGE_REPLACED</code>, and it must ring on time with the screen off. Then set one 20 minutes ahead: the sheet must show "rings in N min" with Remind me, and while it rings Install anyway must be gone.</li>
 </ol>
 
 <h2>How to install</h2>
