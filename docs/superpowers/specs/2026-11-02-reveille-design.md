@@ -1,11 +1,11 @@
-# Alarm Scheduler — Design
+# Reveille — Design
 
 Date: 2026-11-02
 Status: Draft, awaiting review
 
 ## Goal
 
-A personal Android alarm app with more scheduling flexibility than the stock Clock app:
+**Reveille** is a personal Android alarm app with more scheduling flexibility than the stock Clock app:
 
 - One-off alarms on a specific date ("09:30 next Thursday only"), without creating a recurrence.
 - **Policies**: named groups of recurring rules (e.g. "Work" = 07:55 Mon/Tue/Wed + 08:55 Thu/Fri).
@@ -16,6 +16,7 @@ Non-goals (v1): Play Store distribution, cloud sync/backup, per-policy sounds, h
 
 ## Platform & stack
 
+- App name: **Reveille**; application ID `dev.patane.reveille`.
 - Kotlin, Jetpack Compose (Material 3), Room, Glance (App Widget).
 - `minSdk 31` (Android 12), `targetSdk` = latest stable.
 - Sideloaded via `adb`. Uses `USE_EXACT_ALARM` (auto-granted, no user prompt; acceptable outside Play Store).
