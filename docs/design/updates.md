@@ -43,9 +43,10 @@ Design lives on the canvas (https://claude.ai/artifact/9ZYXbAyXxZyZL3u5RVp2pu, r
 - **Version** comes from the tag, via the same formula as the build: `versionCode = major × 1,000,000 + minor × 1,000 + patch`. Compare it with `BuildConfig.VERSION_CODE`.
 - **Release notes** are the `body` field, written by `scripts/semver.sh notes`.
   - Keep the sections `## Breaking changes`, `## Features`, `## Fixes` and `## Performance`, and drop `## Install`.
-  - Each section's `- ` bullets become plain lines with markdown links and backticks removed.
+  - Each section's `- ` bullets become plain lines: markdown links and backticks removed, the commit prefix (`feat(ui): `) and the trailing pull request reference (`(#7)`) dropped, and the first letter capitalised, as in `UpdateSheet.dc.html`.
   - Show at most 6 bullets per section, then "and N more", with "On GitHub" opening `html_url`.
-  - If there are no sections, show the first 3 non-empty lines.
+  - If there are no sections, show the first 3 non-empty lines outside `## Install`.
+  - The one-line summary (Today card, notification) is the first Features bullet, else the first Fixes bullet, else the first bullet of any section.
 - Use `HttpURLConnection` and `org.json`. **Don't add a networking or JSON library.** Timeouts are 10 s to connect and 20 s to read.
 
 ## 3. Architecture (new package `update/`)
