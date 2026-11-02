@@ -9,6 +9,9 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.replydev.reveille.data.FireOutcome
 import com.replydev.reveille.data.OneOffEntity
+import com.replydev.reveille.data.PolicyEntity
+import com.replydev.reveille.data.RuleEntity
+import com.replydev.reveille.data.SkipEntity
 import com.replydev.reveille.data.ReveilleDatabase
 import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.data.SchedulerState
@@ -32,6 +35,7 @@ import org.robolectric.annotation.Implementation
 import org.robolectric.annotation.Implements
 import org.robolectric.shadows.ShadowAlarmManager
 import java.io.File
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -209,6 +213,88 @@ class AlarmSchedulerTest {
         addOneOff("2026-11-05", "09:30", "Dentist")
         assertNull(state.armed())
         assertTrue(triggers().isEmpty())
+    }
+
+    private suspend fun addDailyPolicy(time: String): Long = repository.savePolicy(
+        PolicyEntity(name = "Work"),
+        listOf(RuleEntity(policyId = 0, time = LocalTime.parse(time), days = DayOfWeek.entries.toSet(), anchorDate = LocalDate.parse("2026-11-02"))),
+        emptyList(),
+    )
+
+    @Test
+    fun skipNextSkipsAFuturePolicyAlarmForItsDateAndArmsTheNextOne() = runBlocking {
+        val policyId = addDailyPolicy("07:00")
+        val armed = state.armed()!!
+        assertEquals(rome("2026-11-02", "07:00"), armed.at)
+        scheduler.skipNext(armed.key, armed.at)
+        assertEquals(listOf(SkipEntity(policyId, LocalDate.parse("2026-11-02"))), db.scheduleDao().skips())
+        val next = rome("2026-11-03", "07:00")
+        assertEquals(next, state.armed()?.at)
+        assertEquals(listOf(next, next.plusSeconds(120)).map { it.toEpochMilli() }, triggers())
+    }
+
+    @Test
+    fun skipNextDeletesAOneOff() = runBlocking {
+        addOneOff("2026-11-05", "09:30", "Dentist")
+        val armed = state.armed()!!
+        scheduler.skipNext(armed.key, armed.at)
+        assertTrue(db.scheduleDao().oneOffs().isEmpty())
+        assertNull(state.armed())
+        assertTrue(triggers().isEmpty())
+    }
+
+    @Test
+    fun skipNextClearsASnoozeAndCancelsItsDirectAlarm() = runBlocking {
+        val snooze = Armed.snooze(now.plusSeconds(540), "Snoozed")
+        state.setSnooze(snooze)
+        scheduler.rearm("snoozed")
+        scheduler.armDirectSnooze(snooze)
+        assertEquals(snooze.key, state.armed()?.key)
+        scheduler.skipNext(snooze.key, snooze.at)
+        assertNull(state.snooze())
+        assertNull(state.armed())
+        assertTrue(triggers().isEmpty())
+    }
+
+    @Test
+    fun skipNextOfAPastCatchUpLogsItSkippedSoItIsNotRungAgain() = runBlocking {
+        addOneOff("2026-11-02", "06:30", "Early")
+        addOneOff("2026-11-03", "06:30", "Next")
+        now = rome("2026-11-02", "06:40")
+        scheduler.rearm("late")
+        val catchUp = state.armed()!!
+        assertEquals(rome("2026-11-02", "06:30"), catchUp.at)
+        scheduler.skipNext(catchUp.key, catchUp.at)
+        assertEquals(FireOutcome.SKIPPED, scheduler.outcome(catchUp))
+        scheduler.rearm("again")
+        assertEquals("Next", state.armed()?.label)
+    }
+
+    @Test
+    fun staleSkipIsANoOp() = runBlocking {
+        addDailyPolicy("07:00")
+        val armed = state.armed()!!
+        scheduler.skipNext(armed.key, armed.at)
+        val next = state.armed()!!
+        // A second tap on a widget still showing the first alarm must not skip the following one.
+        scheduler.skipNext(armed.key, armed.at)
+        assertEquals(next, state.armed())
+        assertEquals(1, db.scheduleDao().skips().size)
+        // Same key, different time: also stale.
+        scheduler.skipNext(next.key, next.at.plusSeconds(60))
+        assertEquals(next, state.armed())
+    }
+
+    @Test
+    fun armedChangedRunsOutsideTheRearmLock() = runBlocking {
+        var nested = 0
+        lateinit var outer: AlarmScheduler
+        outer = AlarmScheduler(context, repository, db.fireLogDao(), state, Notifier(context), onArmedChanged = {
+            // Would deadlock if still holding the re-arm mutex.
+            if (nested++ == 0) outer.rearm("from callback")
+        }, clock = { now })
+        kotlinx.coroutines.withTimeout(5_000) { outer.rearm("test") }
+        assertEquals(2, nested)
     }
 
     private fun alarms() = shadowOf(context.getSystemService(AlarmManager::class.java)).scheduledAlarms

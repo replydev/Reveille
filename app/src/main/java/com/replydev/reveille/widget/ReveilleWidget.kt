@@ -1,6 +1,7 @@
 package com.replydev.reveille.widget
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -10,6 +11,7 @@ import androidx.glance.Button
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -32,6 +34,7 @@ import com.replydev.reveille.engine.Armed
 import com.replydev.reveille.engine.TimeText
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Next-alarm widget. Renders only [com.replydev.reveille.data.SchedulerState.armedFlow], i.e. exactly what
@@ -41,7 +44,14 @@ class ReveilleWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val container = context.container
         val initial = container.schedulerState.armed()
-        val healthy = container.reliability.allGood()
+        val healthy = try {
+            container.reliability.allGood()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("Reveille", "Reliability check failed", e)
+            false
+        }
         provideContent {
             val armed by container.schedulerState.armedFlow.collectAsState(initial)
             GlanceTheme {
@@ -78,7 +88,13 @@ private fun WidgetContent(armed: Armed?, healthy: Boolean, now: Instant) {
                     style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 14.sp),
                     modifier = GlanceModifier.defaultWeight(),
                 )
-                Button(text = "Skip", onClick = actionRunCallback<SkipNextAction>())
+                Button(
+                    text = "Skip",
+                    // The displayed occurrence: a tap on a stale widget must not skip whatever is armed by then.
+                    onClick = actionRunCallback<SkipNextAction>(
+                        actionParametersOf(SkipNextAction.KEY to armed.key, SkipNextAction.AT to armed.at.toEpochMilli()),
+                    ),
+                )
             }
         }
     }

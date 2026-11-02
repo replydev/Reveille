@@ -31,8 +31,17 @@ class AlarmScheduler(
     private val mutex = Mutex()
     private val guardMutex = Mutex()
 
-    /** Recomputes and registers the next alarm. Safe to call from anywhere, any number of times. */
-    suspend fun rearm(reason: String): Unit = mutex.withLock {
+    /**
+     * Recomputes and registers the next alarm. Safe to call from anywhere, any number of times. [onArmedChanged] runs
+     * after the lock is released, so it may re-arm itself and never holds re-arms up.
+     */
+    suspend fun rearm(reason: String) {
+        mutex.withLock { rearmLocked(reason) }
+        onArmedChanged()
+    }
+
+    /** The body of [rearm]; the caller holds [mutex]. */
+    private suspend fun rearmLocked(reason: String) {
         val now = clock()
         val zone = ZoneId.systemDefault()
         val previous = state.armed()
@@ -56,7 +65,6 @@ class AlarmScheduler(
             state.setArmed(null)
         }
         Log.i(TAG, "rearm($reason): armed=${armed?.key} trigger=$trigger missed=${decision.missed.map { it.key }}")
-        onArmedChanged()
     }
 
     /** Returns true only for the first delivery of [armed]; later deliveries (backup, catch-up) return false. */
@@ -121,17 +129,32 @@ class AlarmScheduler(
         state.setGuard(null)
     }
 
-    /** Skips the currently armed alarm (widget "Skip" button). */
-    suspend fun skipNext() {
-        val armed = state.armed() ?: return
-        // A past (catch-up) alarm must be marked handled, otherwise the planner would ring it again.
-        if (!armed.at.isAfter(clock())) fireLog.insert(log(armed, FireOutcome.SKIPPED, firedAt = null))
-        if (armed.isSnooze || armed.sourceKeys.isEmpty()) {
-            state.setSnooze(null)
-            rearm("skipped next")
-        } else {
-            repository.skipOccurrence(armed.sourceKeys)
+    /**
+     * Skips the armed alarm (widget "Skip" button), but only if it is still the occurrence [expectedKey] at
+     * [expectedAt] that the caller displayed: a stale tap (e.g. a double tap before the widget refreshed) is a no-op
+     * instead of skipping the following alarm too. The check and the skip happen under the re-arm lock.
+     *
+     * A policy alarm is skipped for its policy's whole date (see [ScheduleRepository.skipOccurrence]); a one-off is
+     * deleted; a snooze is cleared. The ring guard is not touched: an alarm that is ringing keeps its guard until it is
+     * dismissed or snoozed.
+     */
+    suspend fun skipNext(expectedKey: String, expectedAt: Instant) {
+        val skipped = mutex.withLock {
+            val armed = state.armed()
+            if (armed == null || armed.key != expectedKey || armed.at != expectedAt) return@withLock false
+            // A past (catch-up) alarm must be marked handled, otherwise the planner would ring it again.
+            if (!armed.at.isAfter(clock())) fireLog.insert(log(armed, FireOutcome.SKIPPED, firedAt = null))
+            if (armed.isSnooze || armed.sourceKeys.isEmpty()) {
+                state.setSnooze(null)
+                cancelDirectSnooze()
+            } else {
+                repository.skipOccurrence(armed.sourceKeys, notify = false)
+            }
+            // Always re-arm, even if the sources were gone already: the armed alarm must move on.
+            rearmLocked("skipped next")
+            true
         }
+        if (skipped) onArmedChanged()
     }
 
     private suspend fun recordMissed(missed: Armed) {

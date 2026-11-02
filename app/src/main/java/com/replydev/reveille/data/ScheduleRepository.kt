@@ -49,9 +49,13 @@ class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: su
 
     /**
      * Skips policy occurrences and deletes one-offs referenced by [sourceKeys]. Sources deleted in the meantime are
-     * ignored; [onChanged] runs only if something changed.
+     * ignored; [onChanged] runs only if something changed and [notify] is set (the scheduler passes false because it
+     * calls this while holding its re-arm lock and re-arms itself). Returns whether anything changed.
+     *
+     * Skipping a policy occurrence skips that policy for its whole date, by design (spec: "Skip cancels the alarm for
+     * one policy on one date"): other rules of the same policy on that date do not ring either.
      */
-    suspend fun skipOccurrence(sourceKeys: List<String>) {
+    suspend fun skipOccurrence(sourceKeys: List<String>, notify: Boolean = true): Boolean {
         var changed = false
         sourceKeys.mapNotNull(Source::parse).forEach { source ->
             when (source) {
@@ -60,7 +64,8 @@ class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: su
                 is Source.OneOffAlarm -> changed = dao.deleteOneOff(source.oneOffId) > 0 || changed
             }
         }
-        if (changed) onChanged()
+        if (changed && notify) onChanged()
+        return changed
     }
 
     /** Deletes one-offs and skips dated before [today]. Does not call [onChanged]: it runs inside a re-arm. */

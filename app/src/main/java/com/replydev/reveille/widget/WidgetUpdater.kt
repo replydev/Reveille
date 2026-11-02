@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.UserManager
 import android.util.Log
 import androidx.glance.appwidget.updateAll
+import kotlin.coroutines.cancellation.CancellationException
 
 object WidgetUpdater {
     /**
@@ -12,7 +13,12 @@ object WidgetUpdater {
      */
     suspend fun update(context: Context) {
         if (!context.getSystemService(UserManager::class.java).isUserUnlocked) return
-        runCatching { ReveilleWidget().updateAll(context) }
-            .onFailure { Log.w("Reveille", "Widget update failed", it) }
+        try {
+            ReveilleWidget().updateAll(context)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("Reveille", "Widget update failed", e)
+        }
     }
 }

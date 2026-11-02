@@ -10,11 +10,19 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.replydev.reveille.container
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
 
 /** Safety net: re-arms periodically in case the system dropped our alarm. */
 class WatchdogWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        applicationContext.container.scheduler.rearm("watchdog")
+        try {
+            applicationContext.container.scheduler.rearm("watchdog")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Success anyway: the periodic schedule continues and the next run tries again (no retry backoff pile-up).
+            Log.e("Reveille", "Watchdog re-arm failed", e)
+        }
         return Result.success()
     }
 

@@ -15,7 +15,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
 import com.replydev.reveille.alarm.RingingActivity
 import com.replydev.reveille.alarm.RingingService
 import com.replydev.reveille.alarm.WatchdogWorker
@@ -29,7 +28,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         if (savedInstanceState == null) requestNotificationPermission()
-        lifecycleScope.launch {
+        // App scope, not lifecycleScope: the re-arm must finish even if the activity is closed right away.
+        val container = container
+        container.appScope.launch {
             try {
                 container.scheduler.rearm("app opened")
             } catch (e: Exception) {

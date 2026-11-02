@@ -1,5 +1,6 @@
 package com.replydev.reveille.alarm
 
+import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -17,7 +18,8 @@ import kotlinx.coroutines.launch
  */
 class SystemEventsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val reason = intent.action ?: "system event"
+        // Exported: anything else (e.g. an explicit intent from another app) is ignored.
+        val reason = intent.action?.takeIf { it in ACTIONS } ?: return
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
@@ -36,5 +38,13 @@ class SystemEventsReceiver : BroadcastReceiver() {
 
     private companion object {
         const val TAG = "Reveille"
+        val ACTIONS = setOf(
+            Intent.ACTION_LOCKED_BOOT_COMPLETED,
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED,
+        )
     }
 }

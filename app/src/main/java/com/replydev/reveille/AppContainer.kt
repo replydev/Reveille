@@ -15,11 +15,18 @@ import com.replydev.reveille.data.SchedulerState
 import com.replydev.reveille.data.SettingsStore
 import com.replydev.reveille.reliability.ReliabilityChecker
 import com.replydev.reveille.widget.WidgetUpdater
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /** Manual dependency wiring. Everything that alarm delivery touches lives in device-protected storage. */
 class AppContainer(context: Context) {
     private val app = context.applicationContext
     private val deviceStorage = app.createDeviceProtectedStorageContext()
+
+    /** App-wide scope for fire-and-forget work that must outlive any screen (widget refreshes, app-start re-arm). */
+    val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val database: ReveilleDatabase by lazy { ReveilleDatabase.create(app) }
 
@@ -37,7 +44,10 @@ class AppContainer(context: Context) {
     }
 
     val scheduler: AlarmScheduler by lazy {
-        AlarmScheduler(app, repository, database.fireLogDao(), schedulerState, notifier, onArmedChanged = { WidgetUpdater.update(app) })
+        AlarmScheduler(app, repository, database.fireLogDao(), schedulerState, notifier, onArmedChanged = {
+            // Fire and forget: a re-arm must never wait on Glance.
+            appScope.launch { WidgetUpdater.update(app) }
+        })
     }
 
     val firing: AlarmFiring by lazy {
