@@ -3,13 +3,18 @@ package com.replydev.reveille
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import com.replydev.reveille.alarm.RingingActivity
 import com.replydev.reveille.alarm.RingingService
@@ -19,12 +24,20 @@ import com.replydev.reveille.ui.theme.ReveilleTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    /** A screen the widget asked for ([OPEN_ONE_OFF], [OPEN_HEALTH]); cleared once the nav host has opened it. */
+    private var launchTarget by mutableStateOf<String?>(null)
+
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        if (savedInstanceState == null) requestNotificationPermission()
+        // Edge to edge on Bg with light system-bar icons, in both system modes (the app is dark-only).
+        enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
+        if (savedInstanceState == null) {
+            requestNotificationPermission()
+            // Only on a fresh start: a recreated activity has already opened it.
+            launchTarget = intent.getStringExtra(EXTRA_OPEN)
+        }
         // App scope, not lifecycleScope: the re-arm must finish even if the activity is closed right away.
         val container = container
         container.appScope.launch {
@@ -36,8 +49,14 @@ class MainActivity : ComponentActivity() {
         }
         WatchdogWorker.schedule(this)
         setContent {
-            ReveilleTheme { ReveilleNavHost() }
+            ReveilleTheme { ReveilleNavHost(launchTarget, onLaunched = { launchTarget = null }) }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getStringExtra(EXTRA_OPEN)?.let { launchTarget = it }
     }
 
     override fun onResume() {
@@ -46,6 +65,12 @@ class MainActivity : ComponentActivity() {
         if (RingingService.ringing.value != null) {
             startActivity(Intent(this, RingingActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
+    }
+
+    companion object {
+        const val EXTRA_OPEN = "open"
+        const val OPEN_ONE_OFF = "oneoff"
+        const val OPEN_HEALTH = "health"
     }
 
     /** POST_NOTIFICATIONS is a runtime permission from Android 13; before that notifications are on by default. */

@@ -1,22 +1,33 @@
-# Every top-level screen opens and Back returns to Home.
+# Every tab opens from the bottom bar, Back from a tab returns to Today, and the one-off sheet closes.
 appId: com.replydev.reveille
 name: Navigation
 ---
 - runFlow: subflows/launch_clean.yaml
 - tapOn: "Policies"
 - assertVisible: "No policies yet.*"
-- tapOn: "Back"
-- assertVisible: "Next alarm"
-- tapOn: "Settings"
-- tapOn: "Back"
-- assertVisible: "Next alarm"
-- tapOn: "Reliability"
-- assertVisible: "Reveille uses the same alarm API.*"
+- tapOn: "Health"
+- assertVisible: ".* of .* checks pass"
+- assertVisible: "Ring a test alarm"
 - scrollUntilVisible:
-    element: "Recent alarms"
-- tapOn: "Back"
-- assertVisible: "Next alarm"
-- tapOn: "New alarm"
-- assertVisible: "Save"
+    element: "RECENT ALARMS"
+- tapOn: "Settings"
+- assertVisible: "Alarm sound"
+- assertVisible: "Snooze length"
+- tapOn: "Increase snooze length"
+- assertVisible: "10 min"
+- tapOn: "Decrease snooze length"
+- assertVisible: "9 min"
+- tapOn: "Today"
+- assertVisible: "Next wake-up"
+- tapOn: "Settings"
 - back
-- assertVisible: "Next alarm"
+- assertVisible: "Next wake-up"
+- tapOn: "One-off alarm"
+- assertVisible: "Close"
+- tapOn: "Close"
+- assertNotVisible: "Close"
+- tapOn: "One-off alarm"
+- assertVisible: "Close"
+- back
+- assertVisible: "Next wake-up"
+- assertNotVisible: "Close"

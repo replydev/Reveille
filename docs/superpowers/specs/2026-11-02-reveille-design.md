@@ -127,7 +127,7 @@ Stopping only clears the ringing state if it still refers to the same ring.
 
 **Fallback alarm notification.** Channel `alarm_fallback_v2` (the old `alarm_fallback` is deleted on start, since channel sounds are frozen at creation; `IMPORTANCE_HIGH`, sound = bundled `android.resource://<pkg>/raw/fallback_alarm` with `USAGE_ALARM` — deterministic and readable before the first unlock, vibration, public on lock screen) lets a notification ring by itself: category ALARM, `FLAG_INSISTENT`, re-posts do not restart the sound. Its full-screen/content intent opens `RingingActivity` in **fallback mode** (directBootAware; label, time and a Dismiss button that sends `ACTION_FALLBACK_DISMISS`). Dismiss action, swipe and that button record DISMISSED, cancel the guard and the notification. Posted when the service cannot be started, cannot go foreground, or cannot play any sound (then it keeps vibrating regardless of the setting).
 
-`RingingActivity` (normal mode): shows over the lock screen (`setShowWhenLocked`, `setTurnScreenOn`), big time + label, Dismiss and Snooze. If the full-screen intent is denied, the service still rings and the heads-up notification has Snooze/Dismiss. Opening the app while an alarm rings brings `RingingActivity` up (covers notifications being disabled). `Notifier` logs every notification it has to drop.
+`RingingActivity` (normal mode): shows over the lock screen (`setShowWhenLocked`, `setTurnScreenOn`), big time + label, Dismiss and Snooze. The Snooze length and auto-snooze captions read the device-protected settings store; if it cannot be read the buttons still work and read "Snooze". Fonts are bundled, so the screen renders before the first unlock. If the full-screen intent is denied, the service still rings and the heads-up notification has Snooze/Dismiss. Opening the app while an alarm rings brings `RingingActivity` up (covers notifications being disabled). `Notifier` logs every notification it has to drop.
 
 **Android 12–13.** Exact alarms use `SCHEDULE_EXACT_ALARM` (`maxSdkVersion` 32, granted by default there) and `USE_EXACT_ALARM` from 33. Code stays within API 31 (lint `NewApi` must be clean); scheduler and firing tests run under Robolectric on SDK 31, 33 and 35. If `setAlarmClock` throws `SecurityException`, the alarm is not recorded as armed and a "could not be scheduled" notification is posted.
 
@@ -154,7 +154,7 @@ Losing a wake-up is the worst failure. Defense in depth:
 
 5b. **Residual ways to lose an alarm** (accepted, documented): force-stop (clears all alarms until Reveille is opened again); notifications disabled *and* the service refused (the fallback cannot be shown — logged, and the guard keeps retrying the service for 30 min); the process dying in the milliseconds between committing a claim and arming the guard; the OS refusing `setAlarmClock` itself; the guard alarm's time appearing as the "next alarm" in the status bar while an alarm is unresolved (cosmetic); a dismissal that cannot be written re-rings every 90 s until the late window ends; a snooze withdrawn by a dismissal whose DataStore write also fails still rings; with storage failing, the auto-snooze cap resets if the process dies between snoozes.
 
-6. **OEM setup checklist (HyperOS/MIUI first-class).** A "Reliability" screen; while anything is not green, Home shows a (non-blocking) banner linking to it and the widget a warning icon:
+6. **OEM setup checklist (HyperOS/MIUI first-class).** A "Health" tab (the Reliability screen); while anything is not green, Today shows a (non-blocking) "N issues" pill linking to it, the Health tab a dot badge, and the widget a warning:
    - Notifications permission (`POST_NOTIFICATIONS`) — granted?
    - Full-screen intent (`NotificationManager.canUseFullScreenIntent()`, Android 14+) — granted? Deep link to `ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`.
    - Exact alarms (`canScheduleExactAlarms()`) — should always be true with `USE_EXACT_ALARM`; checked anyway.
@@ -175,19 +175,21 @@ Losing a wake-up is the worst failure. Defense in depth:
 
 ## Widget (Glance)
 
-- Shows next occurrence: `Thu 08:55 · Work` and relative time ("in 19 h"). Empty state: "No alarms".
+- Shows next occurrence: the time, `Tomorrow · Work` and relative time ("in 19 h"), with `SizeMode.Responsive` layouts for 4×2, 2×2 and 4×1. Empty state: "No alarms set" with a + that opens the one-off sheet.
 - **Skip** button: skips the displayed alarm only if it is still the armed one (a stale tap is a no-op): a policy alarm skips that policy's **whole day** (Skip row), a one-off is deleted, a snooze is cleared; a past catch-up is logged SKIPPED so it does not ring again; then `rearm()`.
-- Tap anywhere else → opens app.
+- Tap anywhere else → opens app (Health when a check fails).
 - Updated by `rearm()`; also `updatePeriodMillis` = 30 min, and each widget update re-arms as an extra safety net (not delivered while the app is force-stopped). Renders the persisted armed state, never computes on its own.
-- If the reliability checklist is not green, widget shows a small warning icon.
+- If the reliability checklist is not green, the widget shows "N issues" with a warning icon and a danger frame (2×2: "Tap to fix").
 
 ## Screens (Compose)
 
-1. **Home / Next up**: reliability banner (if needed), next-alarm card, timeline of the next 14 days grouped by day with Skip/Unskip (and Edit for one-offs) buttons; "New policy" and "New alarm" buttons; links to Policies and Settings.
-2. **Policies**: list with enable toggles; editor with name, start/end dates, rules (time, weekday chips, every N weeks + anchor), pauses list.
-3. **One-off editor**: date, time, label, Replace day / Ring in addition toggle; shows which policy alarms would be replaced.
+Top-level tabs in a bottom bar: Today, Policies, Health, Settings. The policy editor is a pushed screen and the one-off editor a bottom sheet, both without the bar. Visual design: `docs/design/README.md`.
+
+1. **Today**: date and reliability pill (if needed), next wake-up card (Skip this one, Open policy / Edit), timeline of the next 14 days grouped by day with Skip/Unskip (and Edit for one-offs) buttons; "One-off alarm" button.
+2. **Policies**: list with enable toggles and "New policy"; editor with name, start/end dates, rules (time, weekday toggles, every N weeks + anchor), pauses list, and a sticky bar with the next alarm and Save.
+3. **One-off editor** (bottom sheet): time, date strip, label, Replace the day / Ring in addition; shows which policy alarms would be replaced.
 4. **Settings**: ringtone, vibration, snooze length, max ring duration, volume ramp.
-5. **Reliability**: checklist, test alarm, recent FireLog entries.
+5. **Health** (Reliability): checklist with failing checks first, test alarm, recent FireLog entries.
 
 ## Error handling
 

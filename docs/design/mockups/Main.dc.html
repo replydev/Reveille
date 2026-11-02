@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reveille — Today</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FFB547}a:hover{color:#FFD08A}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0B0D11; color: #F3F4F6; font-family: 'Geist', system-ui, sans-serif; font-variant-numeric: tabular-nums; box-sizing: border-box">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 52px 20px 12px">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 13px; color: #A1A9B5; letter-spacing: 0.01em">Monday, 2 November</span>
+      <h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em">Today</h1>
+    </div>
+    <button aria-label="Reliability: 1 check needs attention" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #3A2A25; background: #1E1513; color: #FF8A75; font-size: 13px; font-weight: 500">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z"></path><path d="M12 10v4"></path><path d="M12 17.5v.01"></path></svg>
+      1 issue
+    </button>
+  </header>
+
+  <section aria-label="Next wake-up" style="margin: 8px 16px 0; padding: 22px 22px 18px; border-radius: 28px; background: #15181E; border: 1px solid #22262E; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: {{accent}}">Next wake-up</span>
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #A1A9B5">
+        <span style="width: 8px; height: 8px; border-radius: 4px; background: {{accent}}"></span>
+        Armed with system
+      </span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 12px">
+      <span style="font-size: 84px; font-weight: 300; line-height: 0.9; letter-spacing: -0.04em">07:55</span>
+      <span style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 17px; font-weight: 500">Tomorrow</span>
+        <span style="font-size: 14px; color: #A1A9B5">in 9 h 12 min</span>
+      </span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; background: #1D2129; font-size: 13px">
+        <span style="width: 8px; height: 8px; border-radius: 2px; background: #8AB4FF"></span>Work
+      </span>
+      <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 8px; background: #1D2129; font-size: 13px; color: #A1A9B5; font-family: 'Geist Mono', monospace">backup 07:57</span>
+    </div>
+    <div style="display: flex; gap: 10px; padding-top: 4px">
+      <button style="flex: 1; height: 48px; border-radius: 24px; border: 1px solid #2A2F38; background: transparent; color: #F3F4F6; font-size: 15px; font-weight: 500">Skip this one</button>
+      <button style="flex: 1; height: 48px; border-radius: 24px; border: none; background: #1D2129; color: #F3F4F6; font-size: 15px; font-weight: 500">Open policy</button>
+    </div>
+  </section>
+
+  <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 26px 20px 6px">
+    <h2 style="margin: 0; font-size: 15px; font-weight: 600">Next 14 days</h2>
+    <span style="font-size: 13px; color: #A1A9B5">9 alarms</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; padding: 0 16px">
+    <sc-for list="{{days}}" as="day" hint-placeholder-count="4">
+      <div style="display: flex; gap: 14px; padding: 12px 4px; border-top: 1px solid #1D2129">
+        <div style="width: 44px; flex: none; display: flex; flex-direction: column; align-items: center; padding-top: 2px">
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #A1A9B5">{{day.dow}}</span>
+          <span style="font-size: 20px; font-weight: 500">{{day.num}}</span>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0">
+          <sc-for list="{{day.items}}" as="it" hint-placeholder-count="1">
+            <div style="display: flex; align-items: center; gap: 12px; min-height: 40px; opacity: {{it.opacity}}">
+              <span style="font-size: 20px; font-weight: 400; width: 62px; text-decoration: {{it.strike}}">{{it.time}}</span>
+              <span style="flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px">
+                <span style="width: 8px; height: 8px; border-radius: 2px; background: {{it.color}}; flex: none"></span>
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.label}}</span>
+                <span style="font-size: 12px; color: #A1A9B5; white-space: nowrap">{{it.note}}</span>
+              </span>
+              <button style="height: 36px; padding: 0 12px; border-radius: 18px; border: none; background: transparent; color: #A1A9B5; font-size: 13px; font-weight: 500">{{it.action}}</button>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <button style="position: absolute; right: 16px; bottom: 100px; height: 56px; padding: 0 22px 0 18px; border-radius: 18px; border: none; background: {{accent}}; color: #1A1205; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.45)">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+    One-off alarm
+  </button>
+
+  <nav aria-label="Main" style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; padding: 8px 12px 20px; box-sizing: border-box; background: #101318; border-top: 1px solid #1D2129; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <a href="Main.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #F3F4F6; font-size: 12px; font-weight: 500">
+      <span style="width: 56px; height: 30px; border-radius: 15px; background: #2A2418; color: {{accent}}; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 2"></path><path d="M5 3L2 6M19 3l3 3"></path></svg></span>Today
+    </a>
+    <a href="Policies.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #A1A9B5; font-size: 12px; font-weight: 500">
+      <span style="width: 56px; height: 30px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></span>Policies
+    </a>
+    <a href="Health.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #A1A9B5; font-size: 12px; font-weight: 500; position: relative">
+      <span style="width: 56px; height: 30px; display: flex; align-items: center; justify-content: center; position: relative"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"></path></svg><span style="position: absolute; top: 3px; right: 14px; width: 8px; height: 8px; border-radius: 4px; background: #FF7A66"></span></span>Health
+    </a>
+    <a href="Settings.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #A1A9B5; font-size: 12px; font-weight: 500">
+      <span style="width: 56px; height: 30px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg></span>Settings
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#FFB547","options":["#FFB547","#8AB4FF","#7EE0C3","#F2A0C8"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const work = '#8AB4FF', gym = '#7EE0C3', one = this.props.accent ?? '#FFB547';
+    const row = (time, label, color, note, action, skipped) => ({
+      time, label, color, note: note || '', action,
+      opacity: skipped ? 0.45 : 1, strike: skipped ? 'line-through' : 'none'
+    });
+    return {
+      accent: this.props.accent ?? '#FFB547',
+      days: [
+        { dow: 'Tue', num: '3', items: [row('07:55', 'Work', work, '', 'Skip')] },
+        { dow: 'Wed', num: '4', items: [row('07:55', 'Work', work, '', 'Skip')] },
+        { dow: 'Thu', num: '5', items: [row('06:30', 'Gym', gym, 'every 2 wk', 'Skip'), row('08:55', 'Work', work, '', 'Skip')] },
+        { dow: 'Fri', num: '6', items: [row('09:30', 'Dentist', one, 'one-off', 'Edit'), row('08:55', 'Work', work, 'replaced', 'Unskip', true)] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

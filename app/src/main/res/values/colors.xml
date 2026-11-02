@@ -1,3 +1,7 @@
 <resources>
     <color name="ic_launcher_background">#FF1E3A5F</color>
+    <!-- Palette.Bg: the launch window and splash match the first frame of the UI. -->
+    <color name="bg">#FF0B0D11</color>
+    <!-- Palette.Accent: the ringing screen's window, so it opens straight on the accent. -->
+    <color name="accent">#FFFFB547</color>
 </resources>
