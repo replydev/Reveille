@@ -77,7 +77,7 @@ Algorithm, per calendar day `d` from `from`'s date forward:
 4. Resolve to `ZonedDateTime` with `ZonedDateTime.of(d, time, zone)`; DST gap → shifted forward (java.time default); DST overlap → earlier offset.
 5. Keep those strictly after `from`; deduplicate identical instants (merge labels); sort.
 
-`occurrenceKey` is stable: `"P:{ruleId}:{date}"` or `"O:{oneOffId}"`, so skips/logs/snooze can refer to occurrences.
+`occurrenceKey` is stable: `"P:{policyId}:{ruleId}:{date}"`, `"O:{oneOffId}"` or `"S:{epochMillis}"` (snooze), so skips/logs/snooze can refer to occurrences.
 
 ## Android layer
 
@@ -103,7 +103,7 @@ If the full-screen intent is denied, the service still rings and the heads-up no
 Auto-snooze after max ring duration; after 3 auto-snoozes, stop and post a "Missed alarm" notification.
 
 ### System receivers → `rearm()`
-`BOOT_COMPLETED`, `LOCKED_BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED`, `DATE_CHANGED`, `AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`.
+`BOOT_COMPLETED`, `LOCKED_BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED`, `AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`.
 
 ## Reliability (critical requirement)
 
@@ -117,7 +117,7 @@ Losing a wake-up is the worst failure. Defense in depth:
 
 4. **Watchdog / self-healing.** `rearm()` is also triggered by:
    - app open, widget update, and a periodic `WorkManager` job (every ~6 h) as a cheap safety net;
-   - each run verifies `AlarmManager.getNextAlarmClock()` matches our expected trigger; if not, re-arm and log it.
+   - each run simply re-arms (idempotent: `setAlarmClock` with the same PendingIntent replaces the old one) and logs the reason.
 
 5. **Missed-alarm detection.** On any `rearm()`, if FireLog shows a scheduled occurrence in the past with no `firedAt`, post a high-priority "Missed alarm at 07:55" notification and show it in the app — so failures are visible, never silent.
 
@@ -127,6 +127,7 @@ Losing a wake-up is the worst failure. Defense in depth:
    - Exact alarms (`canScheduleExactAlarms()`) — should always be true with `USE_EXACT_ALARM`; checked anyway.
    - Battery optimization ignored (`isIgnoringBatteryOptimizations`) — request via `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (allowed for sideloaded app).
    - Alarm channel not muted / importance high.
+   - Alarm stream volume above zero.
    - **Xiaomi/HyperOS specific** (detected via `Build.MANUFACTURER` / `ro.mi.os.version.name`), manual steps with deep links where available, falling back to app details screen:
      - Autostart ON (`com.miui.securitycenter/com.miui.permcenter.autostart.AutoStartManagementActivity`) — without it `BOOT_COMPLETED` is not delivered.
      - Battery saver → "No restrictions" (`com.miui.powerkeeper/.ui.HiddenAppsConfigActivity`).
@@ -144,7 +145,7 @@ Losing a wake-up is the worst failure. Defense in depth:
 - Shows next occurrence: `Thu 08:55 · Work` and relative time ("in 19 h"). Empty state: "No alarms".
 - **Skip** button: skips that occurrence (policy → Skip row; one-off → delete) then `rearm()`.
 - Tap anywhere else → opens app.
-- Updated by `rearm()`; also a `DATE_CHANGED`/midnight refresh so relative text stays correct. Widget reads the precomputed summary, never computes on its own.
+- Updated by `rearm()`; also `updatePeriodMillis` = 30 min so relative text stays correct. Widget reads the precomputed summary, never computes on its own.
 - If the reliability checklist is not green, widget shows a small warning icon.
 
 ## Screens (Compose)
@@ -160,12 +161,12 @@ Losing a wake-up is the worst failure. Defense in depth:
 - Invalid input prevented in editors (rule with no weekdays, endDate < startDate, pause from > to).
 - Engine horizon capped at 400 days; empty result → widget "No alarms", primary/backup cancelled.
 - All DB writes go through a repository that calls `rearm()` afterwards in the same coroutine; failures surface as snackbars.
-- Late firing (e.g. after reboot past the alarm time): if within 30 min of scheduled time, ring anyway; otherwise mark missed and notify.
+- Late firing (e.g. after reboot past the alarm time): if within 30 min of scheduled time, ring anyway (re-armed via `setAlarmClock` at now + 1 s so the foreground-service start stays exempt); otherwise mark missed and notify. Every delivery claims its occurrence in FireLog (unique key + time), so primary, backup and catch-up never ring twice.
 
 ## Testing
 
 - **Engine unit tests (JVM, extensive)**: single rule; multiple rules in one policy; every-N-weeks with anchors; start/end windows; pauses; skips; REPLACE_DAY vs ADDITIVE; multiple one-offs same day; duplicate instants; DST gap/overlap (Europe/Rome); time zone change; horizon/empty.
-- **Repository/DAO tests**: Room in-memory instrumented tests.
+- **Repository/DAO tests**: Room in-memory tests under Robolectric (no emulator needed).
 - **Scheduler tests**: Robolectric with shadow AlarmManager — verifies primary + backup armed, replaced on change, cancelled when empty.
 - **Manual on device (HyperOS phone)**: test alarm with screen off; reboot before unlock; airplane mode; battery saver on; overnight real alarm.
 
