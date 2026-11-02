@@ -21,6 +21,11 @@ class SchedulerState(private val store: DataStore<Preferences>) {
 
     suspend fun setSnooze(value: Armed?) = write(SNOOZE, value)
 
+    /** The occurrence the ring guard currently protects, if any. */
+    suspend fun guard(): Armed? = store.data.first()[GUARD]?.let(Armed::decode)
+
+    suspend fun setGuard(value: Armed?) = write(GUARD, value)
+
     suspend fun autoSnoozeCount(): Int = store.data.first()[AUTO_SNOOZES] ?: 0
 
     suspend fun setAutoSnoozeCount(value: Int) {
@@ -34,6 +39,7 @@ class SchedulerState(private val store: DataStore<Preferences>) {
     private companion object {
         val ARMED = stringPreferencesKey("armed")
         val SNOOZE = stringPreferencesKey("snooze")
+        val GUARD = stringPreferencesKey("guard")
         val AUTO_SNOOZES = intPreferencesKey("auto_snoozes")
     }
 }

@@ -7,10 +7,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
-import android.media.RingtoneManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.net.toUri
 import com.replydev.reveille.MainActivity
 import com.replydev.reveille.R
 import com.replydev.reveille.engine.Armed
@@ -32,8 +32,9 @@ class Notifier(private val context: Context) {
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ALARM_FALLBACK, "Fallback alarms", NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "Rings by itself when the normal alarm cannot start. Keep this at high importance with sound."
+                // The bundled sound, not the user's alarm tone: deterministic, and readable before the first unlock.
                 setSound(
-                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                    "android.resource://${context.packageName}/raw/fallback_alarm".toUri(),
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ALARM)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -74,15 +75,17 @@ class Notifier(private val context: Context) {
     /**
      * Last resort when [RingingService] cannot ring: a notification whose channel plays the alarm sound itself, repeated
      * ([Notification.FLAG_INSISTENT]) until the user opens the shade, taps or dismisses it. Dismissing (action or swipe)
-     * marks the occurrence handled via [AlarmReceiver.ACTION_FALLBACK_DISMISS]. Re-posting while it is shown (retries)
-     * does not restart the sound.
+     * marks the occurrence handled via [AlarmReceiver.ACTION_FALLBACK_DISMISS]. Re-posting while it is shown (ring guard
+     * retries) does not restart the sound. Tapping it opens [RingingActivity] in fallback mode.
      */
     fun postFallbackAlarm(armed: Armed) {
         val id = fallbackId(armed)
+        // RingingActivity (directBootAware, shows over the lock screen) in fallback mode, not MainActivity, which
+        // cannot start before the first unlock.
         val open = PendingIntent.getActivity(
             context,
-            REQUEST_FALLBACK_OPEN,
-            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            id,
+            RingingActivity.fallbackIntent(context, armed),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val dismiss = PendingIntent.getBroadcast(
@@ -134,7 +137,10 @@ class Notifier(private val context: Context) {
     }
 
     private fun post(id: Int, notification: Notification) {
-        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            Log.w(TAG, "Notifications are disabled; dropped notification $id (${notification.channelId})")
+            return
+        }
         try {
             manager.notify(id, notification)
         } catch (e: SecurityException) {
@@ -156,7 +162,15 @@ class Notifier(private val context: Context) {
         private const val FALLBACK_BASE_ID = 20_000
         private const val REQUEST_FULL_SCREEN = 10
         private const val REQUEST_OPEN_APP = 11
-        private const val REQUEST_FALLBACK_OPEN = 12
         private const val TAG = "Reveille"
+
+        /** Bare-bones ringing notification for when [ringingNotification] cannot be built or used for startForeground. */
+        fun minimalRingingNotification(context: Context): Notification =
+            Notification.Builder(context, CHANNEL_ALARM)
+                .setSmallIcon(R.drawable.ic_alarm)
+                .setContentTitle("Alarm")
+                .setCategory(Notification.CATEGORY_ALARM)
+                .setOngoing(true)
+                .build()
     }
 }

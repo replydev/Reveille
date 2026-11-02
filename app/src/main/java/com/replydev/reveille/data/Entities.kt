@@ -63,7 +63,11 @@ data class OneOffEntity(
 )
 data class SkipEntity(val policyId: Long, val date: LocalDate)
 
-enum class FireOutcome { FIRED, DISMISSED, SNOOZED, AUTO_SNOOZED, SKIPPED, MISSED }
+/**
+ * FIRED = claimed and ringing (or retried by the ring guard) but not yet handled; every other value is terminal.
+ * SUPERSEDED = a newer alarm started ringing while this one was still unhandled.
+ */
+enum class FireOutcome { FIRED, DISMISSED, SNOOZED, AUTO_SNOOZED, SKIPPED, MISSED, SUPERSEDED }
 
 @Entity(tableName = "fire_log", indices = [Index(value = ["occurrenceKey", "scheduledAt"], unique = true)])
 data class FireLogEntity(

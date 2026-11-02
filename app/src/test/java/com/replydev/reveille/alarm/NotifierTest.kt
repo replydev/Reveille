@@ -15,6 +15,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowLog
 import java.time.Instant
 
 @RunWith(AndroidJUnit4::class)
@@ -36,7 +37,8 @@ class NotifierTest {
         val channel = manager.getNotificationChannel(Notifier.CHANNEL_ALARM_FALLBACK)
         assertNotNull(channel)
         assertEquals(NotificationManager.IMPORTANCE_HIGH, channel.importance)
-        assertNotNull(channel.sound)
+        // The bundled sound: deterministic and readable before the first unlock.
+        assertEquals("android.resource://${context.packageName}/raw/fallback_alarm", channel.sound.toString())
         assertEquals(AudioAttributes.USAGE_ALARM, channel.audioAttributes.usage)
         assertTrue(channel.shouldVibrate())
         assertEquals(Notification.VISIBILITY_PUBLIC, channel.lockscreenVisibility)
@@ -53,9 +55,21 @@ class NotifierTest {
         assertEquals(Notification.CATEGORY_ALARM, posted.category)
         assertTrue(posted.flags and Notification.FLAG_INSISTENT != 0)
         assertNotNull(posted.fullScreenIntent)
+        // Opens the directBootAware RingingActivity in fallback mode, not MainActivity.
+        val target = shadowOf(posted.fullScreenIntent).savedIntent
+        assertEquals(RingingActivity::class.java.name, target.component?.className)
+        assertEquals(armed, Armed.decode(target.getStringExtra("fallback_armed")!!))
         assertNotNull(posted.deleteIntent)
 
         notifier.cancelFallbackAlarm(armed)
         assertTrue(shadowOf(manager).allNotifications.isEmpty())
+    }
+
+    @Test
+    fun droppedNotificationIsLogged() {
+        shadowOf(manager).setNotificationsEnabled(false)
+        notifier.postFallbackAlarm(Armed("O:1", Instant.parse("2026-11-02T06:30:00Z"), "Dentist"))
+        assertTrue(shadowOf(manager).allNotifications.isEmpty())
+        assertTrue(ShadowLog.getLogsForTag("Reveille").any { it.msg.contains("dropped notification") })
     }
 }

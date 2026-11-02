@@ -1,6 +1,7 @@
 package com.replydev.reveille.alarm
 
 import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
@@ -11,6 +12,7 @@ import com.replydev.reveille.data.OneOffEntity
 import com.replydev.reveille.data.ReveilleDatabase
 import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.data.SchedulerState
+import com.replydev.reveille.engine.Armed
 import com.replydev.reveille.engine.OneOffMode
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -26,6 +28,8 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.Implementation
+import org.robolectric.annotation.Implements
 import org.robolectric.shadows.ShadowAlarmManager
 import java.io.File
 import java.time.Instant
@@ -120,43 +124,99 @@ class AlarmSchedulerTest {
     }
 
     @Test
-    fun unclaimLetsALaterDeliveryClaimAndCatchesUp() = runBlocking {
-        addOneOff("2026-11-02", "06:30", "Early")
-        val armed = state.armed()!!
-        now = rome("2026-11-02", "06:30")
-        assertTrue(scheduler.claim(armed))
-        scheduler.unclaim(armed)
-        scheduler.rearm("ringing failed")
-        // Released occurrence is retried as a catch-up right away, and a later delivery can claim it.
-        assertEquals("Early", state.armed()?.label)
-        assertEquals(now.plusSeconds(1).toEpochMilli(), triggers().first())
-        assertTrue(scheduler.claim(armed))
-    }
-
-    @Test
-    fun unclaimedOccurrenceIsReportedMissedAfterTheLateWindow() = runBlocking {
-        addOneOff("2026-11-02", "06:30", "Early")
-        val armed = state.armed()!!
-        now = rome("2026-11-02", "06:30")
-        scheduler.claim(armed)
-        scheduler.unclaim(armed)
-        scheduler.rearm("ringing failed")
-        now = rome("2026-11-02", "07:01")
-        scheduler.rearm("ringing failed again")
-        assertNull(state.armed())
-        assertEquals(FireOutcome.MISSED, db.fireLogDao().observeRecent(1).first().single().outcome)
-    }
-
-    @Test
-    fun unclaimKeepsAUserOutcomeAndAcknowledgedFallbackIsNotRetried() = runBlocking {
+    fun acknowledgedFallbackIsHandledAndNotRetried() = runBlocking {
         addOneOff("2026-11-02", "06:30", "Early")
         val armed = state.armed()!!
         now = rome("2026-11-02", "06:31")
         assertTrue(scheduler.claim(armed))
         scheduler.acknowledgeFallback(armed)
-        scheduler.unclaim(armed)
-        assertEquals(FireOutcome.DISMISSED, db.fireLogDao().observeRecent(1).first().single().outcome)
+        assertEquals(FireOutcome.DISMISSED, scheduler.outcome(armed))
         scheduler.rearm("fallback dismissed")
         assertNull(state.armed())
+    }
+
+    @Test
+    fun recordOutcomeLogsAnOccurrenceWhoseClaimNeverHappened() = runBlocking {
+        addOneOff("2026-11-02", "06:30", "Early")
+        val armed = state.armed()!!
+        now = rome("2026-11-02", "06:31")
+        scheduler.recordOutcome(armed, FireOutcome.DISMISSED)
+        assertEquals(FireOutcome.DISMISSED, scheduler.outcome(armed))
+        scheduler.rearm("dismissed")
+        assertNull(state.armed())
+    }
+
+    @Test
+    fun guardIsAnExtraAlarmClockThatLeavesPrimaryAndBackupAlone() = runBlocking {
+        addOneOff("2026-11-02", "06:30", "Early")
+        addOneOff("2026-11-03", "06:30", "Next")
+        val armed = state.armed()!!
+        now = rome("2026-11-02", "06:30")
+        scheduler.claim(armed)
+        scheduler.rearm("fired")
+        val guardAt = now.plusSeconds(90)
+        scheduler.armGuard(armed, 0, guardAt)
+        val next = rome("2026-11-03", "06:30")
+        assertEquals(listOf(guardAt, next, next.plusSeconds(120)).map { it.toEpochMilli() }, triggers())
+        val guard = alarms().first { it.triggerAtMs == guardAt.toEpochMilli() }
+        val intent = shadowOf(guard.operation).savedIntent
+        assertEquals(AlarmScheduler.ACTION_GUARD, intent.action)
+        assertEquals("Early", Armed.decode(intent.getStringExtra(AlarmScheduler.EXTRA_ARMED)!!)?.label)
+        assertEquals(armed.key, state.guard()?.key)
+
+        scheduler.rearm("again") // rearm never touches the guard
+        assertTrue(guardAt.toEpochMilli() in triggers())
+        scheduler.cancelGuard(armed)
+        assertEquals(listOf(next, next.plusSeconds(120)).map { it.toEpochMilli() }, triggers())
+        assertNull(state.guard())
+    }
+
+    @Test
+    fun guardMovingToANewerAlarmSupersedesTheUnhandledOne() = runBlocking {
+        val a = Armed("O:a", rome("2026-11-02", "06:00"), "A")
+        val b = Armed("O:b", rome("2026-11-02", "06:05"), "B")
+        now = rome("2026-11-02", "06:05")
+        scheduler.claim(a)
+        scheduler.armGuard(a, 0, now.plusSeconds(90))
+        scheduler.claim(b)
+        scheduler.armGuard(b, 0, now.plusSeconds(90))
+        assertEquals(FireOutcome.SUPERSEDED, scheduler.outcome(a))
+        assertEquals(FireOutcome.FIRED, scheduler.outcome(b))
+        // The old occurrence no longer owns the guard: it can neither refresh nor cancel it.
+        assertFalse(scheduler.refreshGuard(a, now.plusSeconds(150)))
+        scheduler.cancelGuard(a)
+        assertEquals(b.key, state.guard()?.key)
+        assertTrue(scheduler.refreshGuard(b, now.plusSeconds(150)))
+        assertEquals(listOf(now.plusSeconds(150).toEpochMilli()), triggers())
+    }
+
+    @Test
+    fun guardDoesNotSupersedeAnAlreadyHandledOccurrence() = runBlocking {
+        val a = Armed("O:a", rome("2026-11-02", "06:00"), "A")
+        val b = Armed("O:b", rome("2026-11-02", "06:05"), "B")
+        scheduler.claim(a)
+        scheduler.armGuard(a, 0, now.plusSeconds(90))
+        scheduler.recordOutcome(a, FireOutcome.SNOOZED)
+        scheduler.armGuard(b, 1, now.plusSeconds(10))
+        assertEquals(FireOutcome.SNOOZED, scheduler.outcome(a))
+    }
+
+    @Test
+    @Config(shadows = [RefusingAlarmManager::class])
+    fun refusedExactAlarmIsNotPersistedAsArmed() = runBlocking {
+        addOneOff("2026-11-05", "09:30", "Dentist")
+        assertNull(state.armed())
+        assertTrue(triggers().isEmpty())
+    }
+
+    private fun alarms() = shadowOf(context.getSystemService(AlarmManager::class.java)).scheduledAlarms
+}
+
+/** AlarmManager that refuses exact alarms the way a real device does (Robolectric's only records the flag). */
+@Implements(AlarmManager::class)
+class RefusingAlarmManager : ShadowAlarmManager() {
+    @Implementation
+    override fun setAlarmClock(info: AlarmManager.AlarmClockInfo, operation: PendingIntent) {
+        throw SecurityException("exact alarms not permitted")
     }
 }

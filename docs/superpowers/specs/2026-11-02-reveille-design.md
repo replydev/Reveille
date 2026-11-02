@@ -46,8 +46,8 @@ Non-goals (v1): Play Store distribution, cloud sync/backup, per-policy sounds, h
 - Skipping a one-off = deleting it (with undo snackbar).
 
 **FireLog**
-- `occurrenceKey`, `scheduledAt: Instant`, `firedAt: Instant?`, `outcome: DISMISSED | SNOOZED | MISSED_DETECTED`
-- Used for snooze state, missed-alarm detection, and debugging reliability.
+- `occurrenceKey`, `scheduledAt: Instant`, `firedAt: Instant?`, `outcome: FIRED | DISMISSED | SNOOZED | AUTO_SNOOZED | SKIPPED | MISSED | SUPERSEDED` (unique on key + time)
+- A row = handled for the planner. FIRED = claimed but not yet resolved (the ring guard retries it); the rest are terminal. Used for dedupe, missed-alarm detection, and debugging reliability.
 
 **Settings** (DataStore, not Room)
 - Ringtone URI, vibration on/off, snooze minutes (default 9), max ring duration before auto-snooze (default 10 min), volume ramp on/off.
@@ -90,24 +90,30 @@ Single entry point `rearm(reason)`, called after any data change, after firing, 
 5. Is idempotent and safe to call from any thread (serialized via a Mutex).
 
 ### Firing path
-`AlarmReceiver` (exported=false) receives the fire intent →
-1. Acquires a partial wake lock.
-2. Starts `RingingService` (foreground, type `systemExempted`, permitted for apps holding `USE_EXACT_ALARM`; alarm-triggered FGS starts are exempt from background-start restrictions).
-3. `RingingService` plays the ringtone via `MediaPlayer` with `AudioAttributes.USAGE_ALARM` (ignores ringer/silent mode), vibrates, and posts a high-priority notification on an `IMPORTANCE_HIGH` alarm channel with a **full-screen intent** to `RingingActivity` and Dismiss/Snooze actions.
-4. Claims the occurrence in `FireLog` before step 2 (released again if the service cannot start, see below) and always calls `rearm()` so the next alarm is armed **before** the user interacts.
+Code: `AlarmReceiver` (thin), `RingingService`, `AlarmFiring` (everything the path persists), `RingDecisions` (pure decisions).
 
-If the full-screen intent is denied, the service still rings and the heads-up notification still has Dismiss/Snooze — sound never depends on the activity launching.
+**1. Receiver starts the service synchronously.** `AlarmReceiver` (exported=false, directBootAware) decodes the armed alarm and, before any database work (the alarm's foreground-service start exemption is short), calls `startForegroundService(RING)`. Success = no exception and a non-null `ComponentName`; the receiver then returns and the service does the rest. On failure it goes async (`goAsync`) and: claims the occurrence (so the planner does not catch it up in a loop), posts the **fallback alarm notification**, arms the **ring guard** with attempt 1, consumes the snooze if it was one, and always re-arms. If the claim shows the occurrence was already handled, nothing is posted.
 
-**Fallback alarm notification.** A third channel, `alarm_fallback` (`IMPORTANCE_HIGH`, sound = default alarm sound with `USAGE_ALARM`, vibration, public on lock screen), lets a notification ring *by itself*. `Notifier.postFallbackAlarm` posts on it with category ALARM, `FLAG_INSISTENT` (sound repeats until the user opens the shade, taps or dismisses), a full-screen/content intent to `MainActivity` and a Dismiss action (also the delete intent) that records the occurrence as DISMISSED. It is used when:
-- `AlarmReceiver` cannot start `RingingService` (background-start refusal, OEM restriction). The receiver then **releases its claim** (deletes the FIRED fire-log row, only while still FIRED) so the occurrence is unhandled again; the `rearm()` that always follows (try/finally) catches it up at now + 1 s, retrying the service until it starts, the user dismisses the fallback, or the 30-min late window passes and it is reported missed. A snooze is consumed only once the service started.
-- `RingingService.startForeground` fails: the service posts the fallback and stops instead of pretending to ring.
-- No sound can be played (chosen ringtone and bundled sound both fail): the service keeps vibrating (even if vibration is off) and the fallback provides the sound.
+**2. Service goes foreground first, then claims and rings.** On RING `RingingService` calls `startForeground` (type `systemExempted`; on 31–33 the platform only checks the type against the manifest) before anything else; if building/posting the notification throws it retries once with a minimal notification on the same channel. If that also fails it posts the fallback, arms the guard and only then stops (residual risk: the system may still crash the process for not calling `startForeground`; the fallback notification and the guard alarm survive that). Then, serialized per delivery:
+- `claim` (5 s timeout). A duplicate claim of a non-guard delivery (backup, catch-up) does not ring; a delivery for the occurrence already ringing just keeps it. A guard re-ring rings while the fire-log outcome is still FIRED. A failed or timed-out claim rings anyway — ringing twice beats not ringing.
+- Ringing: `MediaPlayer` with `USAGE_ALARM` (chosen tone → `RingtoneManager.getDefaultUri(TYPE_ALARM)` → bundled sound, which also covers the locked-boot state), vibration, notification on the silent `IMPORTANCE_HIGH` alarm channel with a **full-screen intent** to `RingingActivity` and Snooze/Dismiss. Output start is a tracked job, so a newer RING or an action during settings load cannot leak a player.
+- Then: arm the ring guard, consume the snooze if it is a snooze occurrence, reset the auto-snooze counter for a non-snooze occurrence, `rearm("alarm fired")`. Each step is guarded; failures are logged, never stop the ring.
+- A newer alarm that starts ringing while another rings replaces it; the old occurrence is recorded `SUPERSEDED`.
 
-If claiming fails (database error), the alarm rings anyway: a duplicate ring beats a lost one.
+**3. Ring guard.** One extra `setAlarmClock` alarm (request code 103, `ACTION_GUARD`, carrying the armed alarm and an attempt count); the guarded occurrence is persisted in DataStore. While ringing, the service keeps it at now + 90 s, refreshed every 60 s, so it only fires if the service or process died. Terminal outcomes (Dismiss, Snooze or auto-snooze persisted, give-up MISSED, fallback acknowledged) cancel it. When it fires, `AlarmReceiver`:
+- ignores it if this process is already ringing that occurrence;
+- else reads the outcome: still FIRED (or unreadable) and `now − at ≤ ArmPlanner.LATE_RING_WINDOW` → starts the service in guard mode (same synchronous rule); if that is refused it posts the fallback and re-arms the guard after 10 s, 30 s, then every 60 s (by attempt);
+- still FIRED but beyond the window → records MISSED, posts the missed-alarm notification, cancels the guard;
+- terminal outcome → nothing (clears the guard).
+Only one occurrence is guarded at a time: arming the guard for another occurrence records a still-FIRED previous one as `SUPERSEDED` (its fallback notification, if any, stays up).
 
-`RingingActivity`: shows over lock screen (`setShowWhenLocked`, `setTurnScreenOn`), big time + label, Dismiss and Snooze.
+**4. Snooze / Dismiss.** Ignored if nothing rings or an action is already in progress. The outcome is persisted first (snooze: auto-snooze count, snooze instant, outcome, `rearm`; dismiss: outcome, counter reset), non-cancellably; only after success does the service stop output, cancel the guard, leave the foreground and stop. If persistence fails it keeps ringing (and the guard), logs, and accepts the next tap. Stopping only clears the ringing state if it still refers to the same ring. Auto-snooze after the max ring duration (capped at 30 min in code; the wake lock lasts 40 min); after 3 auto-snoozes in a row it gives up as MISSED with a "Missed alarm" notification.
 
-Auto-snooze after max ring duration; after 3 auto-snoozes, stop and post a "Missed alarm" notification.
+**Fallback alarm notification.** Channel `alarm_fallback` (`IMPORTANCE_HIGH`, sound = bundled `android.resource://<pkg>/raw/fallback_alarm` with `USAGE_ALARM` — deterministic and readable before the first unlock, vibration, public on lock screen) lets a notification ring by itself: category ALARM, `FLAG_INSISTENT`, re-posts do not restart the sound. Its full-screen/content intent opens `RingingActivity` in **fallback mode** (directBootAware; label, time and a Dismiss button that sends `ACTION_FALLBACK_DISMISS`). Dismiss action, swipe and that button record DISMISSED, cancel the guard and the notification. Posted when the service cannot be started, cannot go foreground, or cannot play any sound (then it keeps vibrating regardless of the setting).
+
+`RingingActivity` (normal mode): shows over the lock screen (`setShowWhenLocked`, `setTurnScreenOn`), big time + label, Dismiss and Snooze. If the full-screen intent is denied, the service still rings and the heads-up notification has Snooze/Dismiss. Opening the app while an alarm rings brings `RingingActivity` up (covers notifications being disabled). `Notifier` logs every notification it has to drop.
+
+**Android 12–13.** Exact alarms use `SCHEDULE_EXACT_ALARM` (`maxSdkVersion` 32, granted by default there) and `USE_EXACT_ALARM` from 33. Code stays within API 31 (lint `NewApi` must be clean); scheduler and firing tests run under Robolectric on SDK 31, 33 and 35. If `setAlarmClock` throws `SecurityException`, the alarm is not recorded as armed and a "could not be scheduled" notification is posted.
 
 ### System receivers → `rearm()`
 `BOOT_COMPLETED`, `LOCKED_BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED`, `AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`.
@@ -120,13 +126,17 @@ Losing a wake-up is the worst failure. Defense in depth:
 
 2. **Direct Boot support.** App components involved in firing are `directBootAware`; the schedule snapshot and settings are mirrored to **device-protected storage** so alarms re-arm and ring after a reboot *before* the phone is unlocked (e.g. overnight OS update). Room DB lives in device-protected storage (single-user personal app; data is not sensitive).
 
-3. **Backup alarm.** Alongside the primary, arm a second `setAlarmClock` alarm (different request code) at `next + 2 min`. When the primary fires it cancels the backup. If the primary was swallowed, the backup rings with a "backup alarm" label.
+3. **Backup alarm.** Alongside the primary, arm a second `setAlarmClock` alarm (different request code) at `next + 2 min`. The primary's re-arm moves it to the next alarm; if the primary was swallowed, the backup rings with a "backup" label; if both arrive, the fire-log claim makes the second a quiet duplicate.
+
+3b. **Ring guard.** A third `setAlarmClock` alarm that exists only while an occurrence is claimed but unresolved (see Firing path). It is what turns "claimed" into "will ring again unless handled": a process killed mid-ring, a refused or failed service start, or a crash before ringing all end in a re-ring (or, after the 30-min late window, a missed-alarm notification) instead of silence. It replaces the earlier release-the-claim/catch-up loop, which retried every few seconds for 30 minutes.
 
 4. **Watchdog / self-healing.** `rearm()` is also triggered by:
    - app open, widget update, and a periodic `WorkManager` job (every ~6 h) as a cheap safety net;
    - each run simply re-arms (idempotent: `setAlarmClock` with the same PendingIntent replaces the old one) and logs the reason.
 
-5. **Missed-alarm detection.** On any `rearm()`, if FireLog shows a scheduled occurrence in the past with no `firedAt`, post a high-priority "Missed alarm at 07:55" notification and show it in the app — so failures are visible, never silent.
+5. **Missed-alarm detection.** On any `rearm()`, overdue occurrences without a FireLog row and older than the late window are recorded MISSED with a high-priority "Missed alarm at 07:55" notification; the ring guard does the same for claimed occurrences that were never resolved — so failures are visible, never silent.
+
+5b. **Residual ways to lose an alarm** (accepted, documented): force-stop (clears all alarms); notifications disabled *and* the service refused (the fallback cannot be shown — logged, and the guard keeps retrying the service for 30 min); the process dying in the milliseconds between committing a claim and arming the guard; the OS refusing `setAlarmClock` itself; the guard alarm's time appearing as the "next alarm" in the status bar while an alarm is unresolved (cosmetic).
 
 6. **OEM setup checklist (HyperOS/MIUI first-class).** A "Reliability" screen, also shown as a blocking banner on Home until all green:
    - Notifications permission (`POST_NOTIFICATIONS`) — granted?
@@ -168,13 +178,14 @@ Losing a wake-up is the worst failure. Defense in depth:
 - Invalid input prevented in editors (rule with no weekdays, endDate < startDate, pause from > to).
 - Engine horizon capped at 400 days; empty result → widget "No alarms", primary/backup cancelled.
 - All DB writes go through a repository that calls `rearm()` afterwards in the same coroutine; failures surface as snackbars.
-- Late firing (e.g. after reboot past the alarm time): if within 30 min of scheduled time, ring anyway (re-armed via `setAlarmClock` at now + 1 s so the foreground-service start stays exempt); otherwise mark missed and notify. Every delivery claims its occurrence in FireLog (unique key + time), so primary, backup and catch-up never ring twice.
+- Late firing (e.g. after reboot past the alarm time): if within 30 min of scheduled time, ring anyway (re-armed via `setAlarmClock` at now + 1 s so the foreground-service start stays exempt); otherwise mark missed and notify. Every delivery claims its occurrence in FireLog (unique key + time), so primary, backup and catch-up never ring twice; only the ring guard re-rings a claimed occurrence, and only while it is unresolved.
 
 ## Testing
 
 - **Engine unit tests (JVM, extensive)**: single rule; multiple rules in one policy; every-N-weeks with anchors; start/end windows; pauses; skips; REPLACE_DAY vs ADDITIVE; multiple one-offs same day; duplicate instants; DST gap/overlap (Europe/Rome); time zone change; horizon/empty.
 - **Repository/DAO tests**: Room in-memory tests under Robolectric (no emulator needed).
-- **Scheduler tests**: Robolectric with shadow AlarmManager — verifies primary + backup armed, replaced on change, cancelled when empty.
+- **Scheduler tests**: Robolectric with shadow AlarmManager (SDK 31, 33, 35) — verifies primary + backup armed, replaced on change, cancelled when empty, guard arm/refresh/cancel/supersede, refused exact alarms not persisted.
+- **Firing tests**: `RingDecisions` (pure JVM), `AlarmFiring` (refused start → claim + fallback + guard; guard ring/back-off/give-up/no-op; duplicates; snooze/dismiss persistence), `RingingService` via `ServiceController` (rings and guards, snooze persisted before stopping, duplicates do not ring, supersede) and `AlarmReceiver` (synchronous start) — all on SDK 31, 33, 35.
 - **Manual on device (HyperOS phone)**: test alarm with screen off; reboot before unlock; airplane mode; battery saver on; overnight real alarm.
 
 ## Project layout

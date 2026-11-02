@@ -18,9 +18,9 @@ interface FireLogDao {
     @Query("UPDATE fire_log SET outcome = :outcome WHERE occurrenceKey = :key AND scheduledAt = :scheduledAt")
     suspend fun setOutcome(key: String, scheduledAt: Long, outcome: FireOutcome)
 
-    /** Releases a claim: deletes the occurrence's row only while it is still FIRED (never a user's outcome). */
-    @Query("DELETE FROM fire_log WHERE occurrenceKey = :key AND scheduledAt = :scheduledAt AND outcome = 'FIRED'")
-    suspend fun delete(key: String, scheduledAt: Long)
+    /** The occurrence's outcome, or null if it was never logged. */
+    @Query("SELECT outcome FROM fire_log WHERE occurrenceKey = :key AND scheduledAt = :scheduledAt")
+    suspend fun outcome(key: String, scheduledAt: Long): FireOutcome?
 
     @Query("SELECT * FROM fire_log ORDER BY scheduledAt DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<FireLogEntity>>

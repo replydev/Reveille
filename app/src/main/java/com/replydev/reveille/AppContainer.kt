@@ -5,8 +5,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import com.replydev.reveille.alarm.AlarmFiring
 import com.replydev.reveille.alarm.AlarmScheduler
 import com.replydev.reveille.alarm.Notifier
+import com.replydev.reveille.alarm.RingingService
 import com.replydev.reveille.data.ReveilleDatabase
 import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.data.SchedulerState
@@ -33,5 +35,17 @@ class AppContainer(context: Context) {
 
     val scheduler: AlarmScheduler by lazy {
         AlarmScheduler(app, repository, database.fireLogDao(), schedulerState, notifier, onArmedChanged = {})
+    }
+
+    val firing: AlarmFiring by lazy {
+        AlarmFiring(
+            scheduler,
+            schedulerState,
+            settings,
+            notifier,
+            startService = { armed, backup, guard -> RingingService.tryStart(app, armed, backup, guard) },
+            ringingNow = { RingingService.ringing.value?.armed },
+            dismissRinging = { RingingService.send(app, RingingService.ACTION_DISMISS) },
+        )
     }
 }

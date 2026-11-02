@@ -29,6 +29,7 @@ class AlarmScheduler(
 ) {
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
     private val mutex = Mutex()
+    private val guardMutex = Mutex()
 
     /** Recomputes and registers the next alarm. Safe to call from anywhere, any number of times. */
     suspend fun rearm(reason: String): Unit = mutex.withLock {
@@ -47,8 +48,13 @@ class AlarmScheduler(
         repository.cleanup(since.atZone(zone).toLocalDate().minusDays(1))
         val armed = decision.armed
         val trigger = decision.triggerAt
-        if (armed != null && trigger != null) arm(armed, trigger) else cancel()
-        state.setArmed(armed)
+        if (armed != null && trigger != null) {
+            // Not persisted when AlarmManager refused it: the next rearm must still see the previous alarm.
+            if (arm(armed, trigger)) state.setArmed(armed)
+        } else {
+            cancel()
+            state.setArmed(null)
+        }
         Log.i(TAG, "rearm($reason): armed=${armed?.key} trigger=$trigger missed=${decision.missed.map { it.key }}")
         onArmedChanged()
     }
@@ -57,23 +63,58 @@ class AlarmScheduler(
     suspend fun claim(armed: Armed): Boolean =
         fireLog.insert(log(armed, FireOutcome.FIRED, firedAt = clock().toEpochMilli())) != -1L
 
-    /**
-     * Releases a [claim] whose ringing never started, so the next delivery can claim it again. The re-arm that
-     * follows sees the occurrence unhandled and catches it up (now + 1 s) until [ArmPlanner.LATE_RING_WINDOW] has
-     * passed; then it is reported missed. Never removes a row the user already acted on.
-     */
-    suspend fun unclaim(armed: Armed) = fireLog.delete(armed.key, armed.at.toEpochMilli())
+    /** The logged outcome of [armed], or null if it was never logged. */
+    suspend fun outcome(armed: Armed): FireOutcome? = fireLog.outcome(armed.key, armed.at.toEpochMilli())
 
     /** The user dismissed a fallback alarm notification: the occurrence is handled and must not be retried. */
     suspend fun acknowledgeFallback(armed: Armed) {
-        if (fireLog.insert(log(armed, FireOutcome.DISMISSED, firedAt = clock().toEpochMilli())) == -1L) {
-            recordOutcome(armed, FireOutcome.DISMISSED)
-        }
+        recordOutcome(armed, FireOutcome.DISMISSED)
         if (armed.isSnooze && state.snooze()?.key == armed.key) state.setSnooze(null)
     }
 
-    suspend fun recordOutcome(armed: Armed, outcome: FireOutcome) =
-        fireLog.setOutcome(armed.key, armed.at.toEpochMilli(), outcome)
+    /** Sets [armed]'s outcome, logging the occurrence first if it was never claimed (e.g. the claim itself failed). */
+    suspend fun recordOutcome(armed: Armed, outcome: FireOutcome) {
+        val firedAt = if (outcome == FireOutcome.MISSED || outcome == FireOutcome.SKIPPED) null else clock().toEpochMilli()
+        if (fireLog.insert(log(armed, outcome, firedAt)) == -1L) {
+            fireLog.setOutcome(armed.key, armed.at.toEpochMilli(), outcome)
+        }
+    }
+
+    /** Gives up on an occurrence that never got handled: records it MISSED and tells the user. */
+    suspend fun markMissed(armed: Armed) {
+        recordOutcome(armed, FireOutcome.MISSED)
+        notifier.showMissed(armed)
+    }
+
+    /**
+     * Arms the ring guard for [armed] at [at]: an extra `setAlarmClock` alarm that re-rings the occurrence if it is
+     * still unhandled then (see [AlarmFiring.onGuard]). Only one occurrence is guarded: if the guard moves away from
+     * another one that is still FIRED, that one is recorded [FireOutcome.SUPERSEDED].
+     */
+    suspend fun armGuard(armed: Armed, attempt: Int, at: Instant): Unit = guardMutex.withLock {
+        setGuardAlarm(armed, attempt, at)
+        val previous = state.guard()
+        if (previous != null && previous.isSameOccurrence(armed)) return@withLock
+        if (previous != null && outcome(previous) == FireOutcome.FIRED) recordOutcome(previous, FireOutcome.SUPERSEDED)
+        state.setGuard(armed)
+    }
+
+    /** Pushes the guard of a still-ringing [armed] to [at]. Returns false if another occurrence took the guard over. */
+    suspend fun refreshGuard(armed: Armed, at: Instant): Boolean = guardMutex.withLock {
+        val guarded = state.guard()
+        if (guarded != null && !guarded.isSameOccurrence(armed)) return@withLock false
+        setGuardAlarm(armed, 0, at)
+        if (guarded == null) state.setGuard(armed)
+        true
+    }
+
+    /** Cancels the guard if it protects [armed]; a guard for another occurrence is left alone. */
+    suspend fun cancelGuard(armed: Armed): Unit = guardMutex.withLock {
+        val guarded = state.guard() ?: return@withLock
+        if (!guarded.isSameOccurrence(armed)) return@withLock
+        alarmManager.cancel(guardIntent(null, 0))
+        state.setGuard(null)
+    }
 
     /** Skips the currently armed alarm (widget "Skip" button). */
     suspend fun skipNext() {
@@ -93,6 +134,22 @@ class AlarmScheduler(
         notifier.showMissed(missed)
     }
 
+    private fun setGuardAlarm(armed: Armed, attempt: Int, at: Instant) {
+        try {
+            alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(at.toEpochMilli(), showIntent()), guardIntent(armed, attempt))
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Exact alarms not permitted; ring guard for ${armed.key} not armed", e)
+        }
+    }
+
+    private fun guardIntent(armed: Armed?, attempt: Int): PendingIntent {
+        val intent = Intent(context, AlarmReceiver::class.java)
+            .setAction(ACTION_GUARD)
+            .putExtra(EXTRA_ATTEMPT, attempt)
+        if (armed != null) intent.putExtra(EXTRA_ARMED, armed.encode())
+        return PendingIntent.getBroadcast(context, REQUEST_GUARD, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
     private fun log(armed: Armed, outcome: FireOutcome, firedAt: Long?) = FireLogEntity(
         occurrenceKey = armed.key,
         label = armed.label,
@@ -101,16 +158,19 @@ class AlarmScheduler(
         outcome = outcome,
     )
 
-    private fun arm(armed: Armed, trigger: Instant) {
-        try {
+    /** Returns false if the system refused exact alarms. */
+    private fun arm(armed: Armed, trigger: Instant): Boolean {
+        return try {
             alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(trigger.toEpochMilli(), showIntent()), fireIntent(armed, REQUEST_PRIMARY))
             alarmManager.setAlarmClock(
                 AlarmManager.AlarmClockInfo(trigger.plus(ArmPlanner.BACKUP_DELAY).toEpochMilli(), showIntent()),
                 fireIntent(armed, REQUEST_BACKUP),
             )
+            true
         } catch (e: SecurityException) {
             Log.e(TAG, "Exact alarms not permitted", e)
             notifier.showSchedulingFailed("Reveille is not allowed to schedule exact alarms. Open Reveille → Reliability.")
+            false
         }
     }
 
@@ -136,11 +196,17 @@ class AlarmScheduler(
 
     companion object {
         const val ACTION_FIRE = "com.replydev.reveille.FIRE"
+        const val ACTION_GUARD = "com.replydev.reveille.GUARD"
         const val EXTRA_ARMED = "armed"
         const val EXTRA_BACKUP = "backup"
+        const val EXTRA_ATTEMPT = "attempt"
         private const val REQUEST_PRIMARY = 100
         private const val REQUEST_BACKUP = 101
         private const val REQUEST_SHOW = 102
+        private const val REQUEST_GUARD = 103
         private const val TAG = "Reveille"
     }
 }
+
+/** Same scheduled occurrence (label and sources may differ between encodings). */
+fun Armed.isSameOccurrence(other: Armed): Boolean = key == other.key && at == other.at
