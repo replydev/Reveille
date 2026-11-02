@@ -1,4 +1,10 @@
 <resources>
-    <!-- Dark window in dark mode, so a launch or a transition never shows a white window behind the UI. -->
-    <style name="Theme.Reveille" parent="android:Theme.Material.NoActionBar" />
+    <!-- Dark-only in both system modes: the launch window is Bg (#0B0D11), so a launch or a transition never flashes white. -->
+    <style name="Theme.Reveille" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="android:windowSplashScreenBackground">@color/bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
 </resources>
