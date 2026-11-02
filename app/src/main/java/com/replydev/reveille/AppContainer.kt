@@ -14,6 +14,7 @@ import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.data.SchedulerState
 import com.replydev.reveille.data.SettingsStore
 import com.replydev.reveille.reliability.ReliabilityChecker
+import com.replydev.reveille.widget.WidgetUpdater
 
 /** Manual dependency wiring. Everything that alarm delivery touches lives in device-protected storage. */
 class AppContainer(context: Context) {
@@ -36,7 +37,7 @@ class AppContainer(context: Context) {
     }
 
     val scheduler: AlarmScheduler by lazy {
-        AlarmScheduler(app, repository, database.fireLogDao(), schedulerState, notifier, onArmedChanged = {})
+        AlarmScheduler(app, repository, database.fireLogDao(), schedulerState, notifier, onArmedChanged = { WidgetUpdater.update(app) })
     }
 
     val firing: AlarmFiring by lazy {
