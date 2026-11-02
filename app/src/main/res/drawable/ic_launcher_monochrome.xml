@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reveille "Daybreak" icon on the 108 dp adaptive grid; artwork stays inside the 66 dp safe zone. Source: docs/design/icon/. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M37,66 A17,17 0 0,1 71,66 Z" />
+    <path
+        android:pathData="M54,43 V35 M70.3,49.7 L76,44 M37.7,49.7 L32,44 M26,66 H82"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="5" />
+    <path
+        android:pathData="M40,76 H68"
+        android:strokeAlpha="0.45"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="5" />
+</vector>
