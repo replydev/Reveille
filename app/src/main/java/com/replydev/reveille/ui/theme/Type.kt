@@ -96,6 +96,9 @@ class ReveilleType(
     /** The weekday above a day number (timeline, date tiles). */
     val dayOverline: TextStyle = style(11, FontWeight.SemiBold, 0.08),
     val dayNumber: TextStyle = style(20, FontWeight.Medium),
+    /** The ringing screen's date line and its Dismiss / Snooze labels. */
+    val ringOverline: TextStyle = style(13, FontWeight.SemiBold, 0.16),
+    val ringButton: TextStyle = style(20, FontWeight.SemiBold, -0.01),
     val mono: TextStyle = style(13, family = GeistMono),
 )
 
