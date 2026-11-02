@@ -18,11 +18,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,73 +35,67 @@ import com.replydev.reveille.engine.ScheduleEngine
 import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.ui.components.ConfirmDialog
 import com.replydev.reveille.ui.components.DateButton
+import com.replydev.reveille.ui.components.LeaveWhenSaved
 import com.replydev.reveille.ui.components.ScreenScaffold
 import com.replydev.reveille.ui.components.TimeButton
-import com.replydev.reveille.ui.components.runReporting
+import com.replydev.reveille.ui.components.UiMessage
+import com.replydev.reveille.ui.components.rememberScreenSession
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
 /** A one-off must be after this moment: anything earlier would ring the moment it is saved. */
-private fun isInPast(date: LocalDate, time: LocalTime): Boolean = !LocalDateTime.of(date, time).isAfter(LocalDateTime.now())
+private fun isInPast(date: LocalDate, time: LocalTime, now: LocalDateTime = LocalDateTime.now()): Boolean =
+    !LocalDateTime.of(date, time).isAfter(now)
 
 @Composable
-fun OneOffEditorScreen(id: Long, onDone: () -> Unit) {
+fun OneOffEditorScreen(onDone: () -> Unit) {
     val container = LocalContext.current.container
-    val scope = rememberCoroutineScope()
+    val repository = container.repository
     val snackbar = remember { SnackbarHostState() }
-    val today = remember { LocalDate.now() }
-    // The alarm may have been deleted since the link was opened (it rang, or was skipped from the widget):
-    // then this screen creates a new alarm instead of resurrecting the old id.
-    var editId by remember { mutableLongStateOf(id) }
-    var loaded by remember { mutableStateOf(id == 0L) }
-    var busy by remember { mutableStateOf(false) }
-    var confirmDelete by remember { mutableStateOf(false) }
-    var date by remember { mutableStateOf(today.plusDays(1)) }
-    var time by remember { mutableStateOf(LocalTime.of(7, 0)) }
-    var label by remember { mutableStateOf("") }
-    var replaceDay by remember { mutableStateOf(true) }
+    val session = rememberScreenSession(snackbar)
+    LeaveWhenSaved(session, onDone)
 
-    LaunchedEffect(id) {
-        if (id != 0L) {
-            val existing = container.repository.oneOff(id)
-            if (existing == null) {
-                editId = 0L
-            } else {
-                date = existing.date
-                time = existing.time
-                label = existing.label.orEmpty()
-                replaceDay = existing.mode == OneOffMode.REPLACE_DAY
-            }
-            loaded = true
-            // Last: showSnackbar suspends until the snackbar is dismissed.
-            if (existing == null) snackbar.showSnackbar("This alarm no longer exists. Saving creates a new one.")
+    // Follows the clock (and midnight) while the screen is open: the past-time check and the quick-date chips.
+    val now by produceState(LocalDateTime.now()) {
+        while (true) {
+            delay(5_000)
+            value = LocalDateTime.now()
         }
     }
+    val today = now.toLocalDate()
 
+    // The draft survives rotation, theme changes and process death; it is loaded from the database only once.
+    var loaded by rememberSaveable { mutableStateOf(false) }
+    var date by rememberSaveable { mutableStateOf(LocalDate.now().plusDays(1)) }
+    var time by rememberSaveable { mutableStateOf(LocalTime.of(7, 0)) }
+    var label by rememberSaveable { mutableStateOf("") }
+    var replaceDay by rememberSaveable { mutableStateOf(true) }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (loaded) return@LaunchedEffect
+        val id = session.editId
+        val existing = if (id == 0L) null else repository.oneOff(id)
+        if (existing != null) {
+            date = existing.date
+            time = existing.time
+            label = existing.label.orEmpty()
+            replaceDay = existing.mode == OneOffMode.REPLACE_DAY
+        } else if (id != 0L) {
+            // Deleted since the link was opened (it rang, or was skipped): save as a new alarm, never resurrect the id.
+            session.editId = 0L
+            session.message(UiMessage("This alarm no longer exists. Saving creates a new one."))
+        }
+        loaded = true
+    }
+
+    val editId = session.editId
     val snapshot by container.repository.snapshots.collectAsStateWithLifecycle(initialValue = null)
     val sameDay = remember(snapshot, date) { snapshot?.let { ScheduleEngine.policyAlarmsOn(it, date) } ?: emptyList() }
     val replacedByOther = snapshot?.oneOffs?.any { it.date == date && it.mode == OneOffMode.REPLACE_DAY && it.id != editId } == true
-    // Re-evaluated every few seconds so the warning and the Save button follow the clock while the screen is open.
-    val clock by produceState(0) {
-        while (true) {
-            delay(5_000)
-            value++
-        }
-    }
-    val inPast = remember(date, time, clock) { isInPast(date, time) }
-
-    fun write(failure: String, action: suspend () -> Unit) {
-        if (busy) return
-        busy = true
-        scope.launch {
-            val ok = snackbar.runReporting(failure, action)
-            busy = false
-            if (ok) onDone()
-        }
-    }
+    val inPast = isInPast(date, time, now)
 
     ScreenScaffold(
         title = if (editId == 0L) "New alarm" else "Edit alarm",
@@ -110,26 +103,31 @@ fun OneOffEditorScreen(id: Long, onDone: () -> Unit) {
         snackbarHostState = snackbar,
         actions = {
             if (editId != 0L) {
-                TextButton(enabled = loaded && !busy, onClick = { confirmDelete = true }) { Text("Delete") }
+                TextButton(enabled = loaded && !session.busy, onClick = { confirmDelete = true }) { Text("Delete") }
             }
             TextButton(
-                enabled = loaded && !busy && !inPast,
+                enabled = loaded && !session.busy && !inPast,
                 onClick = {
                     if (isInPast(date, time)) {
-                        scope.launch { snackbar.showSnackbar("This time is in the past.") }
+                        session.message(UiMessage("This time is in the past."))
                         return@TextButton
                     }
-                    write("Could not save the alarm.") {
-                        container.repository.saveOneOff(
-                            OneOffEntity(
-                                id = editId,
-                                date = date,
-                                time = time,
-                                label = label.trim().ifEmpty { null },
-                                mode = if (replaceDay) OneOffMode.REPLACE_DAY else OneOffMode.ADDITIVE,
-                            ),
-                        )
-                    }
+                    val entity = OneOffEntity(
+                        id = editId,
+                        date = date,
+                        time = time,
+                        label = label.trim().ifEmpty { null },
+                        mode = if (replaceDay) OneOffMode.REPLACE_DAY else OneOffMode.ADDITIVE,
+                    )
+                    session.write(
+                        "Could not save the alarm.",
+                        action = { repository.saveOneOff(entity) },
+                        onSuccess = { savedId ->
+                            // Set before anything else: if the screen stays open, saving again updates this alarm.
+                            session.editId = savedId
+                            session.saved = true
+                        },
+                    )
                 },
             ) { Text("Save") }
         },
@@ -137,13 +135,17 @@ fun OneOffEditorScreen(id: Long, onDone: () -> Unit) {
         if (confirmDelete) {
             ConfirmDialog(
                 title = "Delete alarm?",
-                text = "It will not ring.",
+                text = "It will not ring. If it is already snoozed, the snooze still rings.",
                 confirmLabel = "Delete",
                 onDismiss = { confirmDelete = false },
                 onConfirm = {
                     confirmDelete = false
                     val target = editId
-                    write("Could not delete the alarm.") { container.repository.deleteOneOff(target) }
+                    session.write(
+                        "Could not delete the alarm.",
+                        action = { repository.deleteOneOff(target) },
+                        onSuccess = { session.saved = true },
+                    )
                 },
             )
         }

@@ -24,7 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,8 +36,10 @@ import com.replydev.reveille.alarm.RingDecisions
 import com.replydev.reveille.container
 import com.replydev.reveille.data.RingSettings
 import com.replydev.reveille.ui.components.ScreenScaffold
-import com.replydev.reveille.ui.components.runReporting
-import kotlinx.coroutines.launch
+import com.replydev.reveille.ui.components.UiMessage
+import com.replydev.reveille.ui.components.rememberScreenSession
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private const val MAX_SNOOZE_MINUTES = 30
 
@@ -45,11 +47,11 @@ private const val MAX_SNOOZE_MINUTES = 30
 fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val container = context.container
-    val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
+    val session = rememberScreenSession(snackbar)
     val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
     val update: ((RingSettings) -> RingSettings) -> Unit = { transform ->
-        scope.launch { snackbar.runReporting("Could not save the setting.") { container.settings.update(transform) } }
+        session.write("Could not save the setting.", guarded = false, action = { container.settings.update(transform) })
     }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -63,7 +65,10 @@ fun SettingsScreen(onBack: () -> Unit) {
     ScreenScaffold(title = "Settings", onBack = onBack, snackbarHostState = snackbar) { padding ->
         // Wait for the stored values: showing defaults first would let a quick tap overwrite them.
         val current = settings ?: return@ScreenScaffold
-        val ringtoneName = remember(current.ringtoneUri) { ringtoneTitle(context, current.ringtoneUri) }
+        // RingtoneManager reads the media database: off the main thread.
+        val ringtoneName by produceState("…", current.ringtoneUri) {
+            value = withContext(Dispatchers.IO) { ringtoneTitle(context, current.ringtoneUri) }
+        }
         Column(
             Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -78,7 +83,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     try {
                         picker.launch(intent)
                     } catch (_: ActivityNotFoundException) {
-                        scope.launch { snackbar.showSnackbar("This phone has no sound picker.") }
+                        session.message(UiMessage("This phone has no sound picker."))
                     }
                 },
             ) {

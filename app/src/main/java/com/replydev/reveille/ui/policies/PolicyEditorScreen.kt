@@ -19,10 +19,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,88 +33,100 @@ import com.replydev.reveille.data.PolicyEntity
 import com.replydev.reveille.data.RuleEntity
 import com.replydev.reveille.ui.components.ConfirmDialog
 import com.replydev.reveille.ui.components.DateButton
+import com.replydev.reveille.ui.components.LeaveWhenSaved
 import com.replydev.reveille.ui.components.OptionalDateRow
 import com.replydev.reveille.ui.components.ScreenScaffold
 import com.replydev.reveille.ui.components.SectionTitle
 import com.replydev.reveille.ui.components.TimeButton
+import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.WeekdayChips
 import com.replydev.reveille.ui.components.listPadding
-import com.replydev.reveille.ui.components.runReporting
-import kotlinx.coroutines.launch
+import com.replydev.reveille.ui.components.rememberScreenSession
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 
 private const val MAX_INTERVAL_WEEKS = 8
 
-private fun newRule() = RuleEntity(
-    policyId = 0,
-    time = LocalTime.of(7, 0),
-    days = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY),
-    anchorDate = LocalDate.now(),
+private fun newRule() = RuleDraft(
+    newDraftKey(),
+    RuleEntity(
+        policyId = 0,
+        time = LocalTime.of(7, 0),
+        days = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY),
+        anchorDate = LocalDate.now(),
+    ),
 )
 
 @Composable
-fun PolicyEditorScreen(id: Long, onDone: () -> Unit) {
+fun PolicyEditorScreen(onDone: () -> Unit) {
     val container = LocalContext.current.container
-    val scope = rememberCoroutineScope()
+    val repository = container.repository
     val snackbar = remember { SnackbarHostState() }
-    var loaded by remember { mutableStateOf(false) }
-    var busy by remember { mutableStateOf(false) }
-    var confirmDelete by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }
-    var enabled by remember { mutableStateOf(true) }
-    var startDate by remember { mutableStateOf<LocalDate?>(null) }
-    var endDate by remember { mutableStateOf<LocalDate?>(null) }
-    val rules = remember { mutableStateListOf<RuleEntity>() }
-    val pauses = remember { mutableStateListOf<PauseEntity>() }
+    val session = rememberScreenSession(snackbar)
+    LeaveWhenSaved(session, onDone)
 
-    LaunchedEffect(id) {
-        val existing = if (id == 0L) null else container.repository.policy(id)
+    // The draft survives rotation, theme changes and process death; it is loaded from the database only once.
+    var loaded by rememberSaveable { mutableStateOf(false) }
+    var name by rememberSaveable { mutableStateOf("") }
+    var enabled by rememberSaveable { mutableStateOf(true) }
+    var startDate by rememberSaveable { mutableStateOf<LocalDate?>(null) }
+    var endDate by rememberSaveable { mutableStateOf<LocalDate?>(null) }
+    val rules = rememberSaveable(saver = RuleDraftsSaver) { emptyRuleDrafts() }
+    val pauses = rememberSaveable(saver = PauseDraftsSaver) { emptyPauseDrafts() }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (loaded) return@LaunchedEffect
+        val id = session.editId
+        val existing = if (id == 0L) null else repository.policy(id)
         if (existing == null) {
             rules.add(newRule())
+            if (id != 0L) {
+                session.editId = 0L
+                session.message(UiMessage("This policy was deleted. Saving creates a new one."))
+            }
         } else {
             name = existing.policy.name
             enabled = existing.policy.enabled
             startDate = existing.policy.startDate
             endDate = existing.policy.endDate
-            rules.addAll(existing.rules.sortedBy { it.time })
-            pauses.addAll(existing.pauses)
+            rules.addAll(existing.rules.sortedBy { it.time }.map { RuleDraft(newDraftKey(), it) })
+            pauses.addAll(existing.pauses.map { PauseDraft(newDraftKey(), it) })
         }
         loaded = true
     }
 
-    val errors = validatePolicy(name, startDate, endDate, rules, pauses)
-
-    /** One write at a time: a double tap on Save must not create the policy twice. */
-    fun write(failure: String, action: suspend () -> Unit) {
-        if (busy) return
-        busy = true
-        scope.launch {
-            val ok = snackbar.runReporting(failure, action)
-            busy = false
-            if (ok) onDone()
-        }
-    }
+    val editId = session.editId
+    val ruleList = rules.map { it.rule }
+    val pauseList = pauses.map { it.pause }
+    val errors = validatePolicy(name, startDate, endDate, ruleList, pauseList)
+    val draftPolicy = PolicyEntity(id = editId, name = name.trim(), enabled = enabled, startDate = startDate, endDate = endDate)
+    val warning = if (loaded && errors.isEmpty()) upcomingWarning(draftPolicy, ruleList, pauseList, Instant.now(), ZoneId.systemDefault()) else null
 
     ScreenScaffold(
-        title = if (id == 0L) "New policy" else "Edit policy",
+        title = if (editId == 0L) "New policy" else "Edit policy",
         onBack = onDone,
         snackbarHostState = snackbar,
         actions = {
-            if (id != 0L) {
-                TextButton(enabled = loaded && !busy, onClick = { confirmDelete = true }) { Text("Delete") }
+            if (editId != 0L) {
+                TextButton(enabled = loaded && !session.busy, onClick = { confirmDelete = true }) { Text("Delete") }
             }
             TextButton(
-                enabled = loaded && !busy && errors.isEmpty(),
+                enabled = loaded && !session.busy && errors.isEmpty(),
                 onClick = {
-                    write("Could not save the policy.") {
-                        container.repository.savePolicy(
-                            PolicyEntity(id = id, name = name.trim(), enabled = enabled, startDate = startDate, endDate = endDate),
-                            rules.toList(),
-                            pauses.toList(),
-                        )
-                    }
+                    val toSave = ruleList.map { it.copy(label = it.label?.trim()?.ifEmpty { null }) }
+                    session.write(
+                        "Could not save the policy.",
+                        action = { repository.savePolicy(draftPolicy, toSave, pauseList) },
+                        onSuccess = { savedId ->
+                            // Set before anything else: if the screen stays open, saving again updates this policy.
+                            session.editId = savedId
+                            session.saved = true
+                        },
+                    )
                 },
             ) { Text("Save") }
         },
@@ -123,18 +134,23 @@ fun PolicyEditorScreen(id: Long, onDone: () -> Unit) {
         if (confirmDelete) {
             ConfirmDialog(
                 title = "Delete policy?",
-                text = "All of its alarms will stop ringing.",
+                text = "Its upcoming alarms will not ring. An alarm that is already snoozed still rings.",
                 confirmLabel = "Delete",
                 onDismiss = { confirmDelete = false },
                 onConfirm = {
                     confirmDelete = false
-                    write("Could not delete the policy.") { container.repository.deletePolicy(id) }
+                    val target = editId
+                    session.write(
+                        "Could not delete the policy.",
+                        action = { repository.deletePolicy(target) },
+                        onSuccess = { session.saved = true },
+                    )
                 },
             )
         }
         if (!loaded) return@ScreenScaffold
         LazyColumn(contentPadding = listPadding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
+            item(key = "name") {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -143,33 +159,42 @@ fun PolicyEditorScreen(id: Long, onDone: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            item {
+            item(key = "enabled") {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Enabled", Modifier.weight(1f))
                     Switch(checked = enabled, onCheckedChange = { enabled = it })
                 }
             }
-            item { OptionalDateRow("Active from", startDate) { startDate = it } }
-            item { OptionalDateRow("Active until", endDate) { endDate = it } }
-            item { SectionTitle("Alarm times") }
-            itemsIndexed(rules) { index, rule ->
-                RuleCard(rule, onChange = { rules[index] = it }, onRemove = { rules.removeAt(index) })
+            item(key = "start") { OptionalDateRow("Active from", startDate) { startDate = it } }
+            item(key = "end") { OptionalDateRow("Active until", endDate) { endDate = it } }
+            item(key = "rules-title") { SectionTitle("Alarm times") }
+            itemsIndexed(rules, key = { _, draft -> "rule-${draft.key}" }) { index, draft ->
+                RuleCard(
+                    draft.rule,
+                    onChange = { rules[index] = draft.copy(rule = it) },
+                    onRemove = { rules.removeAt(index) },
+                )
             }
-            item { OutlinedButton(onClick = { rules.add(newRule()) }) { Text("Add alarm time") } }
-            item { SectionTitle("Pauses") }
-            itemsIndexed(pauses) { index, pause ->
-                PauseRow(pause, onChange = { pauses[index] = it }, onRemove = { pauses.removeAt(index) })
+            item(key = "add-rule") { OutlinedButton(onClick = { rules.add(newRule()) }) { Text("Add alarm time") } }
+            item(key = "pauses-title") { SectionTitle("Pauses") }
+            itemsIndexed(pauses, key = { _, draft -> "pause-${draft.key}" }) { index, draft ->
+                PauseRow(
+                    draft.pause,
+                    onChange = { pauses[index] = draft.copy(pause = it) },
+                    onRemove = { pauses.removeAt(index) },
+                )
             }
-            item {
+            item(key = "add-pause") {
                 OutlinedButton(onClick = {
                     val today = LocalDate.now()
-                    pauses.add(PauseEntity(policyId = id, fromDate = today, toDate = today.plusDays(7)))
+                    pauses.add(PauseDraft(newDraftKey(), PauseEntity(policyId = editId, fromDate = today, toDate = today.plusDays(7))))
                 }) { Text("Add pause") }
             }
-            if (errors.isNotEmpty()) {
-                item {
+            if (errors.isNotEmpty() || warning != null) {
+                item(key = "problems") {
                     Column {
                         errors.forEach { Text(it, color = MaterialTheme.colorScheme.error) }
+                        warning?.let { Text(it, color = MaterialTheme.colorScheme.tertiary) }
                     }
                 }
             }
@@ -202,7 +227,8 @@ private fun RuleCard(rule: RuleEntity, onChange: (RuleEntity) -> Unit, onRemove:
             }
             OutlinedTextField(
                 value = rule.label.orEmpty(),
-                onValueChange = { onChange(rule.copy(label = it.ifBlank { null })) },
+                // ifEmpty, not ifBlank: a space typed between words must not vanish. Trimmed on save.
+                onValueChange = { onChange(rule.copy(label = it.ifEmpty { null })) },
                 label = { Text("Label (optional)") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),

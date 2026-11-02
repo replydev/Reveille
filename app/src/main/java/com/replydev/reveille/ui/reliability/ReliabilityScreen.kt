@@ -24,7 +24,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,9 +45,9 @@ import com.replydev.reveille.reliability.ReliabilityCheck
 import com.replydev.reveille.reliability.appDetailsIntent
 import com.replydev.reveille.ui.components.ScreenScaffold
 import com.replydev.reveille.ui.components.SectionTitle
+import com.replydev.reveille.ui.components.UiMessage
+import com.replydev.reveille.ui.components.rememberScreenSession
 import com.replydev.reveille.ui.components.listPadding
-import com.replydev.reveille.ui.components.runReporting
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -62,10 +61,9 @@ private const val TAG = "Reveille"
 fun ReliabilityScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val container = context.container
-    val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
+    val session = rememberScreenSession(snackbar)
     var checks by remember { mutableStateOf<List<ReliabilityCheck>>(emptyList()) }
-    var testBusy by remember { mutableStateOf(false) }
     val confirmed by container.settings.confirmedChecks.collectAsStateWithLifecycle(initialValue = emptySet())
     val log by container.database.fireLogDao().observeRecent(20).collectAsStateWithLifecycle(initialValue = emptyList())
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -94,30 +92,23 @@ fun ReliabilityScreen(onBack: () -> Unit) {
                     check = check,
                     onFix = {
                         if (!openFix(context, check.fix)) {
-                            scope.launch { snackbar.showSnackbar("Could not open the settings screen. Open it from the phone's Settings app.") }
+                            session.message(UiMessage("Could not open the settings screen. Open it from the phone's Settings app."))
                         }
                     },
                     onConfirm = { done ->
-                        scope.launch { snackbar.runReporting("Could not save.") { container.settings.setConfirmed(check.id, done) } }
+                        session.write("Could not save.", guarded = false, action = { container.settings.setConfirmed(check.id, done) })
                     },
                 )
             }
             item(key = "test") {
                 Button(
-                    enabled = !testBusy,
+                    enabled = !session.busy,
                     onClick = {
-                        testBusy = true
-                        scope.launch {
-                            try {
-                                snackbar.runReporting("Could not set the test alarm.") {
-                                    val message = scheduleTestAlarm(container)
-                                    // Not awaited: showSnackbar suspends until the snackbar goes away.
-                                    launch { snackbar.showSnackbar(message) }
-                                }
-                            } finally {
-                                testBusy = false
-                            }
-                        }
+                        session.write(
+                            "Could not set the test alarm.",
+                            action = { scheduleTestAlarm(container) },
+                            onSuccess = { session.message(UiMessage(it)) },
+                        )
                     },
                 ) { Text("Ring a test alarm in 2 minutes") }
             }
@@ -162,7 +153,7 @@ private fun CheckCard(check: ReliabilityCheck, onFix: () -> Unit, onConfirm: (Bo
 }
 
 /**
- * Saves an additive one-off 1–2 minutes ahead (on a whole minute) and reports whether the system actually armed it,
+ * Saves an additive one-off 1–2 minutes ahead (on a whole minute) and says whether the system actually armed it,
  * so a refused exact alarm is not presented as a working test.
  */
 private suspend fun scheduleTestAlarm(container: AppContainer): String {
@@ -172,15 +163,13 @@ private suspend fun scheduleTestAlarm(container: AppContainer): String {
         OneOffEntity(date = at.toLocalDate(), time = at.toLocalTime(), label = "Test alarm", mode = OneOffMode.ADDITIVE),
     )
     val armed = container.schedulerState.armed()
-    val testKey = Source.OneOffAlarm(id).key
-    val testAt = at.atZone(zone).toInstant()
-    return when {
-        armed == null || armed.at.isAfter(testAt) ->
-            "Test alarm saved for ${TimeText.time(at.toLocalTime())}, but the system did not accept it. Fix the items above."
-        testKey in armed.sourceKeys || armed.key == testKey ->
-            "Test alarm at ${TimeText.time(at.toLocalTime())}. Lock your phone now."
-        else ->
-            "Test alarm at ${TimeText.time(at.toLocalTime())}, after the alarm at ${TimeText.time(armed.at.atZone(zone).toLocalTime())}. Lock your phone now."
+    val time = TimeText.time(at.toLocalTime())
+    return when (testAlarmResult(armed, Source.OneOffAlarm(id).key, at.atZone(zone).toInstant(), Instant.now())) {
+        TestAlarmResult.SET -> "Test alarm set for $time. Lock your phone now."
+        TestAlarmResult.AFTER_ANOTHER ->
+            "Test alarm saved for $time; it is set once the alarm at ${TimeText.time(armed!!.at.atZone(zone).toLocalTime())} has rung."
+        TestAlarmResult.NOT_CONFIRMED ->
+            "Test alarm saved for $time, but the system did not confirm it. Fix the items above."
     }
 }
 

@@ -16,7 +16,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -28,14 +27,15 @@ import com.replydev.reveille.data.RuleEntity
 import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.ui.components.ScreenScaffold
 import com.replydev.reveille.ui.components.listPadding
-import com.replydev.reveille.ui.components.runReporting
-import kotlinx.coroutines.launch
+import com.replydev.reveille.ui.components.rememberScreenSession
+import com.replydev.reveille.ui.components.rememberToday
 
 @Composable
 fun PoliciesScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
     val container = LocalContext.current.container
-    val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
+    val session = rememberScreenSession(snackbar)
+    val today = rememberToday()
     val policies by container.repository.policies.collectAsStateWithLifecycle(initialValue = null)
     ScreenScaffold(
         title = "Policies",
@@ -51,13 +51,14 @@ fun PoliciesScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
             items(list, key = { it.policy.id }) { item ->
                 PolicyCard(
                     item = item,
+                    status = policyStatus(item.policy, item.pauses, today),
                     onOpen = { onOpen(item.policy.id) },
                     onEnabledChange = { enabled ->
-                        scope.launch {
-                            snackbar.runReporting("Could not update the policy.") {
-                                container.repository.setPolicyEnabled(item.policy.id, enabled)
-                            }
-                        }
+                        session.write(
+                            "Could not update the policy.",
+                            guarded = false,
+                            action = { container.repository.setPolicyEnabled(item.policy.id, enabled) },
+                        )
                     },
                 )
             }
@@ -66,11 +67,12 @@ fun PoliciesScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
 }
 
 @Composable
-private fun PolicyCard(item: PolicyWithChildren, onOpen: () -> Unit, onEnabledChange: (Boolean) -> Unit) {
+private fun PolicyCard(item: PolicyWithChildren, status: String?, onOpen: () -> Unit, onEnabledChange: (Boolean) -> Unit) {
     Card(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(item.policy.name, style = MaterialTheme.typography.titleMedium)
+                status?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary) }
                 item.rules.sortedBy { it.time }.forEach { Text(ruleSummary(it), style = MaterialTheme.typography.bodyMedium) }
             }
             Switch(checked = item.policy.enabled, onCheckedChange = onEnabledChange)

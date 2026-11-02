@@ -38,17 +38,19 @@ fun ReveilleNavHost() {
                 onOpenSettings = { nav.navigate(Routes.SETTINGS) },
                 onOpenReliability = { nav.navigate(Routes.RELIABILITY) },
                 onNewOneOff = { nav.navigate(Routes.oneOff(0)) },
+                onNewPolicy = { nav.navigate(Routes.policy(0)) },
                 onEditOneOff = { nav.navigate(Routes.oneOff(it)) },
             )
         }
         composable(Routes.POLICIES) { entry ->
             PoliciesScreen(onBack = { nav.leave(entry) }, onOpen = { nav.navigate(Routes.policy(it)) })
         }
+        // The editors read the "id" argument through their ScreenSession's SavedStateHandle.
         composable(Routes.POLICY, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
-            PolicyEditorScreen(id = entry.arguments?.getLong("id") ?: 0L, onDone = { nav.leave(entry) })
+            PolicyEditorScreen(onDone = { nav.leave(entry) })
         }
         composable(Routes.ONE_OFF, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
-            OneOffEditorScreen(id = entry.arguments?.getLong("id") ?: 0L, onDone = { nav.leave(entry) })
+            OneOffEditorScreen(onDone = { nav.leave(entry) })
         }
         composable(Routes.SETTINGS) { entry -> SettingsScreen(onBack = { nav.leave(entry) }) }
         composable(Routes.RELIABILITY) { entry -> ReliabilityScreen(onBack = { nav.leave(entry) }) }

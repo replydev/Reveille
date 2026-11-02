@@ -1,6 +1,5 @@
 package com.replydev.reveille.ui.components
 
-import android.util.Log
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
@@ -13,9 +12,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.delay
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,25 +49,21 @@ fun SectionTitle(text: String) {
 }
 
 /** Content padding for a LazyColumn inside [ScreenScaffold]: keeps room for the FAB at the bottom. */
-fun listPadding(scaffold: PaddingValues): PaddingValues = PaddingValues(
+fun listPadding(scaffold: PaddingValues, fabRows: Int = 1): PaddingValues = PaddingValues(
     start = 16.dp,
     end = 16.dp,
     top = scaffold.calculateTopPadding() + 8.dp,
-    bottom = scaffold.calculateBottomPadding() + 96.dp,
+    bottom = scaffold.calculateBottomPadding() + 32.dp + 68.dp * fabRows,
 )
 
-/**
- * Runs a schedule write from a screen. A failure (database, re-arm) is logged and shown in the snackbar instead of
- * crashing the app; returns whether [action] completed.
- */
-suspend fun SnackbarHostState.runReporting(failureMessage: String, action: suspend () -> Unit): Boolean =
-    try {
-        action()
-        true
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        Log.e("Reveille", failureMessage, e)
-        showSnackbar(failureMessage)
-        false
+/** Today's date, kept current across midnight while the screen is shown. */
+@Composable
+fun rememberToday(): LocalDate {
+    val today by produceState(LocalDate.now()) {
+        while (true) {
+            delay(30_000)
+            value = LocalDate.now()
+        }
     }
+    return today
+}

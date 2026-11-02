@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -20,10 +21,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,22 +34,37 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import com.replydev.reveille.AppContainer
+import com.replydev.reveille.alarm.RingingService
 import com.replydev.reveille.container
+import com.replydev.reveille.data.OneOffEntity
+import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.engine.Armed
+import com.replydev.reveille.engine.Occurrence
 import com.replydev.reveille.engine.Source
 import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.engine.Timeline
 import com.replydev.reveille.ui.components.ScreenScaffold
+import com.replydev.reveille.ui.components.ScreenSession
+import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.listPadding
-import com.replydev.reveille.ui.components.runReporting
+import com.replydev.reveille.ui.components.rememberScreenSession
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.coroutines.cancellation.CancellationException
 
 private const val TIMELINE_DAYS = 14
+
+/** A schedule/armed mismatch must last this long before it is shown: a save re-arms right after the schedule changes. */
+private const val MISMATCH_GRACE_MS = 3_000L
+
+/** Wraps the armed alarm so "not loaded yet" (null) differs from "nothing armed". */
+private class ArmedState(val armed: Armed?)
+
+/** Result of reading the reliability checks: null while unknown, -1 if they could not be computed. */
+private const val CHECKS_FAILED = -1
 
 @Composable
 fun HomeScreen(
@@ -57,20 +72,24 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenReliability: () -> Unit,
     onNewOneOff: () -> Unit,
+    onNewPolicy: () -> Unit,
     onEditOneOff: (Long) -> Unit,
 ) {
     val container = LocalContext.current.container
-    val scope = rememberCoroutineScope()
+    val repository = container.repository
     val snackbar = remember { SnackbarHostState() }
-    val snapshot by container.repository.snapshots.collectAsStateWithLifecycle(initialValue = null)
-    val armed by container.schedulerState.armedFlow.collectAsStateWithLifecycle(initialValue = null)
+    val session = rememberScreenSession(snackbar)
+    val snapshot by repository.snapshots.collectAsStateWithLifecycle(initialValue = null)
+    val armedFlow = remember(container) { container.schedulerState.armedFlow.map(::ArmedState) }
+    val armedState by armedFlow.collectAsStateWithLifecycle(initialValue = null)
+    val ringing by RingingService.ringing.collectAsStateWithLifecycle()
     val now by produceState(Instant.now()) {
         while (true) {
-            delay(60_000)
+            delay(15_000)
             value = Instant.now()
         }
     }
-    var failingChecks by remember { mutableIntStateOf(0) }
+    var failingChecks by remember { mutableStateOf<Int?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -80,12 +99,11 @@ fun HomeScreen(
                 throw e
             } catch (e: Exception) {
                 Log.w("Reveille", "Reliability check failed", e)
-                0
+                CHECKS_FAILED
             }
         }
     }
     val zone = ZoneId.systemDefault()
-    // atZone, not LocalDate.ofInstant: the latter is API 34.
     val today = now.atZone(zone).toLocalDate()
     val entries = remember(snapshot, now) { snapshot?.let { Timeline.build(it, now, zone, TIMELINE_DAYS) } ?: emptyList() }
 
@@ -95,19 +113,33 @@ fun HomeScreen(
             TextButton(onClick = onOpenPolicies) { Text("Policies") }
             TextButton(onClick = onOpenSettings) { Text("Settings") }
         },
-        floatingActionButton = { ExtendedFloatingActionButton(onClick = onNewOneOff) { Text("New alarm") } },
+        floatingActionButton = {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ExtendedFloatingActionButton(
+                    onClick = onNewPolicy,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
+                ) { Text("New policy") }
+                ExtendedFloatingActionButton(onClick = onNewOneOff) { Text("New alarm") }
+            }
+        },
         snackbarHostState = snackbar,
     ) { padding ->
         LazyColumn(
-            contentPadding = listPadding(padding),
+            contentPadding = listPadding(padding, fabRows = 2),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (failingChecks > 0) {
-                item(key = "banner") { ReliabilityBanner(failingChecks, onOpenReliability) }
+            failingChecks?.takeIf { it != 0 }?.let { failing ->
+                item(key = "banner") { ReliabilityBanner(failing, onOpenReliability) }
             }
-            item(key = "next") { NextUpCard(armed, entries.firstOrNull { !it.skipped }, now, zone) }
-            if (snapshot != null && entries.isEmpty()) {
-                item(key = "empty") { Text("No alarms in the next $TIMELINE_DAYS days. Add a policy or a one-off alarm.", Modifier.padding(top = 16.dp)) }
+            val loadedSnapshot = snapshot
+            val loadedArmed = armedState
+            if (loadedSnapshot != null && loadedArmed != null) {
+                val state = nextUp(loadedArmed.armed, entries.firstOrNull { !it.skipped }?.occurrence, now)
+                item(key = "next") { NextUpCard(state, ringing?.armed?.key, now, zone) }
+                if (entries.isEmpty()) {
+                    item(key = "empty") { Text("No alarms in the next $TIMELINE_DAYS days. Add a policy or a one-off alarm.", Modifier.padding(top = 16.dp)) }
+                }
             }
             entries.groupBy { it.occurrence.at.toLocalDate() }.forEach { (date, dayEntries) ->
                 item(key = "header-$date") {
@@ -121,7 +153,8 @@ fun HomeScreen(
                 items(dayEntries, key = ::entryKey) { entry ->
                     OccurrenceRow(
                         entry = entry,
-                        onToggleSkip = { scope.launch { snackbar.runReporting("Could not update the alarm.") { toggleSkip(container, entry) } } },
+                        enabled = !session.busy,
+                        onToggleSkip = { toggleSkip(session, repository, entry) },
                         onEditOneOff = onEditOneOff,
                     )
                 }
@@ -141,50 +174,89 @@ private fun ReliabilityBanner(failing: Int, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(
-            "$failing reliability ${if (failing == 1) "check needs" else "checks need"} attention. Alarms may not ring. Tap to fix.",
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.padding(16.dp),
-        )
+        val text = when (failing) {
+            CHECKS_FAILED -> "Reliability checks could not run. Alarms may not ring. Tap to review."
+            1 -> "1 reliability check needs attention. Alarms may not ring. Tap to fix."
+            else -> "$failing reliability checks need attention. Alarms may not ring. Tap to fix."
+        }
+        Text(text, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(16.dp))
     }
 }
 
-/**
- * Shows the alarm actually registered with AlarmManager (the same one the widget shows, including snoozes). If
- * nothing is armed while the schedule has an upcoming alarm, says so instead of pretending it will ring.
- */
+/** True once [mismatch] has held for [MISMATCH_GRACE_MS]; hides the normal gap between a save and its re-arm. */
 @Composable
-private fun NextUpCard(armed: Armed?, scheduled: Timeline.Entry?, now: Instant, zone: ZoneId) {
+private fun persistent(mismatch: Any?): Boolean {
+    val shown by produceState(false, mismatch) {
+        value = false
+        if (mismatch != null) {
+            delay(MISMATCH_GRACE_MS)
+            value = true
+        }
+    }
+    return shown
+}
+
+@Composable
+private fun NextUpCard(state: NextUp, ringingKey: String?, now: Instant, zone: ZoneId) {
+    val unarmed: Occurrence? = when (state) {
+        is NextUp.Set -> state.earlierUnarmed
+        is NextUp.NotSet -> state.scheduled
+        else -> null
+    }
+    val warn = persistent(unarmed?.let { it.key to it.at })
     Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
         Column(Modifier.padding(16.dp)) {
-            Text("Next alarm", style = MaterialTheme.typography.labelLarge)
-            when {
-                armed != null -> {
+            when (state) {
+                NextUp.None -> {
+                    Text("Next alarm", style = MaterialTheme.typography.labelLarge)
+                    Text("None scheduled", style = MaterialTheme.typography.headlineMedium)
+                }
+                is NextUp.Overdue -> {
+                    val armed = state.armed
+                    val isRinging = ringingKey == armed.key
+                    Text(if (isRinging) "Ringing now" else "Overdue", style = MaterialTheme.typography.labelLarge)
                     Text(TimeText.dayAndTime(armed.at, now, zone), style = MaterialTheme.typography.headlineMedium)
-                    val label = if (armed.isSnooze) "Snoozed: ${armed.label}" else armed.label
-                    Text("$label · ${TimeText.relative(armed.at, now)}", style = MaterialTheme.typography.bodyMedium)
+                    Text(armedLabel(armed), style = MaterialTheme.typography.bodyMedium)
+                    if (!isRinging) {
+                        Warning("Due at ${TimeText.time(armed.at.atZone(zone).toLocalTime())} and should ring any moment. If it does not, check Reliability.")
+                    }
                 }
-                scheduled != null -> {
-                    val at = scheduled.occurrence.at.toInstant()
+                is NextUp.Set -> {
+                    val armed = state.armed
+                    Text("Next alarm", style = MaterialTheme.typography.labelLarge)
+                    Text(TimeText.dayAndTime(armed.at, now, zone), style = MaterialTheme.typography.headlineMedium)
+                    Text("${armedLabel(armed)} · ${TimeText.relative(armed.at, now)}", style = MaterialTheme.typography.bodyMedium)
+                    val earlier = state.earlierUnarmed
+                    if (earlier != null && warn) {
+                        Warning(
+                            "Not set with the system: ${TimeText.dayAndTime(earlier.at.toInstant(), now, zone)} ${earlier.label} " +
+                                "is scheduled earlier. Check Reliability.",
+                        )
+                    }
+                }
+                is NextUp.NotSet -> {
+                    val at = state.scheduled.at.toInstant()
+                    Text("Next alarm", style = MaterialTheme.typography.labelLarge)
                     Text(TimeText.dayAndTime(at, now, zone), style = MaterialTheme.typography.headlineMedium)
-                    Text("${scheduled.occurrence.label} · ${TimeText.relative(at, now)}", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "Not set with the system yet. Check Reliability if this does not go away.",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    Text("${state.scheduled.label} · ${TimeText.relative(at, now)}", style = MaterialTheme.typography.bodyMedium)
+                    Warning(if (warn) "Not set with the system, so it will not ring. Check Reliability." else "Setting the alarm…")
                 }
-                else -> Text("None scheduled", style = MaterialTheme.typography.headlineMedium)
             }
         }
     }
 }
 
 @Composable
-private fun OccurrenceRow(entry: Timeline.Entry, onToggleSkip: () -> Unit, onEditOneOff: (Long) -> Unit) {
+private fun Warning(text: String) {
+    Text(text, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+}
+
+private fun armedLabel(armed: Armed): String = if (armed.isSnooze) "Snoozed: ${armed.label}" else armed.label
+
+@Composable
+private fun OccurrenceRow(entry: Timeline.Entry, enabled: Boolean, onToggleSkip: () -> Unit, onEditOneOff: (Long) -> Unit) {
     val occurrence = entry.occurrence
     val oneOff = occurrence.sources.filterIsInstance<Source.OneOffAlarm>().firstOrNull()
-    val hasPolicy = occurrence.sources.any { it is Source.PolicyRule }
     val alpha = if (entry.skipped) 0.4f else 1f
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(TimeText.time(occurrence.at.toLocalTime()), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.alpha(alpha))
@@ -196,18 +268,43 @@ private fun OccurrenceRow(entry: Timeline.Entry, onToggleSkip: () -> Unit, onEdi
         if (oneOff != null) {
             TextButton(onClick = { onEditOneOff(oneOff.oneOffId) }) { Text("Edit") }
         }
-        if (hasPolicy) {
-            TextButton(onClick = onToggleSkip) { Text(if (entry.skipped) "Unskip" else "Skip") }
-        }
+        TextButton(enabled = enabled, onClick = onToggleSkip) { Text(if (entry.skipped) "Unskip" else "Skip") }
     }
 }
 
-/** Skip acts on the policy alarms only: a one-off merged into the same minute keeps ringing and is edited separately. */
-private suspend fun toggleSkip(container: AppContainer, entry: Timeline.Entry) {
-    val sources = entry.occurrence.sources.filterIsInstance<Source.PolicyRule>()
+/**
+ * Skip skips the policy alarms of the occurrence (for their whole date) and deletes its one-offs; Undo re-saves the
+ * one-offs and removes the skips. Unskip (skipped entries are policy alarms only) removes the skips.
+ */
+private fun toggleSkip(session: ScreenSession, repository: ScheduleRepository, entry: Timeline.Entry) {
+    val policies = entry.occurrence.sources.filterIsInstance<Source.PolicyRule>()
     if (entry.skipped) {
-        sources.forEach { container.repository.unskip(it.policyId, it.date) }
-    } else {
-        container.repository.skipOccurrence(sources.map { it.key })
+        session.write("Could not unskip the alarm.", action = { policies.forEach { repository.unskip(it.policyId, it.date) } })
+        return
     }
+    val oneOffIds = entry.occurrence.sources.filterIsInstance<Source.OneOffAlarm>().map { it.oneOffId }
+    val time = TimeText.time(entry.occurrence.at.toLocalTime())
+    session.write(
+        "Could not skip the alarm.",
+        action = {
+            val removed: List<OneOffEntity> = oneOffIds.mapNotNull { repository.oneOff(it) }
+            repository.skipOccurrence(entry.occurrence.sources.map { it.key })
+            removed
+        },
+        onSuccess = { removed ->
+            session.message(
+                UiMessage("Skipped $time ${entry.occurrence.label}", actionLabel = "Undo") {
+                    session.write(
+                        "Could not undo the skip.",
+                        guarded = false,
+                        action = {
+                            // A one-off whose time passed meanwhile stays deleted: restoring it would ring it at once.
+                            removed.filter { LocalDateTime.of(it.date, it.time).isAfter(LocalDateTime.now()) }.forEach { repository.saveOneOff(it) }
+                            policies.forEach { repository.unskip(it.policyId, it.date) }
+                        },
+                    )
+                },
+            )
+        },
+    )
 }
