@@ -90,4 +90,28 @@ class ScheduleRepositoryTest {
         assertEquals(1, slow.snapshot().oneOffs.size)
         assertTrue(rearmed)
     }
+
+    @Test
+    fun cancellingDuringTheDatabaseWriteStillCommitsAndRearms() = runBlocking {
+        val inWrite = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val gated = object : ScheduleDao by db.scheduleDao() {
+            override suspend fun saveOneOff(oneOff: OneOffEntity): Long {
+                inWrite.complete(Unit)
+                release.await()
+                return db.scheduleDao().saveOneOff(oneOff)
+            }
+        }
+        var rearmed = false
+        val repo = ScheduleRepository(gated) { rearmed = true }
+        val job = launch { repo.saveOneOff(OneOffEntity(date = LocalDate.parse("2026-11-03"), time = LocalTime.of(7, 0))) }
+        inWrite.await()
+        // Cancelled while Room is writing: the write and its re-arm go together, or neither happens.
+        job.cancel()
+        release.complete(Unit)
+        job.cancelAndJoin()
+
+        assertEquals(1, repo.snapshot().oneOffs.size)
+        assertTrue(rearmed)
+    }
 }

@@ -25,29 +25,19 @@ class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: su
     suspend fun oneOff(id: Long): OneOffEntity? = dao.oneOff(id)
 
     suspend fun savePolicy(policy: PolicyEntity, rules: List<RuleEntity>, pauses: List<PauseEntity>): Long =
-        dao.savePolicy(policy, rules, pauses).also { rearmAfterWrite() }
+        writeAndRearm { dao.savePolicy(policy, rules, pauses) }
 
-    suspend fun deletePolicy(id: Long) {
-        dao.deletePolicy(id)
-        rearmAfterWrite()
-    }
+    suspend fun deletePolicy(id: Long) = writeAndRearm { dao.deletePolicy(id) }
 
-    suspend fun setPolicyEnabled(id: Long, enabled: Boolean) {
-        dao.setPolicyEnabled(id, enabled)
-        rearmAfterWrite()
-    }
+    suspend fun setPolicyEnabled(id: Long, enabled: Boolean) = writeAndRearm { dao.setPolicyEnabled(id, enabled) }
 
-    suspend fun saveOneOff(oneOff: OneOffEntity): Long = dao.saveOneOff(oneOff).also { rearmAfterWrite() }
+    suspend fun saveOneOff(oneOff: OneOffEntity): Long = writeAndRearm { dao.saveOneOff(oneOff) }
 
     suspend fun deleteOneOff(id: Long) {
-        dao.deleteOneOff(id)
-        rearmAfterWrite()
+        writeAndRearm { dao.deleteOneOff(id) }
     }
 
-    suspend fun unskip(policyId: Long, date: LocalDate) {
-        dao.deleteSkip(policyId, date)
-        rearmAfterWrite()
-    }
+    suspend fun unskip(policyId: Long, date: LocalDate) = writeAndRearm { dao.deleteSkip(policyId, date) }
 
     /**
      * Skips policy occurrences and deletes one-offs referenced by [sourceKeys]. Sources deleted in the meantime are
@@ -57,7 +47,7 @@ class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: su
      * Skipping a policy occurrence skips that policy for its whole date, by design (spec: "Skip cancels the alarm for
      * one policy on one date"): other rules of the same policy on that date do not ring either.
      */
-    suspend fun skipOccurrence(sourceKeys: List<String>, notify: Boolean = true): Boolean {
+    suspend fun skipOccurrence(sourceKeys: List<String>, notify: Boolean = true): Boolean = withContext(NonCancellable) {
         var changed = false
         sourceKeys.mapNotNull(Source::parse).forEach { source ->
             when (source) {
@@ -66,8 +56,8 @@ class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: su
                 is Source.OneOffAlarm -> changed = dao.deleteOneOff(source.oneOffId) > 0 || changed
             }
         }
-        if (changed && notify) rearmAfterWrite()
-        return changed
+        if (changed && notify) onChanged()
+        changed
     }
 
     /** Deletes one-offs and skips dated before [today]. Does not call [onChanged]: it runs inside a re-arm. */
@@ -77,8 +67,11 @@ class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: su
     }
 
     /**
-     * Runs [onChanged] even if the caller is cancelled (e.g. the screen that saved was closed): once a write is
-     * committed, AlarmManager must be updated, or it would keep ringing at the old time.
+     * Runs [write] and then [onChanged] as one non-cancellable unit. Cancelling the caller (e.g. closing the screen
+     * that saved) must never leave a committed write without its re-arm, or AlarmManager keeps the old alarm. This
+     * covers cancellation during the Room call too: Room may commit even though the call ends with a cancellation.
      */
-    private suspend fun rearmAfterWrite() = withContext(NonCancellable) { onChanged() }
+    private suspend fun <T> writeAndRearm(write: suspend () -> T): T = withContext(NonCancellable) {
+        write().also { onChanged() }
+    }
 }

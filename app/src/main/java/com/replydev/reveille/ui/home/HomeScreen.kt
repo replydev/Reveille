@@ -38,6 +38,7 @@ import com.replydev.reveille.alarm.RingingService
 import com.replydev.reveille.container
 import com.replydev.reveille.data.OneOffEntity
 import com.replydev.reveille.data.ScheduleRepository
+import com.replydev.reveille.data.toModel
 import com.replydev.reveille.engine.Armed
 import com.replydev.reveille.engine.Occurrence
 import com.replydev.reveille.engine.Source
@@ -83,7 +84,10 @@ fun HomeScreen(
     val armedFlow = remember(container) { container.schedulerState.armedFlow.map(::ArmedState) }
     val armedState by armedFlow.collectAsStateWithLifecycle(initialValue = null)
     val ringing by RingingService.ringing.collectAsStateWithLifecycle()
-    val now by produceState(Instant.now()) {
+    // Restarted (and so refreshed at once) whenever the armed alarm or the schedule changes: deciding the next alarm
+    // with a stale clock would flag an alarm that just rang as "not set" until the next tick.
+    val now by produceState(Instant.now(), armedState, snapshot) {
+        value = Instant.now()
         while (true) {
             delay(15_000)
             value = Instant.now()
@@ -289,11 +293,11 @@ private fun toggleSkip(session: ScreenSession, repository: ScheduleRepository, e
         action = {
             val removed: List<OneOffEntity> = oneOffIds.mapNotNull { repository.oneOff(it) }
             repository.skipOccurrence(entry.occurrence.sources.map { it.key })
-            removed
+            removed to policiesRingingAgain(repository.snapshot(), removed.map { it.toModel() })
         },
-        onSuccess = { removed ->
+        onSuccess = { (removed, ringingAgain) ->
             session.message(
-                UiMessage("Skipped $time ${entry.occurrence.label}", actionLabel = "Undo") {
+                UiMessage(skipMessage(time, entry.occurrence.label, ringingAgain), actionLabel = "Undo") {
                     session.write(
                         "Could not undo the skip.",
                         guarded = false,
