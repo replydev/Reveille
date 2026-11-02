@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reveille — Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FFB547}a:hover{color:#FFD08A}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0B0D11; color: #F3F4F6; font-family: 'Geist', system-ui, sans-serif; font-variant-numeric: tabular-nums; box-sizing: border-box">
+
+  <header style="padding: 52px 20px 18px">
+    <h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em">Settings</h1>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 22px; padding: 0 16px">
+
+    <section aria-labelledby="s-sound" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 id="s-sound" style="margin: 0 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #A1A9B5">Sound</h2>
+      <div style="border-radius: 20px; background: #15181E; border: 1px solid #22262E; overflow: hidden">
+        <button style="width: 100%; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 0 16px; border: none; border-bottom: 1px solid #22262E; background: transparent; color: #F3F4F6; text-align: left">
+          <span style="width: 36px; height: 36px; border-radius: 12px; background: #2A2418; color: {{accent}}; display: flex; align-items: center; justify-content: center; flex: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="17" cy="16" r="3"></circle></svg></span>
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 15px">Alarm sound</span>
+            <span style="font-size: 13px; color: #A1A9B5">Morning Glory</span>
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A1A9B5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+        </button>
+        <sc-for list="{{toggles}}" as="t" hint-placeholder-count="2">
+          <div style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 16px; border-bottom: 1px solid {{t.line}}">
+            <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+              <span style="font-size: 15px">{{t.label}}</span>
+              <span style="font-size: 13px; color: #A1A9B5">{{t.hint}}</span>
+            </span>
+            <span role="img" aria-label="{{t.state}}" style="width: 52px; height: 32px; border-radius: 16px; background: {{t.track}}; position: relative; flex: none"><span style="position: absolute; top: 4px; left: {{t.x}}; width: 24px; height: 24px; border-radius: 12px; background: {{t.knob}}"></span></span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="s-snooze" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 id="s-snooze" style="margin: 0 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #A1A9B5">Snooze</h2>
+      <div style="border-radius: 20px; background: #15181E; border: 1px solid #22262E; overflow: hidden">
+        <sc-for list="{{steppers}}" as="s" hint-placeholder-count="2">
+          <div style="display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 0 12px 0 16px; border-bottom: 1px solid {{s.line}}">
+            <span style="flex: 1; font-size: 15px; line-height: 1.3">{{s.label}}</span>
+            <div style="display: flex; align-items: center; height: 44px; border-radius: 22px; background: #1D2129">
+              <button aria-label="Decrease" style="width: 44px; height: 44px; border: none; background: transparent; color: #F3F4F6; font-size: 18px">−</button>
+              <span style="min-width: 58px; text-align: center; font-size: 15px; font-weight: 500">{{s.value}}</span>
+              <button aria-label="Increase" style="width: 44px; height: 44px; border: none; background: transparent; color: #F3F4F6; font-size: 18px">+</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="s-about" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 id="s-about" style="margin: 0 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #A1A9B5">About</h2>
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 20px; background: #15181E; border: 1px solid #22262E">
+        <span style="width: 40px; height: 40px; border-radius: 12px; background: {{accent}}; color: #1A1205; display: flex; align-items: center; justify-content: center; flex: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18h16"></path><path d="M7 18a5 5 0 0 1 10 0"></path><path d="M12 6v3M5 10l2 1.5M19 10l-2 1.5"></path></svg></span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 15px; font-weight: 600">Reveille</span>
+          <span style="font-size: 13px; color: #A1A9B5; font-family: 'Geist Mono', monospace">[VERSION]</span>
+        </span>
+      </div>
+    </section>
+  </div>
+
+  <nav aria-label="Main" style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; padding: 8px 12px 20px; box-sizing: border-box; background: #101318; border-top: 1px solid #1D2129; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #A1A9B5; font-size: 12px; font-weight: 500">
+      <span style="width: 56px; height: 30px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 2"></path><path d="M5 3L2 6M19 3l3 3"></path></svg></span>Today
+    </a>
+    <a href="Policies.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #A1A9B5; font-size: 12px; font-weight: 500">
+      <span style="width: 56px; height: 30px; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></span>Policies
+    </a>
+    <a href="Health.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #A1A9B5; font-size: 12px; font-weight: 500">
+      <span style="width: 56px; height: 30px; display: flex; align-items: center; justify-content: center; position: relative"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"></path></svg><span style="position: absolute; top: 3px; right: 14px; width: 8px; height: 8px; border-radius: 4px; background: #FF7A66"></span></span>Health
+    </a>
+    <a href="Settings.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #F3F4F6; font-size: 12px; font-weight: 500">
+      <span style="width: 56px; height: 30px; border-radius: 15px; background: #2A2418; color: {{accent}}; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg></span>Settings
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#FFB547","options":["#FFB547","#8AB4FF","#7EE0C3","#F2A0C8"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#FFB547';
+    const sw = (label, hint, on, last) => ({
+      label, hint, state: on ? 'On' : 'Off', line: last ? 'transparent' : '#22262E',
+      track: on ? accent : '#2A2F38', knob: on ? '#1A1205' : '#7D8693', x: on ? '24px' : '4px'
+    });
+    return {
+      accent,
+      toggles: [
+        sw('Vibrate', 'Pulse while the alarm rings', true, false),
+        sw('Gradually increase volume', 'Starts quiet, reaches full volume', true, true)
+      ],
+      steppers: [
+        { label: 'Snooze length', value: '9 min', line: '#22262E' },
+        { label: 'Auto-snooze after ringing for', value: '5 min', line: 'transparent' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

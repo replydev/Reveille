@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reveille — New one-off alarm</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FFB547}a:hover{color:#FFD08A}
+button,input{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #050608; color: #F3F4F6; font-family: 'Geist', system-ui, sans-serif; font-variant-numeric: tabular-nums; box-sizing: border-box">
+
+  <div aria-hidden="true" style="padding: 52px 20px 0; opacity: 0.25">
+    <div style="font-size: 13px; color: #A1A9B5">Monday, 2 November</div>
+    <div style="font-size: 28px; font-weight: 600">Today</div>
+  </div>
+
+  <section role="dialog" aria-label="New one-off alarm" style="position: absolute; left: 0; right: 0; bottom: 0; top: 120px; background: #12151A; border-radius: 32px 32px 0 0; border-top: 1px solid #22262E; display: flex; flex-direction: column; padding: 10px 20px 28px; box-sizing: border-box; gap: 18px">
+    <span aria-hidden="true" style="align-self: center; width: 40px; height: 4px; border-radius: 2px; background: #3A404A"></span>
+
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 20px; font-weight: 600">One-off alarm</h1>
+      <a href="Main.dc.html" aria-label="Close" style="width: 40px; height: 40px; border-radius: 20px; background: #1D2129; color: #A1A9B5; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></a>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 0">
+      <button aria-label="Hour, 09" style="width: 120px; height: 104px; border-radius: 20px; border: 2px solid {{accent}}; background: #1D2129; color: #F3F4F6; font-size: 72px; font-weight: 300; letter-spacing: -0.04em">09</button>
+      <span aria-hidden="true" style="font-size: 56px; font-weight: 300; color: #7D8693">:</span>
+      <button aria-label="Minute, 30" style="width: 120px; height: 104px; border-radius: 20px; border: 2px solid transparent; background: #1D2129; color: #F3F4F6; font-size: 72px; font-weight: 300; letter-spacing: -0.04em">30</button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #A1A9B5">Date</span>
+      <div style="display: flex; gap: 8px; overflow: hidden; margin-right: -20px">
+        <sc-for list="{{dates}}" as="d" hint-placeholder-count="6">
+          <button aria-pressed="{{d.sel}}" style="flex: none; width: 56px; height: 68px; border-radius: 16px; border: 1px solid {{d.border}}; background: {{d.bg}}; color: {{d.fg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+            <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85">{{d.dow}}</span>
+            <span style="font-size: 20px; font-weight: 500">{{d.num}}</span>
+          </button>
+        </sc-for>
+        <button aria-label="Pick another date" style="flex: none; width: 56px; height: 68px; border-radius: 16px; border: 1px dashed #3A404A; background: transparent; color: #A1A9B5; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="2"></rect><path d="M4 10h16M8 4v4M16 4v4"></path></svg></button>
+      </div>
+    </div>
+
+    <label style="display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-radius: 16px; background: #1D2129">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A9B5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"></path><circle cx="7.5" cy="8.5" r="1"></circle></svg>
+      <input value="Dentist" aria-label="Label" style="flex: 1; border: none; outline: none; background: transparent; color: #F3F4F6; font-size: 16px; padding: 0">
+    </label>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #A1A9B5">On Fri 6 Nov</span>
+      <div role="radiogroup" aria-label="Mode" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 16px; background: #1D2129">
+        <button role="radio" aria-checked="true" style="height: 44px; border-radius: 12px; border: none; background: #F3F4F6; color: #0B0D11; font-size: 14px; font-weight: 600">Replace the day</button>
+        <button role="radio" aria-checked="false" style="height: 44px; border-radius: 12px; border: none; background: transparent; color: #A1A9B5; font-size: 14px; font-weight: 500">Ring in addition</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid #22262E">
+        <span style="font-size: 18px; color: #A1A9B5; text-decoration: line-through">08:55</span>
+        <span style="display: flex; align-items: center; gap: 6px; font-size: 14px; flex: 1"><span style="width: 8px; height: 8px; border-radius: 2px; background: #8AB4FF"></span>Work</span>
+        <span style="font-size: 12px; color: #A1A9B5">won't ring</span>
+      </div>
+    </div>
+
+    <button style="margin-top: auto; height: 56px; border-radius: 28px; border: none; background: {{accent}}; color: #1A1205; font-size: 16px; font-weight: 600">Set for Fri 6 Nov, 09:30</button>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#FFB547","options":["#FFB547","#8AB4FF","#7EE0C3","#F2A0C8"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#FFB547';
+    const list = [['Tue', '3'], ['Wed', '4'], ['Thu', '5'], ['Fri', '6'], ['Sat', '7']];
+    return {
+      accent,
+      dates: list.map(([dow, num]) => {
+        const sel = num === '6';
+        return {
+          dow, num, sel: sel ? 'true' : 'false',
+          bg: sel ? accent : '#1D2129',
+          fg: sel ? '#1A1205' : '#F3F4F6',
+          border: sel ? accent : '#1D2129'
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
