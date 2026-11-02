@@ -85,7 +85,6 @@ fun ReveilleNavHost() {
                     failingChecks = failingChecks,
                     onOpenReliability = { nav.openTab(Tab.Health) },
                     onNewOneOff = { nav.navigate(Routes.oneOff(0)) },
-                    onNewPolicy = { nav.navigate(Routes.policy(0)) },
                     onEditOneOff = { nav.navigate(Routes.oneOff(it)) },
                     onOpenPolicy = { nav.navigate(Routes.policy(it)) },
                 )

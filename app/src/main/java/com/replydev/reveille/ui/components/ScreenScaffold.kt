@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
@@ -82,7 +83,7 @@ fun TabHeader(
     trailing: @Composable (() -> Unit)? = null,
     below: @Composable (() -> Unit)? = null,
 ) {
-    Column(modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = bottom)) {
+    Column(modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = belowStatusBar(52.dp), bottom = bottom)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 overline?.let { Text(it, style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.muted) }
@@ -92,6 +93,16 @@ fun TabHeader(
         }
         below?.invoke()
     }
+}
+
+/**
+ * Top padding that puts content [fromScreenTop] below the top of the screen, as in the mockups (which have no status
+ * bar of their own), for content that already sits below the status bar. At least 8 dp on tall status bars.
+ */
+@Composable
+fun belowStatusBar(fromScreenTop: Dp): Dp {
+    val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    return (fromScreenTop - statusBar).coerceAtLeast(8.dp)
 }
 
 @Composable

@@ -1,83 +1,93 @@
 package com.replydev.reveille.ui.home
 
-import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
+import com.replydev.reveille.R
 import com.replydev.reveille.alarm.RingingService
 import com.replydev.reveille.container
 import com.replydev.reveille.data.OneOffEntity
 import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.data.toModel
 import com.replydev.reveille.engine.Armed
-import com.replydev.reveille.engine.Occurrence
+import com.replydev.reveille.engine.ScheduleSnapshot
 import com.replydev.reveille.engine.Source
 import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.engine.Timeline
+import com.replydev.reveille.ui.components.Chip
+import com.replydev.reveille.ui.components.ChipText
+import com.replydev.reveille.ui.components.Dot
+import com.replydev.reveille.ui.components.Overline
+import com.replydev.reveille.ui.components.PillButton
+import com.replydev.reveille.ui.components.PillStyle
+import com.replydev.reveille.ui.components.PolicyDot
+import com.replydev.reveille.ui.components.ReveilleCard
+import com.replydev.reveille.ui.components.ReveilleFab
+import com.replydev.reveille.ui.components.ReveilleIcon
+import com.replydev.reveille.ui.components.ScreenSession
+import com.replydev.reveille.ui.components.StatusPill
 import com.replydev.reveille.ui.components.TabHeader
 import com.replydev.reveille.ui.components.TabScaffold
-import com.replydev.reveille.ui.components.CHECKS_FAILED
-import com.replydev.reveille.ui.components.ScreenSession
+import com.replydev.reveille.ui.components.TextAction
 import com.replydev.reveille.ui.components.UiMessage
-import com.replydev.reveille.ui.components.listPadding
 import com.replydev.reveille.ui.components.rememberScreenSession
+import com.replydev.reveille.ui.components.topDivider
 import com.replydev.reveille.ui.theme.Motion
+import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.theme.animatedItem
+import com.replydev.reveille.ui.theme.lineBox
+import com.replydev.reveille.ui.theme.sourceColor
+import com.replydev.reveille.ui.theme.sourceKeyColor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
-import kotlin.coroutines.cancellation.CancellationException
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private const val TIMELINE_DAYS = 14
 
 /** A schedule/armed mismatch must last this long before it is shown: a save re-arms right after the schedule changes. */
 private const val MISMATCH_GRACE_MS = 3_000L
 
+private val headerDate = DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)
+private val weekday = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH)
+
 /** Wraps the armed alarm so "not loaded yet" (null) differs from "nothing armed". */
 private class ArmedState(val armed: Armed?)
-
 
 @Composable
 fun HomeScreen(
     failingChecks: Int?,
     onOpenReliability: () -> Unit,
     onNewOneOff: () -> Unit,
-    onNewPolicy: () -> Unit,
     onEditOneOff: (Long) -> Unit,
     onOpenPolicy: (Long) -> Unit,
 ) {
@@ -101,82 +111,90 @@ fun HomeScreen(
     val zone = ZoneId.systemDefault()
     val today = now.atZone(zone).toLocalDate()
     val entries = remember(snapshot, now) { snapshot?.let { Timeline.build(it, now, zone, TIMELINE_DAYS) } ?: emptyList() }
+    val intervals = remember(snapshot) { snapshot?.ruleIntervals() ?: emptyMap() }
 
     TabScaffold(
-        floatingActionButton = {
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ExtendedFloatingActionButton(
-                    onClick = onNewPolicy,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
-                ) { Text("New policy") }
-                ExtendedFloatingActionButton(onClick = onNewOneOff) { Text("New alarm") }
-            }
-        },
+        floatingActionButton = { ReveilleFab("One-off alarm", onClick = onNewOneOff) },
         snackbarHostState = snackbar,
     ) { padding ->
-        Column(Modifier.padding(top = padding.calculateTopPadding())) {
-        TabHeader("Today")
         LazyColumn(
-            contentPadding = listPadding(PaddingValues(bottom = padding.calculateBottomPadding()), fabRows = 2),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(top = padding.calculateTopPadding()),
+            contentPadding = PaddingValues(bottom = padding.calculateBottomPadding() + 88.dp),
         ) {
-                        failingChecks?.takeIf { it != 0 }?.let { failing ->
-                item(key = "banner") { ReliabilityBanner(failing, onOpenReliability, Modifier.animatedItem(this)) }
+            item(key = "header") {
+                TabHeader(
+                    title = "Today",
+                    overline = today.format(headerDate),
+                    trailing = failingChecks?.takeIf { it != 0 }?.let { failing -> { StatusPill(issuesLabel(failing), onClick = onOpenReliability) } },
+                )
             }
             val loadedSnapshot = snapshot
             val loadedArmed = armedState
             if (loadedSnapshot != null && loadedArmed != null) {
-                val state = nextUp(loadedArmed.armed, entries.firstOrNull { !it.skipped }?.occurrence, now)
-                item(key = "next") { NextUpCard(state, ringing?.armed?.key, now, zone, Modifier.animatedItem(this)) }
+                val scheduled = entries.firstOrNull { !it.skipped }
+                val state = nextUp(loadedArmed.armed, scheduled?.occurrence, now)
+                item(key = "next") {
+                    NextUpCard(
+                        state = state,
+                        ringingKey = ringing?.armed?.key,
+                        now = now,
+                        zone = zone,
+                        skippable = skippableEntry(state, entries),
+                        skipEnabled = !session.busy,
+                        onSkip = { toggleSkip(session, repository, it) },
+                        onOpen = { target ->
+                            when (target) {
+                                is HeroTarget.Policy -> onOpenPolicy(target.id)
+                                is HeroTarget.OneOff -> onEditOneOff(target.id)
+                            }
+                        },
+                        modifier = Modifier.animatedItem(this).padding(start = 16.dp, end = 16.dp, top = 8.dp),
+                    )
+                }
+                item(key = "upcoming-title") {
+                    Row(
+                        Modifier.animatedItem(this).fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 26.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        Text("Next $TIMELINE_DAYS days", Modifier.weight(1f), style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.SemiBold))
+                        Text(alarmCount(entries.count { !it.skipped }), style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.muted)
+                    }
+                }
                 if (entries.isEmpty()) {
                     item(key = "empty") {
-                        Text("No alarms in the next $TIMELINE_DAYS days. Add a policy or a one-off alarm.", Modifier.animatedItem(this).padding(top = 16.dp))
+                        Text(
+                            "No alarms in the next $TIMELINE_DAYS days. Add a policy or a one-off alarm.",
+                            Modifier.animatedItem(this).padding(horizontal = 20.dp, vertical = 12.dp),
+                            style = ReveilleTheme.type.body,
+                            color = ReveilleTheme.colors.muted,
+                        )
                     }
                 }
             }
             entries.groupBy { it.occurrence.at.toLocalDate() }.forEach { (date, dayEntries) ->
-                item(key = "header-$date") {
-                    Text(
-                        TimeText.dayHeader(date, today),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.animatedItem(this).padding(top = 16.dp),
-                    )
-                }
-                items(dayEntries, key = ::entryKey) { entry ->
-                    OccurrenceRow(
-                        entry = entry,
+                item(key = "day-$date") {
+                    DayGroup(
+                        date = date,
+                        entries = dayEntries,
+                        intervals = intervals,
                         enabled = !session.busy,
-                        onToggleSkip = { toggleSkip(session, repository, entry) },
+                        onToggleSkip = { toggleSkip(session, repository, it) },
                         onEditOneOff = onEditOneOff,
                         modifier = Modifier.animatedItem(this),
                     )
                 }
             }
         }
-        }
     }
 }
 
-/** A skipped entry can share its occurrence key with a real one, so the kind and instant are part of the key. */
-private fun entryKey(entry: Timeline.Entry): String =
-    "${if (entry.skipped) "s" else "r"}-${entry.occurrence.key}-${entry.occurrence.at.toInstant().toEpochMilli()}"
+private fun ScheduleSnapshot.ruleIntervals(): Map<Long, Int> = policies.flatMap { it.rules }.associate { it.id to it.intervalWeeks }
 
-@Composable
-private fun ReliabilityBanner(failing: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        val text = when (failing) {
-            CHECKS_FAILED -> "Reliability checks could not run. Alarms may not ring. Tap to review."
-            1 -> "1 reliability check needs attention. Alarms may not ring. Tap to fix."
-            else -> "$failing reliability checks need attention. Alarms may not ring. Tap to fix."
-        }
-        Text(text, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(16.dp))
-    }
+/** The timeline entry the hero's "Skip this one" acts on: the occurrence it shows, if the timeline has it. */
+private fun skippableEntry(state: NextUp, entries: List<Timeline.Entry>): Timeline.Entry? = when (state) {
+    is NextUp.Set -> entries.firstOrNull { !it.skipped && it.occurrence.key == state.armed.key && it.occurrence.at.toInstant() == state.armed.at }
+    is NextUp.NotSet -> entries.firstOrNull { !it.skipped && it.occurrence == state.scheduled }
+    else -> null
 }
 
 /** True once [mismatch] has held for [MISMATCH_GRACE_MS]; hides the normal gap between a save and its re-arm. */
@@ -192,85 +210,192 @@ private fun persistent(mismatch: Any?): Boolean {
     return shown
 }
 
+/** What the hero shows, whatever the [NextUp] state. */
+private class Hero(
+    val overline: String,
+    val at: Instant?,
+    val label: String?,
+    val color: Color,
+    val backup: String?,
+    val armedOk: Boolean,
+    val warning: String?,
+    val target: HeroTarget?,
+)
+
 @Composable
-private fun NextUpCard(state: NextUp, ringingKey: String?, now: Instant, zone: ZoneId, modifier: Modifier = Modifier) {
-    val unarmed: Occurrence? = when (state) {
+private fun NextUpCard(
+    state: NextUp,
+    ringingKey: String?,
+    now: Instant,
+    zone: ZoneId,
+    skippable: Timeline.Entry?,
+    skipEnabled: Boolean,
+    onSkip: (Timeline.Entry) -> Unit,
+    onOpen: (HeroTarget) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ReveilleTheme.colors
+    val type = ReveilleTheme.type
+    val unarmed = when (state) {
         is NextUp.Set -> state.earlierUnarmed
         is NextUp.NotSet -> state.scheduled
         else -> null
     }
     val warn = persistent(unarmed?.let { it.key to it.at })
-    Card(modifier = modifier.fillMaxWidth().padding(top = 8.dp)) {
-        Column(Modifier.animateContentSize(Motion.size).padding(16.dp)) {
-            when (state) {
-                NextUp.None -> {
-                    Text("Next alarm", style = MaterialTheme.typography.labelLarge)
-                    Text("None scheduled", style = MaterialTheme.typography.headlineMedium)
-                }
-                is NextUp.Overdue -> {
-                    val armed = state.armed
-                    val isRinging = ringingKey == armed.key
-                    Text(if (isRinging) "Ringing now" else "Overdue", style = MaterialTheme.typography.labelLarge)
-                    Text(TimeText.dayAndTime(armed.at, now, zone), style = MaterialTheme.typography.headlineMedium)
-                    Text(armedLabel(armed), style = MaterialTheme.typography.bodyMedium)
-                    if (!isRinging) {
-                        Warning("Due at ${TimeText.time(armed.at.atZone(zone).toLocalTime())} and should ring any moment. If it does not, check Reliability.")
+    val hero = when (state) {
+        NextUp.None -> Hero("Next wake-up", null, null, colors.accent, null, armedOk = false, warning = null, target = null)
+        is NextUp.Overdue -> {
+            val armed = state.armed
+            val isRinging = ringingKey == armed.key
+            Hero(
+                if (isRinging) "Ringing now" else "Overdue", armed.at, armedLabel(armed), sourceKeyColor(armed.sourceKeys), null,
+                armedOk = false,
+                warning = if (isRinging) null else "Due at ${TimeText.time(armed.at.atZone(zone).toLocalTime())} and should ring any moment. If it does not, check Health.",
+                target = null,
+            )
+        }
+        is NextUp.Set -> {
+            val armed = state.armed
+            val earlier = state.earlierUnarmed?.takeIf { warn }
+            Hero(
+                "Next wake-up", armed.at, armedLabel(armed), sourceKeyColor(armed.sourceKeys), backupText(armed.at, zone),
+                armedOk = earlier == null,
+                warning = earlier?.let {
+                    "Not set with the system: ${TimeText.dayAndTime(it.at.toInstant(), now, zone)} ${it.label} is scheduled earlier. Check Health."
+                },
+                target = heroTarget(armed.sourceKeys),
+            )
+        }
+        is NextUp.NotSet -> Hero(
+            "Next wake-up", state.scheduled.at.toInstant(), state.scheduled.label, sourceColor(state.scheduled.sources), null,
+            armedOk = false,
+            warning = if (warn) "Not set with the system, so it will not ring. Check Health." else "Setting the alarm…",
+            target = heroTarget(state.scheduled.sources.map { it.key }),
+        )
+    }
+    ReveilleCard(modifier.fillMaxWidth(), radius = 28.dp, padding = PaddingValues(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 18.dp)) {
+        Column(Modifier.animateContentSize(Motion.size), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Overline(hero.overline, Modifier.weight(1f), color = colors.accent)
+                if (hero.armedOk) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Dot(colors.accent)
+                        Text("Armed with system", style = type.small, color = colors.muted)
                     }
                 }
-                is NextUp.Set -> {
-                    val armed = state.armed
-                    Text("Next alarm", style = MaterialTheme.typography.labelLarge)
-                    Text(TimeText.dayAndTime(armed.at, now, zone), style = MaterialTheme.typography.headlineMedium)
-                    Text("${armedLabel(armed)} · ${TimeText.relative(armed.at, now)}", style = MaterialTheme.typography.bodyMedium)
-                    val earlier = state.earlierUnarmed
-                    if (earlier != null && warn) {
-                        Warning(
-                            "Not set with the system: ${TimeText.dayAndTime(earlier.at.toInstant(), now, zone)} ${earlier.label} " +
-                                "is scheduled earlier. Check Reliability.",
+            }
+            val at = hero.at
+            if (at == null) {
+                Text("None scheduled", style = type.headline)
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(TimeText.time(at.atZone(zone).toLocalTime()), Modifier.lineBox(type.displayL, 0.9f).alignByBaseline(), style = type.displayL)
+                    Column(Modifier.alignByBaseline(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(dayPart(at, now, zone), style = type.titleS.copy(fontWeight = FontWeight.Medium))
+                        Text(TimeText.relative(at, now), style = type.body, color = colors.muted)
+                    }
+                }
+            }
+            if (hero.label != null) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip {
+                        PolicyDot(hero.color)
+                        ChipText(hero.label)
+                    }
+                    hero.backup?.let { Chip { ChipText(it, color = colors.muted, style = type.mono) } }
+                }
+            }
+            hero.warning?.let { text ->
+                val settling = text == "Setting the alarm…"
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (!settling) ReveilleIcon(R.drawable.ic_warning, null, Modifier.padding(top = 1.dp), tint = colors.dangerText, size = 16.dp)
+                    Text(text, style = type.caption, color = if (settling) colors.muted else colors.dangerText)
+                }
+            }
+            val target = hero.target
+            if (skippable != null || target != null) {
+                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (skippable != null) {
+                        PillButton("Skip this one", { onSkip(skippable) }, Modifier.weight(1f), style = PillStyle.Outlined, enabled = skipEnabled)
+                    }
+                    if (target != null) {
+                        PillButton(
+                            if (target is HeroTarget.OneOff) "Edit" else "Open policy",
+                            { onOpen(target) },
+                            Modifier.weight(1f),
+                            style = PillStyle.Secondary,
                         )
                     }
-                }
-                is NextUp.NotSet -> {
-                    val at = state.scheduled.at.toInstant()
-                    Text("Next alarm", style = MaterialTheme.typography.labelLarge)
-                    Text(TimeText.dayAndTime(at, now, zone), style = MaterialTheme.typography.headlineMedium)
-                    Text("${state.scheduled.label} · ${TimeText.relative(at, now)}", style = MaterialTheme.typography.bodyMedium)
-                    Warning(if (warn) "Not set with the system, so it will not ring. Check Reliability." else "Setting the alarm…")
                 }
             }
         }
     }
 }
 
-@Composable
-private fun Warning(text: String) {
-    Text(text, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-}
-
 private fun armedLabel(armed: Armed): String = if (armed.isSnooze) "Snoozed: ${armed.label}" else armed.label
+
+/** One date of the timeline: the weekday and day number on the left, its alarms on the right. */
+@Composable
+private fun DayGroup(
+    date: LocalDate,
+    entries: List<Timeline.Entry>,
+    intervals: Map<Long, Int>,
+    enabled: Boolean,
+    onToggleSkip: (Timeline.Entry) -> Unit,
+    onEditOneOff: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ReveilleTheme.colors
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .topDivider(colors.surfaceHigh)
+            .padding(horizontal = 4.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Column(Modifier.width(44.dp).padding(top = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(date.format(weekday).uppercase(), style = ReveilleTheme.type.dayOverline, color = colors.muted)
+            Text("${date.dayOfMonth}", style = ReveilleTheme.type.dayNumber)
+        }
+        Column(Modifier.weight(1f).animateContentSize(Motion.size), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            entries.forEach { entry ->
+                OccurrenceRow(entry, intervals, enabled, { onToggleSkip(entry) }, onEditOneOff)
+            }
+        }
+    }
+}
 
 @Composable
 private fun OccurrenceRow(
     entry: Timeline.Entry,
+    intervals: Map<Long, Int>,
     enabled: Boolean,
     onToggleSkip: () -> Unit,
     onEditOneOff: (Long) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
+    val colors = ReveilleTheme.colors
+    val type = ReveilleTheme.type
     val occurrence = entry.occurrence
     val oneOff = occurrence.sources.filterIsInstance<Source.OneOffAlarm>().firstOrNull()
-    val alpha = if (entry.skipped) 0.4f else 1f
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(TimeText.time(occurrence.at.toLocalTime()), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.alpha(alpha))
-        Spacer(Modifier.width(16.dp))
+    val faded = Modifier.alpha(if (entry.skipped) 0.45f else 1f)
+    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            if (entry.skipped) "${occurrence.label} (skipped)" else occurrence.label,
-            modifier = Modifier.weight(1f).alpha(alpha),
+            TimeText.time(occurrence.at.toLocalTime()),
+            faded.width(62.dp),
+            style = type.timeRow.copy(textDecoration = if (entry.skipped) TextDecoration.LineThrough else null),
         )
-        if (oneOff != null) {
-            TextButton(onClick = { onEditOneOff(oneOff.oneOffId) }) { Text("Edit") }
+        Spacer(Modifier.width(12.dp))
+        Row(faded.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PolicyDot(sourceColor(occurrence.sources))
+            Text(occurrence.label, Modifier.weight(1f, fill = false), style = type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            occurrenceNote(occurrence.sources, entry.skipped, intervals::get)?.let {
+                Text(it, style = type.small, color = colors.muted, maxLines = 1)
+            }
         }
-        TextButton(enabled = enabled, onClick = onToggleSkip) { Text(if (entry.skipped) "Unskip" else "Skip") }
+        // A one-off keeps both actions: Edit opens it, Skip deletes it with Undo.
+        if (oneOff != null) TextAction("Edit", { onEditOneOff(oneOff.oneOffId) })
+        TextAction(if (entry.skipped) "Unskip" else "Skip", onToggleSkip, enabled = enabled)
     }
 }
 

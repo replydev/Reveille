@@ -6,4 +6,4 @@ appId: com.replydev.reveille
     permissions:
       all: allow
 - assertVisible: "Today"
-- assertVisible: "Next alarm"
+- assertVisible: "Next wake-up"

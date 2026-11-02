@@ -3,7 +3,7 @@ appId: com.replydev.reveille
 name: One-off alarm
 ---
 - runFlow: subflows/launch_clean.yaml
-- tapOn: "New alarm"
+- tapOn: "One-off alarm"
 - tapOn: "Label (optional)"
 - inputText: "Maestro one-off"
 - hideKeyboard
@@ -15,6 +15,7 @@ name: One-off alarm
 - assertNotVisible: "Maestro one-off"
 - tapOn: "Undo"
 - assertVisible: "Maestro one-off"
+- assertVisible: "backup .*"
 - tapOn: "Edit"
 - assertVisible: "Edit alarm"
 - tapOn: "Delete"

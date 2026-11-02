@@ -127,3 +127,8 @@ fun Modifier.dashedBorder(color: Color, radius: Dp? = null): Modifier = drawBehi
         style = Stroke(width = stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx()))),
     )
 }
+
+/** A 1 dp line along the top edge (timeline days, sticky bars). */
+fun Modifier.topDivider(color: Color): Modifier = drawBehind {
+    drawLine(color, Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx())
+}
