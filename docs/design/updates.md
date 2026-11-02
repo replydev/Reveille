@@ -24,7 +24,7 @@ Design lives on the canvas (https://claude.ai/artifact/9ZYXbAyXxZyZL3u5RVp2pu, r
    - the APK's signing certificate equals the installed app's;
    - the APK's package name equals ours;
    - its `versionCode` is greater than `BuildConfig.VERSION_CODE`.
-   If any check fails, delete the file, show "Checksum didn't match" (or "Signature didn't match"), and install nothing.
+   If any check fails, delete the file, show "Checksum didn't match", "Signature didn't match" or (wrong package or version) "Package didn't match", and install nothing. An unreadable `.sha256` asset counts as a checksum failure, and the APK is not downloaded.
 4. **After install, alarms must be re-armed.** `SystemEventsReceiver` already handles `MY_PACKAGE_REPLACED`. Add a Robolectric test proving that path re-arms, and keep it working.
 5. **Debug builds don't self-update.** Their signing key differs, so the install would always fail. Turn off the automatic check and show the Settings row as "Updates are off in debug builds". A manual "Check now" may still show the release, but the action becomes "Open on GitHub".
 6. **WorkManager only when the user is unlocked** (existing AGENTS.md invariant). The update worker never runs in Direct Boot.
@@ -61,7 +61,7 @@ Design lives on the canvas (https://claude.ai/artifact/9ZYXbAyXxZyZL3u5RVp2pu, r
 - `UpdateInstaller`: uses a `PackageInstaller` session (not the `ACTION_VIEW` intent).
   - Commit with a status `PendingIntent`. Handle `STATUS_PENDING_USER_ACTION` by starting the confirm intent, and map failures to a readable message.
   - If `packageManager.canRequestPackageInstalls()` is false, show the permission state, which opens `Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES` with `package:` + our package.
-- `InstallGuard` (a pure function plus tests). Inputs: the armed alarm, whether something is ringing, and now. Output is one of `Allowed`, `AlarmSoon(armed)` (due ≤ 30 min, or a snooze due ≤ 30 min) or `Ringing`.
+- `InstallGuard` (a pure function plus tests). Inputs: the armed alarm, the snooze, what is ringing, and now. "Ringing" also covers an occurrence the ring guard still protects (claimed, not yet resolved). Output is one of `Allowed`, `AlarmSoon(armed)` (the earlier of alarm and snooze is due ≤ 30 min, or overdue) or `Ringing(armed)`. The sheet checks it when "Download and install" is tapped and again on "Install".
 - `UpdateUiState` (a sealed type) drives the sheet footer: `Idle(release)`, `Downloading(progress)`, `Verifying`, `Ready`, `NeedsPermission`, `AlarmSoon(label, at)`, `Failed(reason)`, `Installing`.
 
 **Manifest:**
