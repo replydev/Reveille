@@ -46,7 +46,6 @@ import com.replydev.reveille.ui.components.runReporting
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -86,7 +85,8 @@ fun HomeScreen(
         }
     }
     val zone = ZoneId.systemDefault()
-    val today = LocalDate.ofInstant(now, zone)
+    // atZone, not LocalDate.ofInstant: the latter is API 34.
+    val today = now.atZone(zone).toLocalDate()
     val entries = remember(snapshot, now) { snapshot?.let { Timeline.build(it, now, zone, TIMELINE_DAYS) } ?: emptyList() }
 
     ScreenScaffold(
