@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reveille — Update states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FFB547}a:hover{color:#FFD08A}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0B0D11; color: #F3F4F6; font-family: 'Geist', system-ui, sans-serif; font-variant-numeric: tabular-nums; box-sizing: border-box; padding: 52px 16px 24px; display: flex; flex-direction: column; gap: 12px">
+
+  <header style="padding: 0 4px 6px; display: flex; flex-direction: column; gap: 2px">
+    <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #A1A9B5">Sheet footer states</span>
+    <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em">Installing v0.3.0</h1>
+  </header>
+
+  <section aria-label="Downloading" style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 20px; background: #15181E; border: 1px solid #22262E">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <span style="font-size: 15px; font-weight: 600">Downloading…</span>
+      <span style="font-size: 13px; color: #A1A9B5; font-family: 'Geist Mono', monospace">62%</span>
+    </div>
+    <div role="progressbar" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100" aria-label="Download progress" style="height: 6px; border-radius: 3px; background: #1D2129; overflow: hidden"><div style="width: 62%; height: 6px; border-radius: 3px; background: {{accent}}"></div></div>
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <span style="font-size: 13px; color: #A1A9B5">Then verify checksum and signature</span>
+      <button style="height: 36px; padding: 0 12px; border: none; background: transparent; color: #A1A9B5; font-size: 13px; font-weight: 500">Cancel</button>
+    </div>
+  </section>
+
+  <section aria-label="Ready to install" style="display: flex; align-items: center; gap: 12px; padding: 14px 14px 14px 16px; border-radius: 20px; background: #15181E; border: 1px solid #22262E">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7EE0C3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"></path><path d="M8.5 12l2.5 2.5 4.5-5"></path></svg>
+    <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 15px; font-weight: 600">Verified</span>
+      <span style="font-size: 13px; color: #A1A9B5">SHA-256 and signing key match</span>
+    </span>
+    <button style="height: 44px; padding: 0 20px; border-radius: 22px; border: none; background: {{accent}}; color: #1A1205; font-size: 14px; font-weight: 600">Install</button>
+  </section>
+
+  <section aria-label="Permission needed" style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 20px; background: #15181E; border: 1px solid #22262E">
+    <div style="display: flex; gap: 12px; align-items: flex-start">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 1px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+      <span style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 15px; font-weight: 600">Allow Reveille to install apps</span>
+        <span style="font-size: 13px; color: #A1A9B5; line-height: 1.45">Android asks once. Turn on “Allow from this source”, then come back.</span>
+      </span>
+    </div>
+    <button style="align-self: flex-start; margin-left: 32px; height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid #2A2F38; background: transparent; color: #F3F4F6; font-size: 14px; font-weight: 500">Open settings</button>
+  </section>
+
+  <section aria-label="Alarm coming up" style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 20px; background: #1A1810; border: 1px solid #3A3020">
+    <div style="display: flex; gap: 12px; align-items: flex-start">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 1px"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 2"></path><path d="M5 3L2 6M19 3l3 3"></path></svg>
+      <span style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 15px; font-weight: 600">Work rings in 18 min</span>
+        <span style="font-size: 13px; color: #A1A9B5; line-height: 1.45">Updates wait until it has rung. We’ll remind you after 07:55.</span>
+      </span>
+    </div>
+    <div style="display: flex; gap: 8px; margin-left: 32px">
+      <button style="height: 40px; padding: 0 16px; border-radius: 20px; border: none; background: #2A2418; color: {{accent}}; font-size: 14px; font-weight: 600">Remind me</button>
+      <button style="height: 40px; padding: 0 12px; border: none; background: transparent; color: #A1A9B5; font-size: 14px; font-weight: 500">Install anyway</button>
+    </div>
+  </section>
+
+  <section aria-label="Verification failed" style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 20px; background: #1E1513; border: 1px solid #3A2A25">
+    <div style="display: flex; gap: 12px; align-items: flex-start">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF8A75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 1px"><path d="M12 3l9 16H3z"></path><path d="M12 10v4"></path><path d="M12 17.5v.01"></path></svg>
+      <span style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 15px; font-weight: 600">Checksum didn’t match</span>
+        <span style="font-size: 13px; color: #D8C2BC; line-height: 1.45">The download was deleted and nothing was installed. Your alarms are unaffected.</span>
+      </span>
+    </div>
+    <button style="align-self: flex-start; margin-left: 32px; height: 40px; padding: 0 16px; border-radius: 20px; border: none; background: #FF8A75; color: #1E0D09; font-size: 14px; font-weight: 600">Try again</button>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#FFB547","options":["#FFB547","#8AB4FF","#7EE0C3","#F2A0C8"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FFB547' };
+  }
+}
+</script>
+</body>
+</html>
