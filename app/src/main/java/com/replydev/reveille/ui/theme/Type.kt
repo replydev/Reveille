@@ -3,21 +3,21 @@ package com.replydev.reveille.ui.theme
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.unit.Constraints
-import kotlin.math.roundToInt
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.replydev.reveille.R
+import kotlin.math.roundToInt
 
 /** Bundled, not downloadable: the ringing screen must render in Direct Boot with no network. */
 val Geist = FontFamily(
@@ -127,5 +127,3 @@ internal fun materialTypography(): Typography {
     )
 }
 
-/** [this] with CSS line-height [em]: for multi-line copy that the mockups space with `line-height`. */
-fun TextStyle.withLineHeight(em: Double): TextStyle = lineHeight(em)

@@ -1,18 +1,17 @@
 package com.replydev.reveille.ui
 
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +28,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.replydev.reveille.MainActivity
 import com.replydev.reveille.ui.components.NavBottomSheet
 import com.replydev.reveille.ui.components.ReveilleNavBar
 import com.replydev.reveille.ui.components.Tab
@@ -56,8 +56,9 @@ object Routes {
 
 private fun NavBackStackEntry.tab(): Tab? = Tab.of(destination.route)
 
+/** [launchTarget] is a screen the widget asked for (see [MainActivity.EXTRA_OPEN]); [onLaunched] clears it. */
 @Composable
-fun ReveilleNavHost() {
+fun ReveilleNavHost(launchTarget: String? = null, onLaunched: () -> Unit = {}) {
     val nav = rememberNavController()
     val density = LocalDensity.current
     val failingChecks = rememberFailingChecks()
@@ -116,6 +117,15 @@ fun ReveilleNavHost() {
                 healthBadge = failingChecks != null && failingChecks != 0,
             )
         }
+    }
+    // After NavHost, which sets the graph these navigate in.
+    LaunchedEffect(launchTarget) {
+        when (launchTarget) {
+            MainActivity.OPEN_ONE_OFF -> if (nav.currentDestination?.route != Routes.ONE_OFF) nav.navigate(Routes.oneOff(0))
+            MainActivity.OPEN_HEALTH -> nav.openTab(Tab.Health)
+            null -> return@LaunchedEffect
+        }
+        onLaunched()
     }
 }
 

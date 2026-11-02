@@ -3,10 +3,13 @@ package com.replydev.reveille.alarm
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.graphics.Color as AndroidColor
 import android.provider.Settings
 import android.util.Log
+import android.view.WindowManager
+import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -17,37 +20,19 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
-import com.replydev.reveille.R
-import com.replydev.reveille.container
-import com.replydev.reveille.ui.components.Pill
-import com.replydev.reveille.ui.components.ReveilleIcon
-import com.replydev.reveille.ui.theme.lineBox
-import kotlinx.coroutines.flow.catch
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import android.view.WindowManager
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,15 +42,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.replydev.reveille.R
+import com.replydev.reveille.container
 import com.replydev.reveille.engine.Armed
 import com.replydev.reveille.engine.TimeText
+import com.replydev.reveille.ui.components.Pill
+import com.replydev.reveille.ui.components.ReveilleIcon
 import com.replydev.reveille.ui.theme.ReveilleTheme
+import com.replydev.reveille.ui.theme.lineBox
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.catch
+import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import android.graphics.Color as AndroidColor
 
 /**
  * Full-screen alarm UI. Normal mode mirrors [RingingService.ringing] (Snooze/Dismiss go to the service). Fallback mode

@@ -12,50 +12,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.ui.graphics.Color
-import com.replydev.reveille.R
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.replydev.reveille.R
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import kotlinx.coroutines.delay
 import java.time.LocalDate
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ScreenScaffold(
-    title: String,
-    onBack: (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {},
-    floatingActionButton: @Composable () -> Unit = {},
-    snackbarHostState: SnackbarHostState? = null,
-    content: @Composable (PaddingValues) -> Unit,
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                navigationIcon = { if (onBack != null) TextButton(onClick = onBack) { Text("Back") } },
-                actions = actions,
-            )
-        },
-        floatingActionButton = floatingActionButton,
-        snackbarHost = { snackbarHostState?.let { SnackbarHost(it) } },
-        content = content,
-    )
-}
 
 /**
  * A top-level screen: below the status bar, above the [ReveilleNavBar] (which the nav host draws on top). The FAB
@@ -122,19 +94,6 @@ fun EditorTopBar(title: String, onBack: () -> Unit, actions: @Composable RowScop
         actions()
     }
 }
-
-@Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = modifier.padding(top = 8.dp))
-}
-
-/** Content padding for a LazyColumn inside a scaffold: keeps room for the FAB at the bottom. */
-fun listPadding(scaffold: PaddingValues, fabRows: Int = 1, horizontal: Dp = 16.dp): PaddingValues = PaddingValues(
-    start = horizontal,
-    end = horizontal,
-    top = scaffold.calculateTopPadding() + 8.dp,
-    bottom = scaffold.calculateBottomPadding() + 32.dp + 68.dp * fabRows,
-)
 
 /** Today's date, kept current across midnight while the screen is shown. */
 @Composable

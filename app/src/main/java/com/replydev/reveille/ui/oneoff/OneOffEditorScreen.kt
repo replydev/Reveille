@@ -60,7 +60,6 @@ import com.replydev.reveille.ui.components.PickDateDialog
 import com.replydev.reveille.ui.components.PickTimeDialog
 import com.replydev.reveille.ui.components.PillButton
 import com.replydev.reveille.ui.components.PolicyDot
-import com.replydev.reveille.ui.components.ReveilleIcon
 import com.replydev.reveille.ui.components.SegmentedControl
 import com.replydev.reveille.ui.components.SheetScaffold
 import com.replydev.reveille.ui.components.UiMessage
