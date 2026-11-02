@@ -2,6 +2,26 @@
 
 An Android alarm clock for schedules the stock Clock app can't express, built so that a wake-up is never lost silently.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/today.png" width="24%" alt="Today: next wake-up and the 14-day timeline">
+  <img src="docs/screenshots/policies.png" width="24%" alt="Policies: named groups of recurring alarms">
+  <img src="docs/screenshots/policy-editor.png" width="24%" alt="Policy editor: alarm times, days and repeat interval">
+  <img src="docs/screenshots/one-off.png" width="24%" alt="One-off alarm sheet: pick a date, replace the day or ring in addition">
+</p>
+<p align="center">
+  <img src="docs/screenshots/health.png" width="24%" alt="Health: reliability checks and a test alarm">
+  <img src="docs/screenshots/settings.png" width="24%" alt="Settings: sound, vibration and snooze">
+  <img src="docs/screenshots/ringing.png" width="24%" alt="Ringing screen with Dismiss and Snooze">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/widget-wide.png" width="32%" alt="Wide widget with the next wake-up and a Skip button">
+  <img src="docs/screenshots/widget-issue.png" width="32%" alt="Widget showing a reliability issue">
+  <img src="docs/screenshots/widget-compact.png" width="16%" alt="Compact widgets: accent and empty state">
+</p>
+
 ## Features
 
 - **One-off alarms on a date.** "09:30 next Thursday only", with no recurrence. A one-off can either replace that day's recurring alarms or ring in addition to them.
