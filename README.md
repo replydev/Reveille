@@ -82,3 +82,7 @@ If Reveille is force-stopped, Android deletes its alarms until you open the app 
 ## Tech
 
 Kotlin · Jetpack Compose (Material 3) · Room · DataStore · WorkManager · Glance · JUnit 4 + Robolectric.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
