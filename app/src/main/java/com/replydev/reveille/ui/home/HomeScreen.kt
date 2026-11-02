@@ -116,6 +116,7 @@ fun HomeScreen(
         actions = {
             TextButton(onClick = onOpenPolicies) { Text("Policies") }
             TextButton(onClick = onOpenSettings) { Text("Settings") }
+            TextButton(onClick = onOpenReliability) { Text("Reliability") }
         },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
