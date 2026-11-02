@@ -163,6 +163,8 @@ class AlarmSchedulerTest {
         assertEquals(AlarmScheduler.ACTION_GUARD, intent.action)
         assertEquals("Early", Armed.decode(intent.getStringExtra(AlarmScheduler.EXTRA_ARMED)!!)?.label)
         assertEquals(armed.key, state.guard()?.key)
+        // While a guard is armed the system shows it as the next alarm; tapping that opens the ringing screen.
+        assertEquals(RingingActivity::class.java.name, shadowOf(guard.showIntent).savedIntent.component?.className)
 
         scheduler.rearm("again") // rearm never touches the guard
         assertTrue(guardAt.toEpochMilli() in triggers())

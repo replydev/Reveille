@@ -90,6 +90,11 @@ class AlarmScheduler(
      * Arms the ring guard for [armed] at [at]: an extra `setAlarmClock` alarm that re-rings the occurrence if it is
      * still unhandled then (see [AlarmFiring.onGuard]). Only one occurrence is guarded: if the guard moves away from
      * another one that is still FIRED, that one is recorded [FireOutcome.SUPERSEDED].
+     *
+     * Why a single slot: only one alarm can ring at a time, and the newer one is what the user needs to act on. One
+     * PendingIntent (fixed request code) is also trivially cancellable and can never pile up stale guards. The cost:
+     * an older unhandled occurrence loses its retries once superseded (its fallback notification, if posted, stays),
+     * which only matters if two alarms are due within minutes of each other and both fail to ring.
      */
     suspend fun armGuard(armed: Armed, attempt: Int, at: Instant): Unit = guardMutex.withLock {
         setGuardAlarm(armed, attempt, at)
@@ -134,9 +139,25 @@ class AlarmScheduler(
         notifier.showMissed(missed)
     }
 
+    /**
+     * Arms [snooze] straight with AlarmManager under its own request code, bypassing the planner: used when the snooze
+     * could not be persisted, so it still rings. Delivered like any alarm; the claim dedupes it against the planner's.
+     */
+    fun armDirectSnooze(snooze: Armed) {
+        try {
+            alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(snooze.at.toEpochMilli(), showIntent()), fireIntent(snooze, REQUEST_DIRECT_SNOOZE))
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Exact alarms not permitted; snooze ${snooze.key} not armed", e)
+        }
+    }
+
+    fun cancelDirectSnooze() = alarmManager.cancel(fireIntent(null, REQUEST_DIRECT_SNOOZE))
+
     private fun setGuardAlarm(armed: Armed, attempt: Int, at: Instant) {
         try {
-            alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(at.toEpochMilli(), showIntent()), guardIntent(armed, attempt))
+            // The guard shows up as the system's "next alarm" while an occurrence is unresolved; tapping it opens the
+            // ringing screen rather than the app.
+            alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(at.toEpochMilli(), ringingShowIntent()), guardIntent(armed, attempt))
         } catch (e: SecurityException) {
             Log.e(TAG, "Exact alarms not permitted; ring guard for ${armed.key} not armed", e)
         }
@@ -186,6 +207,13 @@ class AlarmScheduler(
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
+    private fun ringingShowIntent(): PendingIntent = PendingIntent.getActivity(
+        context,
+        REQUEST_GUARD_SHOW,
+        Intent(context, RingingActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
     private fun fireIntent(armed: Armed?, requestCode: Int): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java)
             .setAction(ACTION_FIRE)
@@ -204,6 +232,8 @@ class AlarmScheduler(
         private const val REQUEST_BACKUP = 101
         private const val REQUEST_SHOW = 102
         private const val REQUEST_GUARD = 103
+        private const val REQUEST_DIRECT_SNOOZE = 104
+        private const val REQUEST_GUARD_SHOW = 105
         private const val TAG = "Reveille"
     }
 }

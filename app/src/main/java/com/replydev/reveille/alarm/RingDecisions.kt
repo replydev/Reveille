@@ -40,11 +40,12 @@ object RingDecisions {
     /**
      * [claimed] is the result of claiming the occurrence: true for the first delivery, false for a later one (backup,
      * catch-up, guard), null if the claim failed or timed out. Ringing twice beats not ringing, so unknown rings.
-     * A guard re-ring is a later delivery by design: it rings while the occurrence is still unhandled.
+     * [retry] = guard re-ring or backup alarm: these ring a claimed occurrence while it is still unhandled (the claimer
+     * may have died before protecting it). The caller has already ruled out that this process rings it right now.
      */
-    fun delivery(claimed: Boolean?, guard: Boolean, outcome: FireOutcome?): Delivery = when {
+    fun delivery(claimed: Boolean?, retry: Boolean, outcome: FireOutcome?): Delivery = when {
         claimed != false -> Delivery.RING
-        guard && isUnhandled(outcome) -> Delivery.RING
+        retry && isUnhandled(outcome) -> Delivery.RING
         else -> Delivery.DUPLICATE
     }
 

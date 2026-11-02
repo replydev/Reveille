@@ -13,9 +13,13 @@ import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.data.SchedulerState
 import com.replydev.reveille.data.SettingsStore
 import com.replydev.reveille.engine.Armed
+import com.replydev.reveille.testing.FlakyDataStore
+import com.replydev.reveille.testing.FlakyFireLogDao
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -41,6 +45,8 @@ class AlarmFiringTest {
     private lateinit var state: SchedulerState
     private lateinit var scheduler: AlarmScheduler
     private lateinit var firing: AlarmFiring
+    private lateinit var prefs: FlakyDataStore
+    private lateinit var fireLog: FlakyFireLogDao
     private var now: Instant = Instant.parse("2026-11-02T06:30:00Z")
     private val armed = Armed("O:1", Instant.parse("2026-11-02T06:30:00Z"), "Dentist")
 
@@ -55,12 +61,13 @@ class AlarmFiringTest {
         ShadowAlarmManager.setCanScheduleExactAlarms(true)
         context = ApplicationProvider.getApplicationContext()
         db = Room.inMemoryDatabaseBuilder(context, ReveilleDatabase::class.java).allowMainThreadQueries().build()
-        val prefs = PreferenceDataStoreFactory.create { File(tmp.root, "test.preferences_pb") }
+        prefs = FlakyDataStore(PreferenceDataStoreFactory.create { File(tmp.root, "test.preferences_pb") })
+        fireLog = FlakyFireLogDao(db.fireLogDao())
         state = SchedulerState(prefs)
         val notifier = Notifier(context).also { it.createChannels() }
         lateinit var repository: ScheduleRepository
         repository = ScheduleRepository(db.scheduleDao()) { scheduler.rearm("test change") }
-        scheduler = AlarmScheduler(context, repository, db.fireLogDao(), state, notifier, onArmedChanged = {}, clock = { now })
+        scheduler = AlarmScheduler(context, repository, fireLog, state, notifier, onArmedChanged = {}, clock = { now })
         firing = AlarmFiring(
             scheduler,
             state,
@@ -89,6 +96,16 @@ class AlarmFiringTest {
         .map { it.triggerAtMs to shadowOf(it.operation).savedIntent }
         .singleOrNull { it.second.action == AlarmScheduler.ACTION_GUARD }
         ?.let { (at, intent) -> Instant.ofEpochMilli(at) to intent.getIntExtra(AlarmScheduler.EXTRA_ATTEMPT, -1) }
+
+    /** The snooze armed directly with AlarmManager (bypassing the planner) as (trigger, armed), or null. */
+    private fun directSnooze(): Pair<Instant, Armed>? = alarms()
+        .singleOrNull { shadowOf(it.operation).requestCode == 104 }
+        ?.let { Instant.ofEpochMilli(it.triggerAtMs) to Armed.decode(shadowOf(it.operation).savedIntent.getStringExtra(AlarmScheduler.EXTRA_ARMED)!!)!! }
+
+    private fun failWrites(fail: Boolean) {
+        prefs.failWrites = fail
+        fireLog.failWrites = fail
+    }
 
     @Test
     fun startThatThrowsIsReportedAsFailure() {
@@ -180,18 +197,19 @@ class AlarmFiringTest {
 
     @Test
     fun duplicateDeliveryDoesNotRingTwice() = runBlocking {
-        assertEquals(Delivery.RING, firing.decideDelivery(armed, guard = false))
-        assertEquals(Delivery.DUPLICATE, firing.decideDelivery(armed, guard = false)) // backup / catch-up
-        assertEquals(Delivery.RING, firing.decideDelivery(armed, guard = true)) // still FIRED: guard re-rings
+        assertEquals(Delivery.RING, firing.decideDelivery(armed, guard = false, backup = false))
+        assertEquals(Delivery.DUPLICATE, firing.decideDelivery(armed, guard = false, backup = false)) // catch-up
+        assertEquals(Delivery.RING, firing.decideDelivery(armed, guard = true, backup = false)) // still FIRED: guard re-rings
         firing.dismiss(armed)
-        assertEquals(Delivery.DUPLICATE, firing.decideDelivery(armed, guard = true))
-        assertEquals(Delivery.DUPLICATE, firing.decideDelivery(armed, guard = false))
+        assertEquals(Delivery.DUPLICATE, firing.decideDelivery(armed, guard = true, backup = false))
+        assertEquals(Delivery.DUPLICATE, firing.decideDelivery(armed, guard = false, backup = false))
+        assertEquals(Delivery.DUPLICATE, firing.decideDelivery(armed, guard = false, backup = true))
     }
 
     @Test
     fun ringStartGuardsResetsAutoSnoozesAndRearms() = runBlocking {
         state.setAutoSnoozeCount(2)
-        firing.decideDelivery(armed, guard = false)
+        firing.decideDelivery(armed, guard = false, backup = false)
         firing.onRingStarted(armed)
         assertEquals(now.plusSeconds(90) to 0, guard())
         assertEquals(0, state.autoSnoozeCount())
@@ -202,21 +220,22 @@ class AlarmFiringTest {
 
     @Test
     fun snoozeIsPersistedAndCancelsTheGuard() = runBlocking {
-        firing.decideDelivery(armed, guard = false)
+        firing.decideDelivery(armed, guard = false, backup = false)
         firing.onRingStarted(armed)
-        firing.snooze(armed, auto = false)
+        assertTrue(firing.snooze(armed, auto = false))
         assertEquals(FireOutcome.SNOOZED, scheduler.outcome(armed))
         val snooze = state.snooze()!!
         assertEquals(now.plus(Duration.ofMinutes(9)), snooze.at)
         assertEquals(snooze.key, state.armed()?.key) // the snooze is armed with AlarmManager
         assertNull(guard())
+        assertNull(directSnooze()) // persisted: the planner arms it
     }
 
     @Test
     fun autoSnoozeGivesUpAsMissedAfterThreeInARow() = runBlocking {
         state.setAutoSnoozeCount(RingDecisions.MAX_AUTO_SNOOZES)
         val snooze = Armed.snooze(now, "Dentist")
-        firing.decideDelivery(snooze, guard = false)
+        firing.decideDelivery(snooze, guard = false, backup = false)
         firing.snooze(snooze, auto = true)
         assertEquals(FireOutcome.MISSED, scheduler.outcome(snooze))
         assertTrue(missedPosted())
@@ -227,9 +246,9 @@ class AlarmFiringTest {
     @Test
     fun dismissIsPersistedAndCancelsTheGuard() = runBlocking {
         state.setAutoSnoozeCount(1)
-        firing.decideDelivery(armed, guard = false)
+        firing.decideDelivery(armed, guard = false, backup = false)
         firing.onRingStarted(armed)
-        firing.dismiss(armed)
+        assertTrue(firing.dismiss(armed))
         assertEquals(FireOutcome.DISMISSED, scheduler.outcome(armed))
         assertEquals(0, state.autoSnoozeCount())
         assertNull(guard())
@@ -244,5 +263,89 @@ class AlarmFiringTest {
         assertTrue(notifications().isEmpty())
         assertNull(guard())
         assertEquals(1, dismissSent)
+    }
+
+    // ---- N1: claimed but never protected ----
+
+    @Test
+    fun backupOfAClaimedButUnhandledOccurrenceRings() = runBlocking {
+        scheduler.claim(armed) // e.g. the process died before the guard was armed
+        assertEquals(Delivery.RING, firing.decideDelivery(armed, guard = false, backup = true))
+    }
+
+    @Test
+    fun duplicateDeliveryStillRearms() = runBlocking {
+        state.setArmed(Armed("O:gone", now.plusSeconds(3600), "Deleted"))
+        firing.onDuplicate()
+        assertNull(state.armed()) // the planner ran: nothing is scheduled any more
+    }
+
+    // ---- N3: persistence failures never leave the alarm stuck or lost ----
+
+    @Test
+    fun dismissThatCannotBePersistedKeepsTheGuardSoItRingsAgain() = runBlocking {
+        firing.decideDelivery(armed, guard = false, backup = false)
+        firing.onRingStarted(armed)
+        failWrites(true)
+        assertFalse(firing.dismiss(armed))
+        assertEquals(now.plusSeconds(90) to 0, guard())
+        assertEquals(FireOutcome.FIRED, scheduler.outcome(armed))
+    }
+
+    @Test
+    fun snoozeThatCannotBePersistedIsArmedDirectly() = runBlocking {
+        firing.decideDelivery(armed, guard = false, backup = false)
+        firing.onRingStarted(armed)
+        failWrites(true)
+        assertFalse(firing.snooze(armed, auto = false))
+        val (at, snooze) = directSnooze()!!
+        assertEquals(now.plus(Duration.ofMinutes(9)), at)
+        assertTrue(snooze.isSnooze)
+        assertEquals(snooze.at, at)
+        assertNull(guard()) // the direct snooze replaces the guard: no re-ring 90 s later
+    }
+
+    @Test
+    fun dismissClearsTheSnoozeAPartlyFailedSnoozeLeftBehind() = runBlocking {
+        firing.decideDelivery(armed, guard = false, backup = false)
+        firing.onRingStarted(armed)
+        fireLog.failWrites = true // setSnooze succeeds, recordOutcome fails
+        assertFalse(firing.snooze(armed, auto = false))
+        assertNotNull(state.snooze())
+        assertNotNull(directSnooze())
+        fireLog.failWrites = false
+        // The occurrence is still FIRED, so it rings again (guard or backup); this time the user dismisses it.
+        assertTrue(firing.dismiss(armed))
+        assertNull(state.snooze())
+        assertNull(directSnooze())
+        assertTrue(alarms().none { Armed.decode(shadowOf(it.operation).savedIntent.getStringExtra(AlarmScheduler.EXTRA_ARMED) ?: "")?.isSnooze == true })
+    }
+
+    @Test
+    fun autoSnoozeIsCappedEvenWhenNothingCanBePersisted() = runBlocking {
+        failWrites(true)
+        var ringing = armed
+        repeat(RingDecisions.MAX_AUTO_SNOOZES) {
+            firing.snooze(ringing, auto = true)
+            ringing = directSnooze()!!.second
+            assertFalse(missedPosted())
+        }
+        firing.snooze(ringing, auto = true)
+        assertTrue(missedPosted())
+    }
+
+    @Test
+    fun ringStartCancelsTheFallbackAndTheDirectSnooze() = runBlocking {
+        firing.onStartFailed(armed)
+        assertTrue(fallbackPosted())
+        firing.onRingStarted(armed)
+        assertFalse(fallbackPosted())
+
+        failWrites(true)
+        firing.snooze(armed, auto = false)
+        val snooze = directSnooze()!!.second
+        failWrites(false)
+        firing.onRingStarted(snooze)
+        assertNull(directSnooze())
     }
 }

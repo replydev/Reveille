@@ -66,6 +66,15 @@ class NotifierTest {
     }
 
     @Test
+    fun oldFallbackChannelIsReplaced() {
+        manager.createNotificationChannel(android.app.NotificationChannel("alarm_fallback", "Fallback alarms", NotificationManager.IMPORTANCE_HIGH))
+        notifier.createChannels()
+        assertNull(manager.getNotificationChannel("alarm_fallback"))
+        assertEquals("alarm_fallback_v2", Notifier.CHANNEL_ALARM_FALLBACK)
+        assertNotNull(manager.getNotificationChannel(Notifier.CHANNEL_ALARM_FALLBACK))
+    }
+
+    @Test
     fun droppedNotificationIsLogged() {
         shadowOf(manager).setNotificationsEnabled(false)
         notifier.postFallbackAlarm(Armed("O:1", Instant.parse("2026-11-02T06:30:00Z"), "Dentist"))

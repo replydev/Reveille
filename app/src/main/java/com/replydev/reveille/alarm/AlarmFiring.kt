@@ -63,20 +63,22 @@ class AlarmFiring(
         }
     }
 
-    /** The ring guard for [armed] fired; [attempt] counts the retries so far. Never throws. */
-    suspend fun onGuard(armed: Armed, attempt: Int) {
-        if (isRinging(armed)) return // the running service keeps re-arming the guard
+    /**
+     * The ring guard for [armed] fired; [attempt] counts the retries so far. Returns true if [RingingService] was
+     * started (it then takes over the firing wake lock). Never throws.
+     */
+    suspend fun onGuard(armed: Armed, attempt: Int): Boolean {
+        if (isRinging(armed)) return false // the running service keeps re-arming the guard
         // Unreadable outcome: assume unhandled. Ringing twice beats not ringing.
         val outcome = safely("outcome ${armed.key}", FireOutcome.FIRED) { scheduler.outcome(armed) }
         when (RingDecisions.guard(outcome, armed.at, clock())) {
             GuardAction.RING -> {
                 Log.w(TAG, "Guard: ${armed.key} still unhandled; ringing again (attempt $attempt)")
-                if (!startRinging(armed, backup = false, guard = true)) {
-                    val next = attempt + 1
-                    safely("post fallback ${armed.key}", Unit) { notifier.postFallbackAlarm(armed) }
-                    safely("re-arm guard ${armed.key}", Unit) {
-                        scheduler.armGuard(armed, next, clock().plus(RingDecisions.guardBackoff(next)))
-                    }
+                if (startRinging(armed, backup = false, guard = true)) return true
+                val next = attempt + 1
+                safely("post fallback ${armed.key}", Unit) { notifier.postFallbackAlarm(armed) }
+                safely("re-arm guard ${armed.key}", Unit) {
+                    scheduler.armGuard(armed, next, clock().plus(RingDecisions.guardBackoff(next)))
                 }
             }
             GuardAction.GIVE_UP -> {
@@ -86,6 +88,7 @@ class AlarmFiring(
             }
             GuardAction.DONE -> safely("cancel guard", Unit) { scheduler.cancelGuard(armed) }
         }
+        return false
     }
 
     /** The user dismissed the fallback alarm (notification action, swipe or fallback screen). */
@@ -103,19 +106,40 @@ class AlarmFiring(
 
     // ---- Service side ----
 
-    /** Claims [armed] for a RING delivery and decides whether it rings. Never throws: on failure, it rings. */
-    suspend fun decideDelivery(armed: Armed, guard: Boolean): Delivery {
+    /** Auto-snoozes in a row as seen by this process; caps auto-snoozing even when the persisted count cannot be written. */
+    private var autoSnoozes = 0
+
+    /** The last snooze set while [snoozedFrom.first] rang, so dismissing that occurrence later can withdraw it. */
+    private var snoozedFrom: Pair<Armed, Armed>? = null
+
+    /**
+     * Claims [armed] for a RING delivery and decides whether it rings. A [guard] or [backup] delivery rings a claimed
+     * occurrence that is still unhandled. Never throws: on failure, it rings.
+     */
+    suspend fun decideDelivery(armed: Armed, guard: Boolean, backup: Boolean): Delivery {
+        val retry = guard || backup
         val claimed = safely("claim ${armed.key}", null) { withTimeoutOrNull(DB_TIMEOUT) { scheduler.claim(armed) } }
-        val outcome = if (claimed == false && guard) safely("outcome ${armed.key}", null) { scheduler.outcome(armed) } else null
-        return RingDecisions.delivery(claimed, guard, outcome)
+        val outcome = if (claimed == false && retry) safely("outcome ${armed.key}", null) { scheduler.outcome(armed) } else null
+        return RingDecisions.delivery(claimed, retry, outcome)
     }
 
-    /** [armed] started ringing: guard it, consume its snooze, reset auto-snoozes for a fresh alarm, arm the next one. */
+    /** A delivery turned out to be a duplicate: still re-arm, in case whoever claimed it never got that far. */
+    suspend fun onDuplicate() {
+        safely("rearm", Unit) { scheduler.rearm("duplicate delivery") }
+    }
+
+    /**
+     * [armed] started ringing: guard it, withdraw its fallback notification (and the direct snooze alarm if it is a
+     * snooze), consume its snooze or reset auto-snoozes for a fresh alarm, and arm the next one.
+     */
     suspend fun onRingStarted(armed: Armed) {
         safely("arm guard ${armed.key}", Unit) { scheduler.armGuard(armed, 0, clock().plus(RingDecisions.GUARD_WHILE_RINGING)) }
+        safely("cancel fallback ${armed.key}", Unit) { notifier.cancelFallbackAlarm(armed) }
         if (armed.isSnooze) {
+            safely("cancel direct snooze", Unit) { scheduler.cancelDirectSnooze() }
             safely("consume snooze", Unit) { consumeSnooze(armed) }
         } else {
+            autoSnoozes = 0
             safely("reset auto-snoozes", Unit) { state.setAutoSnoozeCount(0) }
         }
         safely("rearm", Unit) { scheduler.rearm("alarm fired") }
@@ -126,29 +150,67 @@ class AlarmFiring(
         safely("refresh guard ${armed.key}", true) { scheduler.refreshGuard(armed, clock().plus(RingDecisions.GUARD_WHILE_RINGING)) }
 
     /**
-     * Persists a snooze (or, after [RingDecisions.MAX_AUTO_SNOOZES] auto-snoozes in a row, gives up as MISSED).
-     * Throws if it could not be persisted: the caller must then keep ringing.
+     * Snoozes [armed] (or, after [RingDecisions.MAX_AUTO_SNOOZES] auto-snoozes in a row, gives up as MISSED). Never
+     * throws; the caller stops ringing either way. Returns false if it could not be fully persisted: then the snooze
+     * is armed directly with AlarmManager so it still rings, and the guard is cancelled so it does not re-ring early.
      */
-    suspend fun snooze(armed: Armed, auto: Boolean) {
-        val count = if (auto) state.autoSnoozeCount() + 1 else 0
+    suspend fun snooze(armed: Armed, auto: Boolean): Boolean {
+        val count = if (auto) maxOf(safely("read auto-snoozes", 0) { state.autoSnoozeCount() }, autoSnoozes) + 1 else 0
+        autoSnoozes = count
         if (count > RingDecisions.MAX_AUTO_SNOOZES) {
-            scheduler.markMissed(armed)
-            state.setAutoSnoozeCount(0)
-        } else {
-            val minutes = safely("read snooze length", 9) { settings.current().snoozeMinutes }.coerceAtLeast(1)
+            autoSnoozes = 0
+            val recorded = safely("record missed ${armed.key}", false) {
+                scheduler.recordOutcome(armed, FireOutcome.MISSED)
+                true
+            }
+            safely("show missed", Unit) { notifier.showMissed(armed) }
+            safely("reset auto-snoozes", Unit) { state.setAutoSnoozeCount(0) }
+            safely("cancel guard", Unit) { scheduler.cancelGuard(armed) }
+            return recorded
+        }
+        val minutes = safely("read snooze length", 9) { settings.current().snoozeMinutes }.coerceAtLeast(1)
+        val snooze = Armed.snooze(clock().plus(Duration.ofMinutes(minutes.toLong())), armed.label)
+        snoozedFrom = armed to snooze
+        val persisted = safely("persist snooze of ${armed.key}", false) {
             state.setAutoSnoozeCount(count)
-            state.setSnooze(Armed.snooze(clock().plus(Duration.ofMinutes(minutes.toLong())), armed.label))
+            state.setSnooze(snooze)
             scheduler.recordOutcome(armed, if (auto) FireOutcome.AUTO_SNOOZED else FireOutcome.SNOOZED)
             scheduler.rearm("snoozed")
+            true
+        }
+        if (!persisted) {
+            Log.w(TAG, "Snooze of ${armed.key} not persisted; arming ${snooze.key} directly")
+            scheduler.armDirectSnooze(snooze)
         }
         safely("cancel guard", Unit) { scheduler.cancelGuard(armed) }
+        return persisted
     }
 
-    /** Persists a dismissal. Throws if it could not be persisted: the caller must then keep ringing. */
-    suspend fun dismiss(armed: Armed) {
-        scheduler.recordOutcome(armed, FireOutcome.DISMISSED)
-        state.setAutoSnoozeCount(0)
-        safely("cancel guard", Unit) { scheduler.cancelGuard(armed) }
+    /**
+     * Dismisses [armed]. Never throws; the caller stops ringing either way. Returns false if the dismissal could not
+     * be recorded: then the guard stays armed and rings it again (better than losing it). Any snooze a snooze of this
+     * same occurrence left behind (partly failed snooze, then re-rung and dismissed) is withdrawn.
+     */
+    suspend fun dismiss(armed: Armed): Boolean {
+        autoSnoozes = 0
+        val recorded = safely("record dismissal of ${armed.key}", false) {
+            scheduler.recordOutcome(armed, FireOutcome.DISMISSED)
+            true
+        }
+        safely("reset auto-snoozes", Unit) { state.setAutoSnoozeCount(0) }
+        if (recorded) safely("cancel guard", Unit) { scheduler.cancelGuard(armed) }
+        val left = snoozedFrom?.takeIf { it.first.isSameOccurrence(armed) }?.second
+        if (left != null) {
+            snoozedFrom = null
+            safely("cancel direct snooze", Unit) { scheduler.cancelDirectSnooze() }
+            safely("withdraw snooze", Unit) {
+                if (state.snooze()?.key == left.key) {
+                    state.setSnooze(null)
+                    scheduler.rearm("snooze withdrawn")
+                }
+            }
+        }
+        return recorded
     }
 
     private suspend fun consumeSnooze(armed: Armed) {

@@ -1,6 +1,7 @@
 package com.replydev.reveille.alarm
 
 import android.app.Application
+import android.app.NotificationManager
 import android.content.Intent
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
@@ -50,7 +51,8 @@ class RingingServiceTest {
         controller.withIntent(intent).startCommand(0, ++startId)
     }
 
-    private fun ring(armed: Armed, guard: Boolean = false) = send(RingingService.ringIntent(app, armed, backup = false, guard = guard))
+    private fun ring(armed: Armed, guard: Boolean = false, backup: Boolean = false) =
+        send(RingingService.ringIntent(app, armed, backup = backup, guard = guard))
 
     private fun action(action: String) = send(Intent(app, RingingService::class.java).setAction(action))
 
@@ -134,5 +136,44 @@ class RingingServiceTest {
     fun actionWithNothingRingingJustStops() {
         action(RingingService.ACTION_DISMISS)
         assertTrue(stopped())
+    }
+
+    @Test
+    fun backupOfAClaimedButUnprotectedOccurrenceRings() {
+        runBlocking { app.container.scheduler.claim(armed) } // the first delivery died before arming the guard
+        ring(armed, backup = true)
+        awaitUntil { RingingService.ringing.value != null }
+        assertEquals(armed.key, RingingService.ringing.value?.armed?.key)
+    }
+
+    @Test
+    fun stopsOnlyIfNoNewerStartIsQueued() {
+        ring(armed)
+        awaitUntil { RingingService.ringing.value != null }
+        action(RingingService.ACTION_DISMISS)
+        awaitUntil { stopped() }
+        // stopSelfResult(latest startId): a RING queued after this would keep the service alive.
+        assertEquals(startId, shadowOf(controller.get()).stopSelfResultId)
+    }
+
+    @Test
+    fun noFullScreenIntentUntilTheDeliveryIsKnownToRing() {
+        ring(armed)
+        // Foreground immediately, but with the minimal notification: a duplicate must not flash the ringing screen.
+        assertNull(shadowOf(controller.get()).lastForegroundNotification.fullScreenIntent)
+        awaitUntil { RingingService.ringing.value != null }
+        assertNotNull(shadowOf(controller.get()).lastForegroundNotification.fullScreenIntent)
+    }
+
+    @Test
+    fun foregroundFailurePostsFallbackArmsGuardThenStops() {
+        shadowOf(controller.get()).setThrowInStartForeground(IllegalStateException("not allowed"))
+        ring(armed)
+        awaitUntil { stopped() }
+        assertNull(RingingService.ringing.value)
+        assertEquals(FireOutcome.FIRED, outcome(armed))
+        assertEquals(armed.key, runBlocking { app.container.schedulerState.guard() }?.key)
+        val notifications = shadowOf(app.getSystemService(NotificationManager::class.java)).allNotifications
+        assertTrue(notifications.any { it.channelId == Notifier.CHANNEL_ALARM_FALLBACK })
     }
 }

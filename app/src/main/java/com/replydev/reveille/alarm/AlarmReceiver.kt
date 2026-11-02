@@ -17,15 +17,31 @@ class AlarmReceiver : BroadcastReceiver() {
         when (intent.action) {
             AlarmScheduler.ACTION_FIRE -> {
                 val backup = intent.getBooleanExtra(AlarmScheduler.EXTRA_BACKUP, false)
+                // Keep the CPU up until the service holds its own wake lock (it releases this one).
+                FiringWakeLock.acquire(context)
                 // Start the service first, before any database work: the foreground-service start exemption granted by
                 // the alarm is short. The service claims the occurrence, rings and re-arms.
                 if (RingingService.tryStart(context, armed, backup, guard = false)) return
-                runAsync(context, "fire ${armed.key}") { it.onStartFailed(armed) }
+                runAsync(context, "fire ${armed.key}") {
+                    try {
+                        it.onStartFailed(armed)
+                    } finally {
+                        FiringWakeLock.release()
+                    }
+                }
             }
             AlarmScheduler.ACTION_GUARD -> {
                 val attempt = intent.getIntExtra(AlarmScheduler.EXTRA_ATTEMPT, 0)
                 if (RingingService.isRinging(armed)) return // the running service re-arms the guard itself
-                runAsync(context, "guard ${armed.key}") { it.onGuard(armed, attempt) }
+                FiringWakeLock.acquire(context)
+                runAsync(context, "guard ${armed.key}") {
+                    var started = false
+                    try {
+                        started = it.onGuard(armed, attempt)
+                    } finally {
+                        if (!started) FiringWakeLock.release()
+                    }
+                }
             }
             ACTION_FALLBACK_DISMISS -> runAsync(context, "fallback dismissed") { it.onFallbackDismissed(armed) }
         }

@@ -42,4 +42,12 @@ class AlarmReceiverTest {
         AlarmReceiver().onReceive(app, Intent(app, AlarmReceiver::class.java).setAction(AlarmScheduler.ACTION_FIRE))
         assertNull(shadowOf(app).nextStartedService)
     }
+
+    @Test
+    fun fireHoldsAWakeLockUntilTheServiceTakesOver() {
+        FiringWakeLock.release()
+        AlarmReceiver().onReceive(app, fire(backup = false))
+        assertTrue(FiringWakeLock.isHeld) // the (not yet created) service releases it once it holds its own
+        FiringWakeLock.release()
+    }
 }

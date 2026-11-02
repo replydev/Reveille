@@ -21,6 +21,9 @@ class Notifier(private val context: Context) {
     private val manager = context.getSystemService(NotificationManager::class.java)
 
     fun createChannels() {
+        // Channel sound/settings are frozen at creation: the fallback channel was recreated under a new id when its
+        // sound changed to the bundled one. Drop the old one so it does not linger in the system settings.
+        manager.deleteNotificationChannel(OLD_CHANNEL_ALARM_FALLBACK)
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ALARM, "Ringing alarms", NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "Shown while an alarm rings. Keep this at high importance."
@@ -154,7 +157,8 @@ class Notifier(private val context: Context) {
 
     companion object {
         const val CHANNEL_ALARM = "alarm"
-        const val CHANNEL_ALARM_FALLBACK = "alarm_fallback"
+        const val CHANNEL_ALARM_FALLBACK = "alarm_fallback_v2"
+        private const val OLD_CHANNEL_ALARM_FALLBACK = "alarm_fallback"
         const val CHANNEL_ALERTS = "alerts"
         const val RINGING_ID = 1
         private const val SCHEDULING_FAILED_ID = 2

@@ -58,6 +58,7 @@ class RingingService : Service() {
     private var pendingDeliveries = 0
     private var actionInProgress = false
     private var destroyed = false
+    private var lastStartId = 0
     private var player: MediaPlayer? = null
     private var outputJob: Job? = null
     private var rampJob: Job? = null
@@ -70,6 +71,7 @@ class RingingService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastStartId = startId
         when (intent?.action) {
             ACTION_RING -> onRing(intent)
             ACTION_SNOOZE -> onAction(Action.SNOOZE)
@@ -82,19 +84,22 @@ class RingingService : Service() {
     private fun onRing(intent: Intent) {
         // Fail loud: if the extra is somehow unreadable, ring anyway with a generic label.
         val armed = intent.getStringExtra(EXTRA_ARMED)?.let(Armed::decode) ?: Armed("unknown", Instant.now(), "Alarm")
-        val ringing = Ringing(armed, intent.getBooleanExtra(EXTRA_BACKUP, false))
+        val backup = intent.getBooleanExtra(EXTRA_BACKUP, false)
+        val ringing = Ringing(armed, backup)
         val guard = intent.getBooleanExtra(EXTRA_GUARD, false)
-        // startForeground first: the system requires it within seconds of startForegroundService. While another alarm
-        // rings its notification stays until this delivery is known to ring.
-        if (!enterForeground(current.value ?: ringing)) {
+        // startForeground first: the system requires it within seconds of startForegroundService. Until this delivery
+        // is known to ring, keep the current alarm's notification, or a minimal one without a full-screen intent so a
+        // duplicate never flashes the ringing screen.
+        if (!enterForeground(current.value)) {
             onForegroundFailed(armed)
             return
         }
         runCatching { acquireWakeLock() }.onFailure { Log.e(TAG, "Cannot acquire wake lock", it) }
+        FiringWakeLock.release() // ours is held now
         pendingDeliveries++
         scope.launch {
             try {
-                deliveries.withLock { deliver(ringing, guard) }
+                deliveries.withLock { deliver(ringing, guard, backup) }
             } finally {
                 pendingDeliveries--
                 stopIfIdle()
@@ -102,11 +107,12 @@ class RingingService : Service() {
         }
     }
 
-    private suspend fun deliver(ringing: Ringing, guard: Boolean) {
+    private suspend fun deliver(ringing: Ringing, guard: Boolean, backup: Boolean) {
         val armed = ringing.armed
         if (current.value?.armed?.isSameOccurrence(armed) == true) return // backup/guard of what already rings
-        if (firing.decideDelivery(armed, guard) == Delivery.DUPLICATE) {
-            Log.i(TAG, "Duplicate delivery of ${armed.key} (guard=$guard); not ringing")
+        if (firing.decideDelivery(armed, guard, backup) == Delivery.DUPLICATE) {
+            Log.i(TAG, "Duplicate delivery of ${armed.key} (guard=$guard, backup=$backup); not ringing")
+            firing.onDuplicate()
             return
         }
         startRinging(ringing)
@@ -121,13 +127,14 @@ class RingingService : Service() {
             stopOutput()
             timeoutJob?.cancel()
             guardJob?.cancel()
-            enterForeground(ringing) // only updates the notification; we are already foreground
         }
         current.value = ringing
+        enterForeground(ringing) // now the full notification, with the full-screen intent
         outputJob = scope.launch {
             val settings = loadSettings()
             if (current.value !== ringing) return@launch
-            val sound = startSound(ringing.armed, settings)
+            val sound = startSound(ringing, settings)
+            if (current.value !== ringing) return@launch
             // Without sound, vibration is all this service has left: use it regardless of the setting.
             if (settings.vibrate || !sound) runCatching { startVibration() }.onFailure { Log.e(TAG, "Cannot vibrate", it) }
             scheduleAutoSnooze(ringing, RingDecisions.ringMinutes(settings.maxRingMinutes).minutes)
@@ -167,45 +174,42 @@ class RingingService : Service() {
         actionInProgress = true
         guardJob?.cancel() // so it cannot re-arm the guard the action is about to cancel
         scope.launch {
-            // Persist first, stop afterwards: if this fails the alarm keeps ringing and the user can try again.
-            val persisted = withContext(NonCancellable) {
+            // Persist first (best effort, never throws), then always stop: a failing disk must not leave the alarm
+            // ringing forever. On failure AlarmFiring keeps it from being lost instead (guard kept / snooze armed directly).
+            withContext(NonCancellable) {
                 try {
                     when (action) {
                         Action.SNOOZE -> firing.snooze(ringing.armed, auto = false)
                         Action.AUTO_SNOOZE -> firing.snooze(ringing.armed, auto = true)
                         Action.DISMISS -> firing.dismiss(ringing.armed)
                     }
-                    true
                 } catch (e: Exception) {
-                    Log.e(TAG, "Cannot persist $action for ${ringing.armed.key}; still ringing", e)
-                    false
+                    Log.e(TAG, "$action for ${ringing.armed.key} failed", e)
                 }
             }
             actionInProgress = false
-            when {
-                persisted -> stopRinging(ringing)
-                current.value === ringing -> {
-                    startGuardRefresh(ringing)
-                    if (action == Action.AUTO_SNOOZE) scheduleAutoSnooze(ringing, 1.minutes)
-                }
-                else -> stopIfIdle()
-            }
+            stopRinging(ringing)
         }
     }
 
-    /** Returns false only if neither the full nor a minimal notification could make this service foreground. */
-    private fun enterForeground(ringing: Ringing): Boolean {
-        try {
-            startForeground(Notifier.RINGING_ID, container.notifier.ringingNotification(ringing), FGS_TYPE)
-            return true
-        } catch (e: Exception) {
-            Log.e(TAG, "startForeground failed for ${ringing.armed.key}; retrying with a minimal notification", e)
+    /**
+     * Makes this service foreground with [ringing]'s full notification, or the minimal one (no full-screen intent) if
+     * [ringing] is null or the full one fails. Returns false only if no notification could make it foreground.
+     */
+    private fun enterForeground(ringing: Ringing?): Boolean {
+        if (ringing != null) {
+            try {
+                startForeground(Notifier.RINGING_ID, container.notifier.ringingNotification(ringing), FGS_TYPE)
+                return true
+            } catch (e: Exception) {
+                Log.e(TAG, "startForeground failed for ${ringing.armed.key}; retrying with a minimal notification", e)
+            }
         }
         try {
             startForeground(Notifier.RINGING_ID, Notifier.minimalRingingNotification(this), FGS_TYPE)
             return true
         } catch (e: Exception) {
-            Log.e(TAG, "startForeground failed again for ${ringing.armed.key}", e)
+            Log.e(TAG, "startForeground with the minimal notification failed", e)
         }
         return false
     }
@@ -222,40 +226,59 @@ class RingingService : Service() {
             try {
                 withContext(NonCancellable) { firing.onStartFailed(armed) }
             } finally {
+                FiringWakeLock.release()
                 pendingDeliveries--
                 stopIfIdle()
             }
         }
     }
 
-    /** Returns false if no sound could be played; then the fallback notification provides it. */
-    private fun startSound(armed: Armed, settings: RingSettings): Boolean {
+    /**
+     * Prepares the player off the main thread (prepare() does I/O), then starts it on the main thread if [ringing] is
+     * still current. Returns false if no sound could be played; then the fallback notification provides it.
+     */
+    private suspend fun startSound(ringing: Ringing, settings: RingSettings): Boolean {
         var created: MediaPlayer? = null
-        val player = try {
-            MediaPlayer().also {
-                created = it
-                playLooping(it, settings)
-            }
+        val prepared = try {
+            withContext(Dispatchers.IO) { MediaPlayer().also { created = it; prepare(it, settings) } }
+        } catch (e: CancellationException) {
+            runCatching { created?.release() } // stopped or replaced while preparing: never leak the player
+            throw e
         } catch (e: Exception) {
-            Log.e(TAG, "No alarm sound could be played for ${armed.key}; posting fallback alarm", e)
+            Log.e(TAG, "No alarm sound could be played for ${ringing.armed.key}; posting fallback alarm", e)
             runCatching { created?.release() }
-            runCatching { container.notifier.postFallbackAlarm(armed) }
+            runCatching { container.notifier.postFallbackAlarm(ringing.armed) }
             return false
         }
-        this.player = player
+        if (current.value !== ringing) {
+            runCatching { prepared.release() }
+            return false
+        }
+        try {
+            prepared.isLooping = true
+            val startVolume = if (settings.volumeRamp) RAMP_START_VOLUME else 1f
+            prepared.setVolume(startVolume, startVolume)
+            prepared.start()
+        } catch (e: Exception) {
+            Log.e(TAG, "Cannot start alarm sound for ${ringing.armed.key}; posting fallback alarm", e)
+            runCatching { prepared.release() }
+            runCatching { container.notifier.postFallbackAlarm(ringing.armed) }
+            return false
+        }
+        this.player = prepared
         if (settings.volumeRamp) {
             rampJob = scope.launch {
                 for (step in 1..RAMP_STEPS) {
                     delay(1.seconds)
                     val volume = RAMP_START_VOLUME + (1f - RAMP_START_VOLUME) * step / RAMP_STEPS
-                    player.setVolume(volume, volume)
+                    prepared.setVolume(volume, volume)
                 }
             }
         }
         return true
     }
 
-    private fun playLooping(player: MediaPlayer, settings: RingSettings) {
+    private fun prepare(player: MediaPlayer, settings: RingSettings) {
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -277,10 +300,6 @@ class RingingService : Service() {
             }
             player.prepare()
         }
-        player.isLooping = true
-        val startVolume = if (settings.volumeRamp) RAMP_START_VOLUME else 1f
-        player.setVolume(startVolume, startVolume)
-        player.start()
     }
 
     @Suppress("DEPRECATION")
@@ -324,11 +343,17 @@ class RingingService : Service() {
         stopIfIdle()
     }
 
+    /**
+     * Stops the service if nothing rings or is pending. stopSelfResult(lastStartId) is a no-op when a newer start
+     * (e.g. a RING from startForegroundService) is already queued: stopping then would crash the process for not
+     * calling startForeground and lose that ring. The queued command calls this again when it is done.
+     */
     private fun stopIfIdle() {
         if (destroyed || current.value != null || pendingDeliveries > 0 || actionInProgress) return
-        wakeLock?.takeIf { it.isHeld }?.release()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        if (stopSelfResult(lastStartId)) {
+            wakeLock?.takeIf { it.isHeld }?.release()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        }
     }
 
     override fun onDestroy() {

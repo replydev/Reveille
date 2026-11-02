@@ -12,22 +12,29 @@ class RingDecisionsTest {
 
     @Test
     fun firstDeliveryRingsAndLaterOnesAreDuplicates() {
-        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = true, guard = false, outcome = null))
-        assertEquals(Delivery.DUPLICATE, RingDecisions.delivery(claimed = false, guard = false, outcome = FireOutcome.FIRED))
-        assertEquals(Delivery.DUPLICATE, RingDecisions.delivery(claimed = false, guard = false, outcome = null))
+        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = true, retry = false, outcome = null))
+        assertEquals(Delivery.DUPLICATE, RingDecisions.delivery(claimed = false, retry = false, outcome = FireOutcome.FIRED))
+        assertEquals(Delivery.DUPLICATE, RingDecisions.delivery(claimed = false, retry = false, outcome = null))
     }
 
     @Test
     fun unknownClaimRings() {
-        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = null, guard = false, outcome = null))
-        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = null, guard = true, outcome = FireOutcome.DISMISSED))
+        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = null, retry = false, outcome = null))
+        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = null, retry = true, outcome = FireOutcome.DISMISSED))
     }
 
     @Test
     fun guardReRingRingsOnlyWhileUnhandled() {
-        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = false, guard = true, outcome = FireOutcome.FIRED))
-        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = false, guard = true, outcome = null))
-        terminal.forEach { assertEquals(it.name, Delivery.DUPLICATE, RingDecisions.delivery(claimed = false, guard = true, outcome = it)) }
+        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = false, retry = true, outcome = FireOutcome.FIRED))
+        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = false, retry = true, outcome = null))
+        terminal.forEach { assertEquals(it.name, Delivery.DUPLICATE, RingDecisions.delivery(claimed = false, retry = true, outcome = it)) }
+    }
+
+    @Test
+    fun backupRingsLikeAGuardWhileUnhandled() {
+        // retry = guard || backup: a claimed occurrence nobody protected still rings on its backup.
+        assertEquals(Delivery.RING, RingDecisions.delivery(claimed = false, retry = true, outcome = FireOutcome.FIRED))
+        assertEquals(Delivery.DUPLICATE, RingDecisions.delivery(claimed = false, retry = true, outcome = FireOutcome.DISMISSED))
     }
 
     @Test
