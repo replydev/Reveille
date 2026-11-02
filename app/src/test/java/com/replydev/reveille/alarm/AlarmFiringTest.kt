@@ -67,7 +67,9 @@ class AlarmFiringTest {
         val notifier = Notifier(context).also { it.createChannels() }
         lateinit var repository: ScheduleRepository
         repository = ScheduleRepository(db.scheduleDao()) { scheduler.rearm("test change") }
-        scheduler = AlarmScheduler(context, repository, fireLog, state, notifier, onArmedChanged = {}, clock = { now })
+        scheduler = AlarmScheduler(context, repository, fireLog, state, notifier, onArmedChanged = {}, clock = { now },
+            isRinging = { ringing?.isSameOccurrence(it) == true },
+        )
         firing = AlarmFiring(
             scheduler,
             state,
@@ -82,6 +84,8 @@ class AlarmFiringTest {
 
     @After
     fun tearDown() = db.close()
+
+    private fun notifier() = Notifier(context)
 
     private fun notifications() = shadowOf(context.getSystemService(NotificationManager::class.java)).allNotifications
 
@@ -176,12 +180,17 @@ class AlarmFiringTest {
         scheduler.claim(armed)
         scheduler.armGuard(armed, 0, now.plusSeconds(90))
         now = armed.at.plus(Duration.ofMinutes(31))
+        notifier().postFallbackAlarm(armed)
         firing.onGuard(armed, attempt = 0)
         assertTrue(starts.isEmpty())
         assertEquals(FireOutcome.MISSED, scheduler.outcome(armed))
         assertTrue(missedPosted())
         assertNull(guard())
         assertNull(state.guard())
+        // The fallback is withdrawn, so a later swipe cannot turn MISSED into DISMISSED.
+        assertFalse(fallbackPosted())
+        firing.onFallbackDismissed(armed)
+        assertEquals(FireOutcome.MISSED, scheduler.outcome(armed))
     }
 
     @Test
@@ -210,6 +219,7 @@ class AlarmFiringTest {
     fun ringStartGuardsResetsAutoSnoozesAndRearms() = runBlocking {
         state.setAutoSnoozeCount(2)
         firing.decideDelivery(armed, guard = false, backup = false)
+        ringing = armed // the service marks it ringing before onRingStarted
         firing.onRingStarted(armed)
         assertEquals(now.plusSeconds(90) to 0, guard())
         assertEquals(0, state.autoSnoozeCount())
@@ -221,6 +231,7 @@ class AlarmFiringTest {
     @Test
     fun snoozeIsPersistedAndCancelsTheGuard() = runBlocking {
         firing.decideDelivery(armed, guard = false, backup = false)
+        ringing = armed // the service marks it ringing before onRingStarted
         firing.onRingStarted(armed)
         assertTrue(firing.snooze(armed, auto = false))
         assertEquals(FireOutcome.SNOOZED, scheduler.outcome(armed))
@@ -247,6 +258,7 @@ class AlarmFiringTest {
     fun dismissIsPersistedAndCancelsTheGuard() = runBlocking {
         state.setAutoSnoozeCount(1)
         firing.decideDelivery(armed, guard = false, backup = false)
+        ringing = armed // the service marks it ringing before onRingStarted
         firing.onRingStarted(armed)
         assertTrue(firing.dismiss(armed))
         assertEquals(FireOutcome.DISMISSED, scheduler.outcome(armed))
@@ -285,6 +297,7 @@ class AlarmFiringTest {
     @Test
     fun dismissThatCannotBePersistedKeepsTheGuardSoItRingsAgain() = runBlocking {
         firing.decideDelivery(armed, guard = false, backup = false)
+        ringing = armed // the service marks it ringing before onRingStarted
         firing.onRingStarted(armed)
         failWrites(true)
         assertFalse(firing.dismiss(armed))
@@ -295,6 +308,7 @@ class AlarmFiringTest {
     @Test
     fun snoozeThatCannotBePersistedIsArmedDirectly() = runBlocking {
         firing.decideDelivery(armed, guard = false, backup = false)
+        ringing = armed // the service marks it ringing before onRingStarted
         firing.onRingStarted(armed)
         failWrites(true)
         assertFalse(firing.snooze(armed, auto = false))
@@ -308,6 +322,7 @@ class AlarmFiringTest {
     @Test
     fun dismissClearsTheSnoozeAPartlyFailedSnoozeLeftBehind() = runBlocking {
         firing.decideDelivery(armed, guard = false, backup = false)
+        ringing = armed // the service marks it ringing before onRingStarted
         firing.onRingStarted(armed)
         fireLog.failWrites = true // setSnooze succeeds, recordOutcome fails
         assertFalse(firing.snooze(armed, auto = false))

@@ -1,6 +1,7 @@
 package com.replydev.reveille.alarm
 
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -57,6 +58,7 @@ class AlarmSchedulerTest {
     private lateinit var repository: ScheduleRepository
     private lateinit var scheduler: AlarmScheduler
     private var now: Instant = rome("2026-11-02", "06:00")
+    private var ringing: Armed? = null
 
     private fun rome(date: String, time: String): Instant =
         ZonedDateTime.of(LocalDate.parse(date), LocalTime.parse(time), zone).toInstant()
@@ -72,7 +74,10 @@ class AlarmSchedulerTest {
         db = Room.inMemoryDatabaseBuilder(context, ReveilleDatabase::class.java).allowMainThreadQueries().build()
         state = SchedulerState(PreferenceDataStoreFactory.create { File(tmp.root, "test.preferences_pb") })
         repository = ScheduleRepository(db.scheduleDao()) { scheduler.rearm("test change") }
-        scheduler = AlarmScheduler(context, repository, db.fireLogDao(), state, Notifier(context), onArmedChanged = {}, clock = { now })
+        scheduler = AlarmScheduler(
+            context, repository, db.fireLogDao(), state, Notifier(context), onArmedChanged = {}, clock = { now },
+            isRinging = { ringing?.isSameOccurrence(it) == true },
+        )
     }
 
     @After
@@ -170,8 +175,8 @@ class AlarmSchedulerTest {
         // While a guard is armed the system shows it as the next alarm; tapping that opens the ringing screen.
         assertEquals(RingingActivity::class.java.name, shadowOf(guard.showIntent).savedIntent.component?.className)
 
-        scheduler.rearm("again") // rearm never touches the guard
-        assertTrue(guardAt.toEpochMilli() in triggers())
+        scheduler.rearm("again") // an unresolved guard owner keeps a guard (here re-armed shortly: nothing rings it)
+        assertEquals(1, alarms().count { shadowOf(it.operation).savedIntent.action == AlarmScheduler.ACTION_GUARD })
         scheduler.cancelGuard(armed)
         assertEquals(listOf(next, next.plusSeconds(120)).map { it.toEpochMilli() }, triggers())
         assertNull(state.guard())
@@ -314,6 +319,99 @@ class AlarmSchedulerTest {
     }
 
     private fun alarms() = shadowOf(context.getSystemService(AlarmManager::class.java)).scheduledAlarms
+
+    private fun guardAlarm() = alarms().singleOrNull { shadowOf(it.operation).savedIntent.action == AlarmScheduler.ACTION_GUARD }
+
+    /** A force-stop (or a HyperOS kill) deletes every alarm of the app, the guard included. */
+    private fun forceStop() {
+        val manager = context.getSystemService(AlarmManager::class.java)
+        alarms().toList().forEach { manager.cancel(it.operation!!) }
+        assertTrue(alarms().isEmpty())
+    }
+
+    private fun notifications() = shadowOf(context.getSystemService(NotificationManager::class.java)).allNotifications
+
+    // ---- Force-stop recovery: rearm restores the ring guard of an unresolved occurrence ----
+
+    @Test
+    fun rearmRestoresTheGuardOfAnUnresolvedRingAfterAForceStop() = runBlocking {
+        val armed = Armed("O:a", rome("2026-11-02", "06:00"), "A")
+        now = rome("2026-11-02", "06:01")
+        scheduler.claim(armed)
+        scheduler.armGuard(armed, 0, now.plusSeconds(90))
+        forceStop()
+        now = rome("2026-11-02", "06:05")
+        scheduler.rearm("app opened")
+        val guard = guardAlarm()!!
+        assertEquals(now.plusSeconds(10).toEpochMilli(), guard.triggerAtMs)
+        assertEquals("O:a", Armed.decode(shadowOf(guard.operation).savedIntent.getStringExtra(AlarmScheduler.EXTRA_ARMED)!!)?.key)
+        assertEquals(FireOutcome.FIRED, scheduler.outcome(armed))
+    }
+
+    @Test
+    fun rearmReportsAnUnresolvedRingMissedBeyondTheLateWindow() = runBlocking {
+        val armed = Armed("O:a", rome("2026-11-02", "06:00"), "A")
+        now = rome("2026-11-02", "06:01")
+        scheduler.claim(armed)
+        scheduler.armGuard(armed, 0, now.plusSeconds(90))
+        Notifier(context).apply { createChannels() }.postFallbackAlarm(armed)
+        forceStop()
+        now = rome("2026-11-02", "06:31")
+        scheduler.rearm("app opened")
+        assertNull(guardAlarm())
+        assertNull(state.guard())
+        assertEquals(FireOutcome.MISSED, scheduler.outcome(armed))
+        assertTrue(notifications().any { it.extras.getString("android.title") == "Missed alarm" })
+        assertTrue(notifications().none { it.channelId == Notifier.CHANNEL_ALARM_FALLBACK })
+    }
+
+    @Test
+    fun rearmLeavesAResolvedGuardOwnerAlone() = runBlocking {
+        val armed = Armed("O:a", rome("2026-11-02", "06:00"), "A")
+        now = rome("2026-11-02", "06:01")
+        scheduler.claim(armed)
+        scheduler.armGuard(armed, 0, now.plusSeconds(90))
+        scheduler.recordOutcome(armed, FireOutcome.DISMISSED)
+        forceStop()
+        scheduler.rearm("app opened")
+        assertNull(guardAlarm())
+        assertEquals(FireOutcome.DISMISSED, scheduler.outcome(armed))
+        assertTrue(notifications().isEmpty())
+    }
+
+    @Test
+    fun rearmLeavesTheGuardOfTheAlarmRingingInThisProcessToTheService() = runBlocking {
+        val armed = Armed("O:a", rome("2026-11-02", "06:00"), "A")
+        now = rome("2026-11-02", "06:01")
+        scheduler.claim(armed)
+        val at = now.plusSeconds(90)
+        scheduler.armGuard(armed, 0, at)
+        ringing = armed
+        scheduler.rearm("alarm fired")
+        assertEquals(at.toEpochMilli(), guardAlarm()!!.triggerAtMs)
+    }
+
+    // ---- Fallback acknowledgement and pruning ----
+
+    @Test
+    fun acknowledgingAFallbackDoesNotOverwriteMissed() = runBlocking {
+        val armed = Armed("O:a", rome("2026-11-02", "05:00"), "A")
+        scheduler.claim(armed)
+        scheduler.markMissed(armed)
+        scheduler.acknowledgeFallback(armed)
+        assertEquals(FireOutcome.MISSED, scheduler.outcome(armed))
+    }
+
+    @Test
+    fun rearmPrunesFireLogEntriesOlderThan60Days() = runBlocking {
+        val old = Armed("O:old", now.minus(java.time.Duration.ofDays(61)), "Old")
+        val recent = Armed("O:recent", now.minus(java.time.Duration.ofDays(59)), "Recent")
+        scheduler.recordOutcome(old, FireOutcome.DISMISSED)
+        scheduler.recordOutcome(recent, FireOutcome.DISMISSED)
+        scheduler.rearm("watchdog")
+        assertNull(scheduler.outcome(old))
+        assertEquals(FireOutcome.DISMISSED, scheduler.outcome(recent))
+    }
 }
 
 /** AlarmManager that refuses exact alarms the way a real device does (Robolectric's only records the flag). */

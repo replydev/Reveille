@@ -15,6 +15,7 @@ import com.replydev.reveille.engine.ArmPlanner
 import com.replydev.reveille.engine.Armed
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 
@@ -26,6 +27,8 @@ class AlarmScheduler(
     private val notifier: Notifier,
     private val onArmedChanged: suspend () -> Unit,
     private val clock: () -> Instant = Instant::now,
+    /** Whether [RingingService] rings this occurrence in this process (it then keeps the guard armed itself). */
+    private val isRinging: (Armed) -> Boolean = RingingService::isRinging,
 ) {
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
     private val mutex = Mutex()
@@ -52,9 +55,12 @@ class AlarmScheduler(
 
         decision.missed.forEach { recordMissed(it) }
         if (decision.missed.any { it.isSnooze }) state.setSnooze(null)
+        restoreGuard(now)
         // Only after overdue alarms were decided: data from the outage window must still exist while deciding.
         // atZone, not LocalDate.ofInstant: the latter is API 34 and crashed rearm on Android 12/13.
         repository.cleanup(since.atZone(zone).toLocalDate().minusDays(1))
+        // Same rule for the fire log: never prune rows this decision may still have needed.
+        fireLog.deleteScheduledBefore(minOf(since, now.minus(FIRE_LOG_RETENTION)).toEpochMilli())
         val armed = decision.armed
         val trigger = decision.triggerAt
         if (armed != null && trigger != null) {
@@ -74,9 +80,12 @@ class AlarmScheduler(
     /** The logged outcome of [armed], or null if it was never logged. */
     suspend fun outcome(armed: Armed): FireOutcome? = fireLog.outcome(armed.key, armed.at.toEpochMilli())
 
-    /** The user dismissed a fallback alarm notification: the occurrence is handled and must not be retried. */
+    /**
+     * The user dismissed a fallback alarm notification: the occurrence is handled and must not be retried. An
+     * occurrence already given up as MISSED stays MISSED (the log must not claim the user dismissed it in time).
+     */
     suspend fun acknowledgeFallback(armed: Armed) {
-        recordOutcome(armed, FireOutcome.DISMISSED)
+        if (outcome(armed) != FireOutcome.MISSED) recordOutcome(armed, FireOutcome.DISMISSED)
         if (armed.isSnooze && state.snooze()?.key == armed.key) state.setSnooze(null)
     }
 
@@ -110,6 +119,26 @@ class AlarmScheduler(
         if (previous != null && previous.isSameOccurrence(armed)) return@withLock
         if (previous != null && outcome(previous) == FireOutcome.FIRED) recordOutcome(previous, FireOutcome.SUPERSEDED)
         state.setGuard(armed)
+    }
+
+    /**
+     * Force-stop recovery. A force-stop (or an OEM kill that clears alarms) deletes the guard alarm but not its persisted
+     * owner. If that owner is still FIRED and not ringing in this process, it is unresolved: re-arm its guard shortly
+     * while inside the late window, otherwise report it missed and withdraw its fallback notification.
+     */
+    private suspend fun restoreGuard(now: Instant): Unit = guardMutex.withLock {
+        val owner = state.guard() ?: return@withLock
+        if (isRinging(owner) || outcome(owner) != FireOutcome.FIRED) return@withLock
+        if (Duration.between(owner.at, now) <= ArmPlanner.LATE_RING_WINDOW) {
+            setGuardAlarm(owner, 1, now.plus(GUARD_RESTORE_DELAY))
+        } else {
+            Log.w(TAG, "Unresolved ${owner.key} is past the late window; reporting missed")
+            recordOutcome(owner, FireOutcome.MISSED)
+            notifier.showMissed(owner)
+            notifier.cancelFallbackAlarm(owner)
+            alarmManager.cancel(guardIntent(null, 0))
+            state.setGuard(null)
+        }
     }
 
     /** Pushes the guard of a still-ringing [armed] to [at]. Returns false if another occurrence took the guard over. */
@@ -256,6 +285,8 @@ class AlarmScheduler(
         private const val REQUEST_SHOW = 102
         private const val REQUEST_GUARD = 103
         private const val REQUEST_DIRECT_SNOOZE = 104
+        private val GUARD_RESTORE_DELAY: Duration = Duration.ofSeconds(10)
+        private val FIRE_LOG_RETENTION: Duration = Duration.ofDays(60)
         private const val REQUEST_GUARD_SHOW = 105
         private const val TAG = "Reveille"
     }

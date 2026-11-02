@@ -2,8 +2,10 @@ package com.replydev.reveille
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.replydev.reveille.alarm.AlarmFiring
 import com.replydev.reveille.alarm.AlarmScheduler
@@ -31,7 +33,10 @@ class AppContainer(context: Context) {
     val database: ReveilleDatabase by lazy { ReveilleDatabase.create(app) }
 
     private val preferences: DataStore<Preferences> by lazy {
-        PreferenceDataStoreFactory.create { deviceStorage.preferencesDataStoreFile("reveille") }
+        PreferenceDataStoreFactory.create(
+            // A corrupt file must not stop alarms from being armed: start over with defaults rather than crash.
+            corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+        ) { deviceStorage.preferencesDataStoreFile("reveille") }
     }
 
     val schedulerState: SchedulerState by lazy { SchedulerState(preferences) }

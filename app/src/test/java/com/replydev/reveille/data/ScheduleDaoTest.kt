@@ -6,7 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -86,10 +86,10 @@ class ScheduleDaoTest {
     fun fireLogClaimsAnOccurrenceOnce() = runBlocking {
         val log = db.fireLogDao()
         val entry = FireLogEntity(occurrenceKey = "O:1", label = "Test", scheduledAt = 1_000, firedAt = 1_000, outcome = FireOutcome.FIRED)
-        assertFalse(log.exists("O:1", 1_000))
+        assertNull(log.outcome("O:1", 1_000))
         assertTrue(log.insert(entry) != -1L)
         assertEquals(-1L, log.insert(entry))
-        assertTrue(log.exists("O:1", 1_000))
+        assertEquals(FireOutcome.FIRED, log.outcome("O:1", 1_000))
         assertEquals(listOf(HandledOccurrence("O:1", 1_000)), log.handledSince(1_000))
         assertTrue(log.handledSince(1_001).isEmpty())
     }
@@ -129,3 +129,4 @@ class ScheduleDaoTest {
         assertEquals(gymRule, dao.policy(gym)!!.rules.single())
     }
 }
+

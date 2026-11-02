@@ -50,4 +50,19 @@ class AlarmReceiverTest {
         assertTrue(FiringWakeLock.isHeld) // the (not yet created) service releases it once it holds its own
         FiringWakeLock.release()
     }
+
+    @Test
+    fun guardHoldsTheWakeLockWhileItChecksTheFireLog() {
+        FiringWakeLock.release()
+        AlarmReceiver().onReceive(
+            app,
+            Intent(app, AlarmReceiver::class.java)
+                .setAction(AlarmScheduler.ACTION_GUARD)
+                .putExtra(AlarmScheduler.EXTRA_ARMED, armed.encode())
+                .putExtra(AlarmScheduler.EXTRA_ATTEMPT, 1),
+        )
+        // Taken synchronously, before the async Room read; released by the async part or by the service.
+        assertTrue(FiringWakeLock.isHeld)
+        FiringWakeLock.release()
+    }
 }

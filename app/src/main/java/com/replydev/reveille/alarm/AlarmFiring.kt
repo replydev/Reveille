@@ -84,6 +84,8 @@ class AlarmFiring(
             GuardAction.GIVE_UP -> {
                 Log.w(TAG, "Guard: ${armed.key} unhandled past the late window; reporting missed")
                 safely("mark missed ${armed.key}", Unit) { scheduler.markMissed(armed) }
+                // Withdraw the fallback too: a later swipe on it must not turn MISSED into DISMISSED.
+                safely("cancel fallback ${armed.key}", Unit) { notifier.cancelFallbackAlarm(armed) }
                 safely("cancel guard", Unit) { scheduler.cancelGuard(armed) }
             }
             GuardAction.DONE -> safely("cancel guard", Unit) { scheduler.cancelGuard(armed) }
