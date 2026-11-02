@@ -1,6 +1,7 @@
 package com.replydev.reveille.ui.home
 
 import android.util.Log
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,6 +50,8 @@ import com.replydev.reveille.ui.components.ScreenSession
 import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.listPadding
 import com.replydev.reveille.ui.components.rememberScreenSession
+import com.replydev.reveille.ui.theme.Motion
+import com.replydev.reveille.ui.theme.animatedItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import java.time.Instant
@@ -135,15 +138,17 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             failingChecks?.takeIf { it != 0 }?.let { failing ->
-                item(key = "banner") { ReliabilityBanner(failing, onOpenReliability) }
+                item(key = "banner") { ReliabilityBanner(failing, onOpenReliability, Modifier.animatedItem(this)) }
             }
             val loadedSnapshot = snapshot
             val loadedArmed = armedState
             if (loadedSnapshot != null && loadedArmed != null) {
                 val state = nextUp(loadedArmed.armed, entries.firstOrNull { !it.skipped }?.occurrence, now)
-                item(key = "next") { NextUpCard(state, ringing?.armed?.key, now, zone) }
+                item(key = "next") { NextUpCard(state, ringing?.armed?.key, now, zone, Modifier.animatedItem(this)) }
                 if (entries.isEmpty()) {
-                    item(key = "empty") { Text("No alarms in the next $TIMELINE_DAYS days. Add a policy or a one-off alarm.", Modifier.padding(top = 16.dp)) }
+                    item(key = "empty") {
+                        Text("No alarms in the next $TIMELINE_DAYS days. Add a policy or a one-off alarm.", Modifier.animatedItem(this).padding(top = 16.dp))
+                    }
                 }
             }
             entries.groupBy { it.occurrence.at.toLocalDate() }.forEach { (date, dayEntries) ->
@@ -152,7 +157,7 @@ fun HomeScreen(
                         TimeText.dayHeader(date, today),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 16.dp),
+                        modifier = Modifier.animatedItem(this).padding(top = 16.dp),
                     )
                 }
                 items(dayEntries, key = ::entryKey) { entry ->
@@ -161,6 +166,7 @@ fun HomeScreen(
                         enabled = !session.busy,
                         onToggleSkip = { toggleSkip(session, repository, entry) },
                         onEditOneOff = onEditOneOff,
+                        modifier = Modifier.animatedItem(this),
                     )
                 }
             }
@@ -173,11 +179,11 @@ private fun entryKey(entry: Timeline.Entry): String =
     "${if (entry.skipped) "s" else "r"}-${entry.occurrence.key}-${entry.occurrence.at.toInstant().toEpochMilli()}"
 
 @Composable
-private fun ReliabilityBanner(failing: Int, onClick: () -> Unit) {
+private fun ReliabilityBanner(failing: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     ) {
         val text = when (failing) {
             CHECKS_FAILED -> "Reliability checks could not run. Alarms may not ring. Tap to review."
@@ -202,15 +208,15 @@ private fun persistent(mismatch: Any?): Boolean {
 }
 
 @Composable
-private fun NextUpCard(state: NextUp, ringingKey: String?, now: Instant, zone: ZoneId) {
+private fun NextUpCard(state: NextUp, ringingKey: String?, now: Instant, zone: ZoneId, modifier: Modifier = Modifier) {
     val unarmed: Occurrence? = when (state) {
         is NextUp.Set -> state.earlierUnarmed
         is NextUp.NotSet -> state.scheduled
         else -> null
     }
     val warn = persistent(unarmed?.let { it.key to it.at })
-    Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        Column(Modifier.padding(16.dp)) {
+    Card(modifier = modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Column(Modifier.animateContentSize(Motion.size).padding(16.dp)) {
             when (state) {
                 NextUp.None -> {
                     Text("Next alarm", style = MaterialTheme.typography.labelLarge)
@@ -259,11 +265,17 @@ private fun Warning(text: String) {
 private fun armedLabel(armed: Armed): String = if (armed.isSnooze) "Snoozed: ${armed.label}" else armed.label
 
 @Composable
-private fun OccurrenceRow(entry: Timeline.Entry, enabled: Boolean, onToggleSkip: () -> Unit, onEditOneOff: (Long) -> Unit) {
+private fun OccurrenceRow(
+    entry: Timeline.Entry,
+    enabled: Boolean,
+    onToggleSkip: () -> Unit,
+    onEditOneOff: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val occurrence = entry.occurrence
     val oneOff = occurrence.sources.filterIsInstance<Source.OneOffAlarm>().firstOrNull()
     val alpha = if (entry.skipped) 0.4f else 1f
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(TimeText.time(occurrence.at.toLocalTime()), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.alpha(alpha))
         Spacer(Modifier.width(16.dp))
         Text(

@@ -48,6 +48,7 @@ import com.replydev.reveille.ui.components.SectionTitle
 import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.rememberScreenSession
 import com.replydev.reveille.ui.components.listPadding
+import com.replydev.reveille.ui.theme.animatedItem
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -121,8 +122,10 @@ fun ReliabilityScreen(onBack: () -> Unit) {
                 )
             }
             item(key = "log-title") { SectionTitle("Recent alarms") }
-            if (log.isEmpty()) item(key = "log-empty") { Text("Nothing yet.") }
-            items(log, key = { "log-${it.id}" }) { entry -> Text(logLine(entry), style = MaterialTheme.typography.bodyMedium) }
+            if (log.isEmpty()) item(key = "log-empty") { Text("Nothing yet.", Modifier.animatedItem(this)) }
+            items(log, key = { "log-${it.id}" }) { entry ->
+                Text(logLine(entry), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.animatedItem(this))
+            }
         }
     }
 }

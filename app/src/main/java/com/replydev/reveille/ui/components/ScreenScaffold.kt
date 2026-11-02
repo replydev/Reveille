@@ -44,8 +44,8 @@ fun ScreenScaffold(
 }
 
 @Composable
-fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
+fun SectionTitle(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = modifier.padding(top = 8.dp))
 }
 
 /** Content padding for a LazyColumn inside [ScreenScaffold]: keeps room for the FAB at the bottom. */

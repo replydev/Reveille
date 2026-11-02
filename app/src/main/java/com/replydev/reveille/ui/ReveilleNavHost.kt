@@ -1,6 +1,7 @@
 package com.replydev.reveille.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
@@ -15,6 +16,7 @@ import com.replydev.reveille.ui.policies.PoliciesScreen
 import com.replydev.reveille.ui.policies.PolicyEditorScreen
 import com.replydev.reveille.ui.reliability.ReliabilityScreen
 import com.replydev.reveille.ui.settings.SettingsScreen
+import com.replydev.reveille.ui.theme.Motion
 
 object Routes {
     const val HOME = "home"
@@ -31,7 +33,17 @@ object Routes {
 @Composable
 fun ReveilleNavHost() {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = Routes.HOME) {
+    val density = LocalDensity.current
+    // Material shared axis X instead of the default 700 ms crossfade. Pop runs the same motion in reverse, which also
+    // drives the predictive back preview.
+    NavHost(
+        navController = nav,
+        startDestination = Routes.HOME,
+        enterTransition = { Motion.sharedAxisEnter(density, forward = true) },
+        exitTransition = { Motion.sharedAxisExit(density, forward = true) },
+        popEnterTransition = { Motion.sharedAxisEnter(density, forward = false) },
+        popExitTransition = { Motion.sharedAxisExit(density, forward = false) },
+    ) {
         composable(Routes.HOME) {
             HomeScreen(
                 onOpenPolicies = { nav.navigate(Routes.POLICIES) },

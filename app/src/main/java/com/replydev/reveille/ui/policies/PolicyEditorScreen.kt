@@ -1,5 +1,7 @@
 package com.replydev.reveille.ui.policies
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,6 +44,8 @@ import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.WeekdayChips
 import com.replydev.reveille.ui.components.listPadding
 import com.replydev.reveille.ui.components.rememberScreenSession
+import com.replydev.reveille.ui.theme.Motion
+import com.replydev.reveille.ui.theme.animatedItem
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -173,26 +177,31 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
                     draft.rule,
                     onChange = { rules[index] = draft.copy(rule = it) },
                     onRemove = { rules.removeAt(index) },
+                    modifier = Modifier.animatedItem(this),
                 )
             }
-            item(key = "add-rule") { OutlinedButton(onClick = { rules.add(newRule()) }) { Text("Add alarm time") } }
-            item(key = "pauses-title") { SectionTitle("Pauses") }
+            item(key = "add-rule") { OutlinedButton(onClick = { rules.add(newRule()) }, modifier = Modifier.animatedItem(this)) { Text("Add alarm time") } }
+            item(key = "pauses-title") { SectionTitle("Pauses", Modifier.animatedItem(this)) }
             itemsIndexed(pauses, key = { _, draft -> "pause-${draft.key}" }) { index, draft ->
                 PauseRow(
                     draft.pause,
                     onChange = { pauses[index] = draft.copy(pause = it) },
                     onRemove = { pauses.removeAt(index) },
+                    modifier = Modifier.animatedItem(this),
                 )
             }
             item(key = "add-pause") {
-                OutlinedButton(onClick = {
-                    val today = LocalDate.now()
-                    pauses.add(PauseDraft(newDraftKey(), PauseEntity(policyId = editId, fromDate = today, toDate = today.plusDays(7))))
-                }) { Text("Add pause") }
+                OutlinedButton(
+                    onClick = {
+                        val today = LocalDate.now()
+                        pauses.add(PauseDraft(newDraftKey(), PauseEntity(policyId = editId, fromDate = today, toDate = today.plusDays(7))))
+                    },
+                    modifier = Modifier.animatedItem(this),
+                ) { Text("Add pause") }
             }
             if (errors.isNotEmpty() || warning != null) {
                 item(key = "problems") {
-                    Column {
+                    Column(Modifier.animatedItem(this).animateContentSize(Motion.size)) {
                         errors.forEach { Text(it, color = MaterialTheme.colorScheme.error) }
                         warning?.let { Text(it, color = MaterialTheme.colorScheme.tertiary) }
                     }
@@ -203,8 +212,8 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
 }
 
 @Composable
-private fun RuleCard(rule: RuleEntity, onChange: (RuleEntity) -> Unit, onRemove: () -> Unit) {
-    OutlinedCard(Modifier.fillMaxWidth()) {
+private fun RuleCard(rule: RuleEntity, onChange: (RuleEntity) -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
+    OutlinedCard(modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TimeButton(rule.time, onChange = { onChange(rule.copy(time = it)) })
@@ -219,7 +228,7 @@ private fun RuleCard(rule: RuleEntity, onChange: (RuleEntity) -> Unit, onRemove:
                 TextButton(onClick = { onChange(rule.copy(intervalWeeks = (rule.intervalWeeks + 1).coerceAtMost(MAX_INTERVAL_WEEKS))) }) { Text("+") }
                 Text(if (rule.intervalWeeks == 1) "week" else "weeks")
             }
-            if (rule.intervalWeeks > 1) {
+            AnimatedVisibility(rule.intervalWeeks > 1, enter = Motion.expand, exit = Motion.collapse) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Including the week of", Modifier.weight(1f))
                     DateButton(rule.anchorDate, onChange = { onChange(rule.copy(anchorDate = it)) })
@@ -238,8 +247,8 @@ private fun RuleCard(rule: RuleEntity, onChange: (RuleEntity) -> Unit, onRemove:
 }
 
 @Composable
-private fun PauseRow(pause: PauseEntity, onChange: (PauseEntity) -> Unit, onRemove: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun PauseRow(pause: PauseEntity, onChange: (PauseEntity) -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         DateButton(pause.fromDate, onChange = { onChange(pause.copy(fromDate = it)) })
         Text("→")
         DateButton(pause.toDate, onChange = { onChange(pause.copy(toDate = it)) })

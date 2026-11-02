@@ -29,6 +29,7 @@ import com.replydev.reveille.ui.components.ScreenScaffold
 import com.replydev.reveille.ui.components.listPadding
 import com.replydev.reveille.ui.components.rememberScreenSession
 import com.replydev.reveille.ui.components.rememberToday
+import com.replydev.reveille.ui.theme.animatedItem
 
 @Composable
 fun PoliciesScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
@@ -46,7 +47,7 @@ fun PoliciesScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
         LazyColumn(contentPadding = listPadding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val list = policies ?: return@LazyColumn
             if (list.isEmpty()) {
-                item { Text("No policies yet. A policy groups recurring alarms, for example \"Work\".") }
+                item(key = "empty") { Text("No policies yet. A policy groups recurring alarms, for example \"Work\".", Modifier.animatedItem(this)) }
             }
             items(list, key = { it.policy.id }) { item ->
                 PolicyCard(
@@ -60,6 +61,7 @@ fun PoliciesScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                             action = { container.repository.setPolicyEnabled(item.policy.id, enabled) },
                         )
                     },
+                    modifier = Modifier.animatedItem(this),
                 )
             }
         }
@@ -67,8 +69,14 @@ fun PoliciesScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
 }
 
 @Composable
-private fun PolicyCard(item: PolicyWithChildren, status: String?, onOpen: () -> Unit, onEnabledChange: (Boolean) -> Unit) {
-    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
+private fun PolicyCard(
+    item: PolicyWithChildren,
+    status: String?,
+    onOpen: () -> Unit,
+    onEnabledChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(onClick = onOpen, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(item.policy.name, style = MaterialTheme.typography.titleMedium)

@@ -1,5 +1,7 @@
 package com.replydev.reveille.ui.oneoff
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -40,6 +42,7 @@ import com.replydev.reveille.ui.components.ScreenScaffold
 import com.replydev.reveille.ui.components.TimeButton
 import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.rememberScreenSession
+import com.replydev.reveille.ui.theme.Motion
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -178,18 +181,20 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
                 }
                 Switch(checked = replaceDay, onCheckedChange = { replaceDay = it })
             }
-            when {
-                sameDay.isEmpty() -> Unit
-                replacedByOther && !replaceDay -> Text(
-                    "Another alarm on this day already replaces its recurring alarms, so they won't ring.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                else -> {
-                    Text(if (replaceDay) "Will be replaced:" else "Will also ring:", style = MaterialTheme.typography.titleSmall)
-                    sameDay.forEach { Text("${TimeText.time(it.time)}  ${it.label}") }
+            AnimatedVisibility(sameDay.isNotEmpty(), enter = Motion.expand, exit = Motion.collapse) {
+                Column(Modifier.animateContentSize(Motion.size), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    if (replacedByOther && !replaceDay) {
+                        Text(
+                            "Another alarm on this day already replaces its recurring alarms, so they won't ring.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    } else {
+                        Text(if (replaceDay) "Will be replaced:" else "Will also ring:", style = MaterialTheme.typography.titleSmall)
+                        sameDay.forEach { Text("${TimeText.time(it.time)}  ${it.label}") }
+                    }
                 }
             }
-            if (inPast) {
+            AnimatedVisibility(inPast, enter = Motion.expand, exit = Motion.collapse) {
                 Text("This time is in the past.", color = MaterialTheme.colorScheme.error)
             }
         }
