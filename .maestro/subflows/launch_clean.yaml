@@ -1,0 +1,9 @@
+# Fresh install state with every runtime permission granted, landing on Home.
+appId: com.replydev.reveille
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- assertVisible: "Reveille"
+- assertVisible: "Next alarm"

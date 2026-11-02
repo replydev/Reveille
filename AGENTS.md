@@ -14,9 +14,21 @@ Guidance for coding agents working on Reveille. `CLAUDE.md` is a symlink to this
 ./gradlew :app:lintDebug                     # must report 0 errors
 ./gradlew :app:assembleDebug                 # build the APK
 ./gradlew :app:installDebug                  # install on a connected phone
+maestro test .maestro                        # UI flows on the running emulator or phone
 ```
 
-Run all four (test, test, lint, assemble) before committing.
+Run all four (test, test, lint, assemble) before committing. For UI changes, also install and run the Maestro flows.
+
+## UI testing (Maestro)
+
+`.maestro/` holds end-to-end flows driven by [Maestro](https://maestro.dev): `navigation.yaml`, `one_off_alarm.yaml`, `policy.yaml`. Each one starts from `subflows/launch_clean.yaml` (cleared state, all permissions granted). Only top-level files run as flows.
+
+- Setup: `brew install mobile-dev-inc/tap/maestro`; emulator `reveille` (Pixel 8, API 35 `google_apis` arm64). Start it headless with `$ANDROID_HOME/emulator/emulator -avd reveille -no-window -no-audio -no-boot-anim &`.
+- Set `MAESTRO_CLI_NO_ANALYTICS=1` to keep Maestro from sending analytics.
+- Select elements by their visible text; buttons are text labels, so no test tags are needed. When a label appears twice (the top-bar "Delete" and the confirm dialog's "Delete"), anchor it with `below:`.
+- `maestro hierarchy` dumps what is on screen; `adb exec-out screencap -p > shot.png` takes a screenshot.
+- To check motion, record with `adb shell screenrecord`, then tile the distinct frames: `ffmpeg -i nav.mp4 -vf "mpdecimate,setpts=N/FRAME_RATE/TB,scale=270:-1,tile=8x2" -frames:v 1 grid.png`.
+- An emulator cannot prove HyperOS kills, Direct Boot ringing or full-screen intents; those still need a real phone.
 
 ## Layout
 
