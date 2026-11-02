@@ -25,6 +25,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlarmManager
 import java.io.File
 import java.time.Instant
@@ -34,6 +35,8 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.TimeZone
 
+// Android 12, 13 and 15: rearm must not use APIs newer than minSdk 31 (LocalDate.ofInstant crashed on 12/13).
+@Config(sdk = [31, 33, 35])
 @RunWith(AndroidJUnit4::class)
 class AlarmSchedulerTest {
     @get:Rule

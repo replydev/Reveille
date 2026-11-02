@@ -16,7 +16,6 @@ import com.replydev.reveille.engine.Armed
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 
 class AlarmScheduler(
@@ -44,7 +43,8 @@ class AlarmScheduler(
         decision.missed.forEach { recordMissed(it) }
         if (decision.missed.any { it.isSnooze }) state.setSnooze(null)
         // Only after overdue alarms were decided: data from the outage window must still exist while deciding.
-        repository.cleanup(LocalDate.ofInstant(since, zone).minusDays(1))
+        // atZone, not LocalDate.ofInstant: the latter is API 34 and crashed rearm on Android 12/13.
+        repository.cleanup(since.atZone(zone).toLocalDate().minusDays(1))
         val armed = decision.armed
         val trigger = decision.triggerAt
         if (armed != null && trigger != null) arm(armed, trigger) else cancel()
