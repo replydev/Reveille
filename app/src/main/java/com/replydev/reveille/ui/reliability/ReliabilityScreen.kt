@@ -1,5 +1,8 @@
 package com.replydev.reveille.ui.reliability
 
+import androidx.compose.foundation.layout.PaddingValues
+import com.replydev.reveille.ui.components.TabHeader
+import com.replydev.reveille.ui.components.TabScaffold
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -59,7 +62,7 @@ import kotlin.coroutines.cancellation.CancellationException
 private const val TAG = "Reveille"
 
 @Composable
-fun ReliabilityScreen(onBack: () -> Unit) {
+fun ReliabilityScreen() {
     val context = LocalContext.current
     val container = context.container
     val snackbar = remember { SnackbarHostState() }
@@ -80,8 +83,13 @@ fun ReliabilityScreen(onBack: () -> Unit) {
         }
     }
 
-    ScreenScaffold(title = "Reliability", onBack = onBack, snackbarHostState = snackbar) { padding ->
-        LazyColumn(contentPadding = listPadding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    TabScaffold(snackbarHostState = snackbar) { padding ->
+        LazyColumn(
+            modifier = Modifier.padding(top = padding.calculateTopPadding()),
+            contentPadding = listPadding(PaddingValues(bottom = padding.calculateBottomPadding())),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item(key = "header") { TabHeader("Health") }
             item(key = "intro") {
                 Text(
                     "Reveille uses the same alarm API as the stock Clock app and sets a backup 2 minutes after every alarm. " +

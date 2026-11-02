@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,7 +47,9 @@ import com.replydev.reveille.engine.Occurrence
 import com.replydev.reveille.engine.Source
 import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.engine.Timeline
-import com.replydev.reveille.ui.components.ScreenScaffold
+import com.replydev.reveille.ui.components.TabHeader
+import com.replydev.reveille.ui.components.TabScaffold
+import com.replydev.reveille.ui.components.CHECKS_FAILED
 import com.replydev.reveille.ui.components.ScreenSession
 import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.listPadding
@@ -68,17 +71,15 @@ private const val MISMATCH_GRACE_MS = 3_000L
 /** Wraps the armed alarm so "not loaded yet" (null) differs from "nothing armed". */
 private class ArmedState(val armed: Armed?)
 
-/** Result of reading the reliability checks: null while unknown, -1 if they could not be computed. */
-private const val CHECKS_FAILED = -1
 
 @Composable
 fun HomeScreen(
-    onOpenPolicies: () -> Unit,
-    onOpenSettings: () -> Unit,
+    failingChecks: Int?,
     onOpenReliability: () -> Unit,
     onNewOneOff: () -> Unit,
     onNewPolicy: () -> Unit,
     onEditOneOff: (Long) -> Unit,
+    onOpenPolicy: (Long) -> Unit,
 ) {
     val container = LocalContext.current.container
     val repository = container.repository
@@ -97,32 +98,11 @@ fun HomeScreen(
             value = Instant.now()
         }
     }
-    // Saveable so that returning to Home shows the last result at once instead of inserting the banner after the transition.
-    var failingChecks by rememberSaveable { mutableStateOf<Int?>(null) }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            failingChecks = try {
-                container.reliability.checks().count { !it.ok }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w("Reveille", "Reliability check failed", e)
-                CHECKS_FAILED
-            }
-        }
-    }
     val zone = ZoneId.systemDefault()
     val today = now.atZone(zone).toLocalDate()
     val entries = remember(snapshot, now) { snapshot?.let { Timeline.build(it, now, zone, TIMELINE_DAYS) } ?: emptyList() }
 
-    ScreenScaffold(
-        title = "Reveille",
-        actions = {
-            TextButton(onClick = onOpenPolicies) { Text("Policies") }
-            TextButton(onClick = onOpenSettings) { Text("Settings") }
-            TextButton(onClick = onOpenReliability) { Text("Reliability") }
-        },
+    TabScaffold(
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ExtendedFloatingActionButton(
@@ -135,11 +115,13 @@ fun HomeScreen(
         },
         snackbarHostState = snackbar,
     ) { padding ->
+        Column(Modifier.padding(top = padding.calculateTopPadding())) {
+        TabHeader("Today")
         LazyColumn(
-            contentPadding = listPadding(padding, fabRows = 2),
+            contentPadding = listPadding(PaddingValues(bottom = padding.calculateBottomPadding()), fabRows = 2),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            failingChecks?.takeIf { it != 0 }?.let { failing ->
+                        failingChecks?.takeIf { it != 0 }?.let { failing ->
                 item(key = "banner") { ReliabilityBanner(failing, onOpenReliability, Modifier.animatedItem(this)) }
             }
             val loadedSnapshot = snapshot
@@ -172,6 +154,7 @@ fun HomeScreen(
                     )
                 }
             }
+        }
         }
     }
 }

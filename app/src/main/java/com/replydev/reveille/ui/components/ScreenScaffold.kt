@@ -1,8 +1,14 @@
 package com.replydev.reveille.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -14,8 +20,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.replydev.reveille.ui.theme.ReveilleTheme
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 
@@ -43,15 +52,57 @@ fun ScreenScaffold(
     )
 }
 
+/**
+ * A top-level screen: below the status bar, above the [ReveilleNavBar] (which the nav host draws on top). The FAB
+ * sits 16 dp above the bar and the snackbar above the FAB.
+ */
+@Composable
+fun TabScaffold(
+    snackbarHostState: SnackbarHostState? = null,
+    floatingActionButton: @Composable () -> Unit = {},
+    content: @Composable (PaddingValues) -> Unit,
+) {
+    Scaffold(
+        containerColor = ReveilleTheme.colors.bg,
+        contentWindowInsets = WindowInsets.statusBars,
+        bottomBar = { NavBarSpacer() },
+        floatingActionButton = floatingActionButton,
+        snackbarHost = { snackbarHostState?.let { SnackbarHost(it) } },
+        content = content,
+    )
+}
+
+/** The header of a top-level screen: an optional [overline] line above the 28 sp [title], and a [trailing] slot. */
+@Composable
+fun TabHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    overline: String? = null,
+    bottom: Dp = 12.dp,
+    trailing: @Composable (() -> Unit)? = null,
+    below: @Composable (() -> Unit)? = null,
+) {
+    Column(modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = bottom)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                overline?.let { Text(it, style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.muted) }
+                Text(title, style = ReveilleTheme.type.titleL, color = ReveilleTheme.colors.onBg)
+            }
+            trailing?.invoke()
+        }
+        below?.invoke()
+    }
+}
+
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = modifier.padding(top = 8.dp))
 }
 
-/** Content padding for a LazyColumn inside [ScreenScaffold]: keeps room for the FAB at the bottom. */
-fun listPadding(scaffold: PaddingValues, fabRows: Int = 1): PaddingValues = PaddingValues(
-    start = 16.dp,
-    end = 16.dp,
+/** Content padding for a LazyColumn inside a scaffold: keeps room for the FAB at the bottom. */
+fun listPadding(scaffold: PaddingValues, fabRows: Int = 1, horizontal: Dp = 16.dp): PaddingValues = PaddingValues(
+    start = horizontal,
+    end = horizontal,
     top = scaffold.calculateTopPadding() + 8.dp,
     bottom = scaffold.calculateBottomPadding() + 32.dp + 68.dp * fabRows,
 )

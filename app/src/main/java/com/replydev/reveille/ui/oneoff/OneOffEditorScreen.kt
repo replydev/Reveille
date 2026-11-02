@@ -38,7 +38,7 @@ import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.ui.components.ConfirmDialog
 import com.replydev.reveille.ui.components.DateButton
 import com.replydev.reveille.ui.components.LeaveWhenSaved
-import com.replydev.reveille.ui.components.ScreenScaffold
+import com.replydev.reveille.ui.components.SheetScaffold
 import com.replydev.reveille.ui.components.TimeButton
 import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.rememberScreenSession
@@ -101,9 +101,9 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
     val replacedByOther = snapshot?.oneOffs?.any { it.date == date && it.mode == OneOffMode.REPLACE_DAY && it.id != editId } == true
     val inPast = isInPast(date, time, now)
 
-    ScreenScaffold(
-        title = if (editId == 0L) "New alarm" else "Edit alarm",
-        onBack = onDone,
+    SheetScaffold(
+        title = if (editId == 0L) "One-off alarm" else "Edit alarm",
+        onClose = onDone,
         snackbarHostState = snackbar,
         actions = {
             if (editId != 0L) {
@@ -153,7 +153,7 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
                 },
             )
         }
-        if (!loaded) return@ScreenScaffold
+        if (!loaded) return@SheetScaffold
         Column(
             modifier = Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),

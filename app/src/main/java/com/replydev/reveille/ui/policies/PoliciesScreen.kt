@@ -1,5 +1,8 @@
 package com.replydev.reveille.ui.policies
 
+import androidx.compose.foundation.layout.PaddingValues
+import com.replydev.reveille.ui.components.TabHeader
+import com.replydev.reveille.ui.components.TabScaffold
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,19 +35,22 @@ import com.replydev.reveille.ui.components.rememberToday
 import com.replydev.reveille.ui.theme.animatedItem
 
 @Composable
-fun PoliciesScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
+fun PoliciesScreen(onOpen: (Long) -> Unit) {
     val container = LocalContext.current.container
     val snackbar = remember { SnackbarHostState() }
     val session = rememberScreenSession(snackbar)
     val today = rememberToday()
     val policies by container.repository.policies.collectAsStateWithLifecycle(initialValue = null)
-    ScreenScaffold(
-        title = "Policies",
-        onBack = onBack,
+    TabScaffold(
         floatingActionButton = { ExtendedFloatingActionButton(onClick = { onOpen(0) }) { Text("New policy") } },
         snackbarHostState = snackbar,
     ) { padding ->
-        LazyColumn(contentPadding = listPadding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            modifier = Modifier.padding(top = padding.calculateTopPadding()),
+            contentPadding = listPadding(PaddingValues(bottom = padding.calculateBottomPadding()), horizontal = 0.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item(key = "header") { TabHeader("Policies") }
             val list = policies ?: return@LazyColumn
             if (list.isEmpty()) {
                 item(key = "empty") { Text("No policies yet. A policy groups recurring alarms, for example \"Work\".", Modifier.animatedItem(this)) }

@@ -1,4 +1,4 @@
-# Create a weekday policy, see it on Home, then delete it from Policies.
+# Create a weekday policy, see it on Today, then delete it from Policies.
 appId: com.replydev.reveille
 name: Policy
 ---
@@ -25,5 +25,5 @@ name: Policy
     text: "Delete"
     below: "Delete policy?"
 - assertVisible: "No policies yet.*"
-- tapOn: "Back"
+- tapOn: "Today"
 - assertVisible: "None scheduled"

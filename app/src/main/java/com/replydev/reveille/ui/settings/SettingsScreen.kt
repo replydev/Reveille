@@ -1,5 +1,7 @@
 package com.replydev.reveille.ui.settings
 
+import com.replydev.reveille.ui.components.TabHeader
+import com.replydev.reveille.ui.components.TabScaffold
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -44,7 +46,7 @@ import kotlinx.coroutines.withContext
 private const val MAX_SNOOZE_MINUTES = 30
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen() {
     val context = LocalContext.current
     val container = context.container
     val snackbar = remember { SnackbarHostState() }
@@ -62,17 +64,18 @@ fun SettingsScreen(onBack: () -> Unit) {
         }
     }
 
-    ScreenScaffold(title = "Settings", onBack = onBack, snackbarHostState = snackbar) { padding ->
+    TabScaffold(snackbarHostState = snackbar) { padding ->
         // Wait for the stored values: showing defaults first would let a quick tap overwrite them.
-        val current = settings ?: return@ScreenScaffold
+        val current = settings ?: return@TabScaffold
         // RingtoneManager reads the media database: off the main thread.
         val ringtoneName by produceState("…", current.ringtoneUri) {
             value = withContext(Dispatchers.IO) { ringtoneTitle(context, current.ringtoneUri) }
         }
         Column(
-            Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
+            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            TabHeader("Settings")
             Column(
                 Modifier.fillMaxWidth().clickable {
                     val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)

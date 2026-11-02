@@ -46,6 +46,10 @@ object Motion {
         slideOutHorizontally(tween(MEDIUM2, easing = Emphasized)) { if (forward) -offsetPx(density) else offsetPx(density) } +
             fadeOut(tween(SHORT2, easing = EmphasizedAccelerate))
 
+    /** Fade through between top-level tabs: no slide, the old tab fades out first. */
+    val fadeThroughEnter: EnterTransition = fadeIn(tween(MEDIUM2 - SHORT2, delayMillis = SHORT2 / 2, easing = EmphasizedDecelerate))
+    val fadeThroughExit: ExitTransition = fadeOut(tween(SHORT2, easing = EmphasizedAccelerate))
+
     /** Lazy list items: a quick fade and a critically damped spring that settles fast without overshoot. */
     val itemFade: FiniteAnimationSpec<Float> = tween(SHORT3, easing = LinearEasing)
     val itemPlacement: FiniteAnimationSpec<IntOffset> =
