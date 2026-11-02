@@ -1,3 +1,6 @@
+// Release signing comes from the environment (CI secrets); without it, release builds are unsigned.
+val releaseKeystore: String? = providers.environmentVariable("REVEILLE_KEYSTORE_FILE").orNull
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -12,13 +15,26 @@ android {
         applicationId = "com.replydev.reveille"
         minSdk = 31
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI passes the semantic version; local builds are marked as dev builds.
+        versionCode = providers.gradleProperty("reveille.versionCode").map(String::toInt).getOrElse(1)
+        versionName = providers.gradleProperty("reveille.versionName").getOrElse("0.0.0-dev")
+    }
+
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = providers.environmentVariable("REVEILLE_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("REVEILLE_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("REVEILLE_KEY_PASSWORD").get()
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (releaseKeystore != null) signingConfig = signingConfigs.getByName("release")
         }
     }
 

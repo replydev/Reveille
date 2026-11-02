@@ -36,6 +36,31 @@ Then:
 ./gradlew :engine:test :app:testDebugUnitTest :app:lintDebug   # tests and lint
 ```
 
+## CI and releases
+
+- **Every pull request** runs unit tests (engine + Robolectric on SDK 31/33/35), Android lint, a debug build (APK attached as an artifact), ShellCheck, and a preview of the release the PR would produce (`.github/workflows/ci.yml`).
+- **Every push to `main`** runs CI again. It then computes the next version from [Conventional Commits](https://www.conventionalcommits.org) since the last `vX.Y.Z` tag (`scripts/semver.sh`):
+
+  | Commit | Effect |
+  |---|---|
+  | `feat` | minor bump |
+  | `fix`, `perf` | patch bump |
+  | `type!:` or a `BREAKING CHANGE:` footer | major bump |
+  | anything else | no release |
+
+  If a release is due, it builds a **signed** release APK, verifies the signature, and publishes a GitHub release `vX.Y.Z`. The release carries `reveille-vX.Y.Z.apk`, its `.sha256` and generated notes (`.github/workflows/release.yml`).
+- Version code = `major × 1,000,000 + minor × 1,000 + patch`.
+
+### Signing key (one-time setup)
+
+```bash
+scripts/create-release-keystore.sh ~/reveille-release.jks replydev/Reveille
+```
+
+The script creates a 4096-bit RSA key valid for 100 years and can store it as the repository secrets `REVEILLE_KEYSTORE_BASE64`, `REVEILLE_KEYSTORE_PASSWORD`, `REVEILLE_KEY_ALIAS` and `REVEILLE_KEY_PASSWORD` (it needs `gh` logged in with access to the repo). **Back up the `.jks` file and its password.** Every update must be signed with the same key, or Android refuses to install it over the existing app. A phone that has a debug build installed must uninstall it once before installing a release.
+
+To build a signed APK locally, set `REVEILLE_KEYSTORE_FILE`, `REVEILLE_KEYSTORE_PASSWORD`, `REVEILLE_KEY_ALIAS` and `REVEILLE_KEY_PASSWORD`, then run `./gradlew :app:assembleRelease`. Without them, the release APK is unsigned.
+
 ## First run
 
 1. Grant notification permission when asked.

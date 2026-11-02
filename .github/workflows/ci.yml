@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  JAVA_VERSION: "21"
+  ANDROID_PACKAGES: "platform-tools platforms;android-37.0 build-tools;37.0.0"
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ${{ env.ANDROID_PACKAGES }}
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Cache Robolectric Android jars
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml', 'app/src/test/**/*.kt') }}
+          restore-keys: robolectric-
+      - name: Engine tests
+        run: ./gradlew :engine:test
+      - name: App unit tests (Robolectric, SDK 31/33/35)
+        run: ./gradlew :app:testDebugUnitTest
+      - name: Upload test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: |
+            engine/build/reports/tests/
+            app/build/reports/tests/
+            engine/build/test-results/
+            app/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  lint:
+    name: Android lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ${{ env.ANDROID_PACKAGES }}
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Lint
+        run: ./gradlew :app:lintDebug
+      - name: Upload lint report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.*
+          if-no-files-found: ignore
+          retention-days: 14
+
+  build:
+    name: Debug build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ${{ env.ANDROID_PACKAGES }}
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: reveille-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+  scripts:
+    name: Release scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: ShellCheck
+        run: shellcheck scripts/*.sh
+      - name: Preview next release
+        run: |
+          next="$(scripts/semver.sh next)"
+          {
+            echo "### Release preview"
+            if [ -n "$next" ]; then
+              echo "Merging this would release **v$next**."
+              echo
+              scripts/semver.sh notes
+            else
+              echo "No release: no feat, fix, perf or breaking commits since the last tag."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -57,4 +57,6 @@ Run all four (test, test, lint, assemble) before committing.
 - Kotlin official style. Match the surrounding code's comment density and naming. UI strings are English and hard-coded.
 - No Material icons artifact; buttons use text labels.
 - Commits: conventional style (`feat(alarm): …`, `fix(ui): …`, `docs: …`), unsigned. **No AI attribution lines or Co-Authored-By trailers.**
+- Commit types drive releases: merging to `main` publishes a release for `feat` (minor), `fix`/`perf` (patch) and `!`/`BREAKING CHANGE` (major); `docs`, `chore`, `ci`, `test`, `refactor` and `build` don't release. Pick the type deliberately.
+- Never commit keystores (`*.jks`, `*.keystore` are git-ignored). Release signing only happens in CI from secrets.
 - Keep the spec in sync when behaviour on the alarm path changes.
