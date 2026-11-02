@@ -10,6 +10,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.replydev.reveille.ui.home.HomeScreen
+import com.replydev.reveille.ui.oneoff.OneOffEditorScreen
 import com.replydev.reveille.ui.policies.PoliciesScreen
 import com.replydev.reveille.ui.policies.PolicyEditorScreen
 
@@ -43,6 +44,9 @@ fun ReveilleNavHost() {
         }
         composable(Routes.POLICY, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
             PolicyEditorScreen(id = entry.arguments?.getLong("id") ?: 0L, onDone = { nav.leave(entry) })
+        }
+        composable(Routes.ONE_OFF, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
+            OneOffEditorScreen(id = entry.arguments?.getLong("id") ?: 0L, onDone = { nav.leave(entry) })
         }
     }
 }
