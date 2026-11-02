@@ -1,10 +1,17 @@
 package com.replydev.reveille.ui
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.Lifecycle
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.replydev.reveille.ui.home.HomeScreen
+import com.replydev.reveille.ui.policies.PoliciesScreen
+import com.replydev.reveille.ui.policies.PolicyEditorScreen
 
 object Routes {
     const val HOME = "home"
@@ -31,5 +38,16 @@ fun ReveilleNavHost() {
                 onEditOneOff = { nav.navigate(Routes.oneOff(it)) },
             )
         }
+        composable(Routes.POLICIES) { entry ->
+            PoliciesScreen(onBack = { nav.leave(entry) }, onOpen = { nav.navigate(Routes.policy(it)) })
+        }
+        composable(Routes.POLICY, arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
+            PolicyEditorScreen(id = entry.arguments?.getLong("id") ?: 0L, onDone = { nav.leave(entry) })
+        }
     }
+}
+
+/** Pops [entry] only while it is the current screen, so a double tap on Back (or Back after Save) cannot pop Home. */
+private fun NavController.leave(entry: NavBackStackEntry) {
+    if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) popBackStack()
 }
