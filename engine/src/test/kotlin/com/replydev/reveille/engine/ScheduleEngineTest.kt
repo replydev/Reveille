@@ -158,4 +158,63 @@ class ScheduleEngineTest {
         assertEquals(listOf(LocalTime.parse("08:55")), alarms.map { it.time })
         assertEquals("Work", alarms.single().label)
     }
+
+    private val nuuk = ZoneId.of("America/Nuuk")
+
+    private fun nuukAt(date: String, time: String): Instant =
+        ZonedDateTime.of(LocalDate.parse(date), LocalTime.parse(time), nuuk).toInstant()
+
+    /** Guards the hardcoded date: Nuuk springs forward at 23:00 local on 2027-03-27. */
+    private fun assumeNuukGap() {
+        val transition = nuuk.rules.nextTransition(Instant.parse("2027-01-01T00:00:00Z"))
+        assertTrue(transition.isGap)
+        assertEquals("2027-03-27T23:00", transition.dateTimeBefore.toString())
+    }
+
+    @Test
+    fun `gap pushing a late alarm past midnight keeps global order`() {
+        assumeNuukGap()
+        val saturdayLate = Policy(1, "Late", rules = listOf(Rule(10, LocalTime.parse("23:30"), setOf(DayOfWeek.SATURDAY))))
+        val sundayEarly = Policy(2, "Early", rules = listOf(Rule(20, LocalTime.parse("00:10"), setOf(DayOfWeek.SUNDAY))))
+        val result = upcoming(ScheduleSnapshot(policies = listOf(saturdayLate, sundayEarly)), nuukAt("2027-03-27", "12:00"), limit = 2, zone = nuuk)
+        assertEquals(listOf("2027-03-28T00:10", "2027-03-28T00:30"), result.times())
+        assertEquals(listOf("Early", "Late"), result.map { it.label })
+    }
+
+    @Test
+    fun `gap-shifted alarm merges with the next day's alarm at the same instant`() {
+        assumeNuukGap()
+        val saturdayLate = Policy(1, "Late", rules = listOf(Rule(10, LocalTime.parse("23:30"), setOf(DayOfWeek.SATURDAY))))
+        val gym = OneOff(7, LocalDate.parse("2027-03-28"), LocalTime.parse("00:30"), "Gym", OneOffMode.ADDITIVE)
+        val result = upcoming(ScheduleSnapshot(listOf(saturdayLate), listOf(gym)), nuukAt("2027-03-27", "12:00"), limit = 2, zone = nuuk)
+        assertEquals("2027-03-28T00:30", result.first().at.toLocalDateTime().toString())
+        assertEquals("Late · Gym", result.first().label)
+        assertEquals(listOf("P:1:10:2027-03-27", "O:7"), result.first().sources.map { it.key })
+        assertEquals(2, result.size)
+        assertTrue(result[1].at.isAfter(result[0].at))
+    }
+
+    @Test
+    fun `gap-shifted alarm from the previous day is found when starting after midnight`() {
+        assumeNuukGap()
+        val saturdayLate = Policy(1, "Late", rules = listOf(Rule(10, LocalTime.parse("23:30"), setOf(DayOfWeek.SATURDAY))))
+        val result = upcoming(ScheduleSnapshot(policies = listOf(saturdayLate)), nuukAt("2027-03-28", "00:10"), limit = 1, zone = nuuk)
+        assertEquals(listOf("2027-03-28T00:30"), result.times())
+    }
+
+    @Test
+    fun `between is inclusive on both ends and merges same-instant alarms`() {
+        val gym = OneOff(7, LocalDate.parse("2026-11-03"), LocalTime.parse("07:55"), "Gym", OneOffMode.ADDITIVE)
+        val result = ScheduleEngine.between(
+            ScheduleSnapshot(listOf(work), listOf(gym)), at("2026-11-02", "07:55"), at("2026-11-04", "07:55"), zone,
+        )
+        assertEquals(listOf("2026-11-02T07:55", "2026-11-03T07:55", "2026-11-04T07:55"), result.times())
+        assertEquals("Work · Gym", result[1].label)
+    }
+
+    @Test
+    fun `between with an empty range returns nothing`() {
+        val result = ScheduleEngine.between(ScheduleSnapshot(listOf(work)), at("2026-11-02", "08:00"), at("2026-11-02", "07:00"), zone)
+        assertTrue(result.isEmpty())
+    }
 }

@@ -5,6 +5,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 
 /** A recurring alarm time inside a policy. [anchorDate] picks which weeks count when [intervalWeeks] > 1. */
 data class Rule(
@@ -80,6 +81,7 @@ sealed interface Source {
 
 /** One moment at which the phone should ring. Alarms at the same instant are merged into one occurrence. */
 data class Occurrence(val at: ZonedDateTime, val label: String, val sources: List<Source>) {
+    /** The first source's key. Policy alarms are listed before one-offs, so a merged occurrence is keyed by its policy alarm. */
     val key: String get() = sources.first().key
 }
 
@@ -100,7 +102,11 @@ data class Armed(
         const val SNOOZE_PREFIX = "S:"
         private const val SEPARATOR = "\u001F"
 
-        fun snooze(at: Instant, label: String): Armed = Armed("$SNOOZE_PREFIX${at.toEpochMilli()}", at, label)
+        /** [at] is truncated to milliseconds so the snooze survives [encode]/[decode] unchanged. */
+        fun snooze(at: Instant, label: String): Armed {
+            val millis = at.truncatedTo(ChronoUnit.MILLIS)
+            return Armed("$SNOOZE_PREFIX${millis.toEpochMilli()}", millis, label)
+        }
 
         fun decode(value: String): Armed? {
             val parts = value.split(SEPARATOR)

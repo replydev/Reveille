@@ -34,4 +34,31 @@ class TimelineTest {
         val entries = Timeline.build(ScheduleSnapshot(policies = listOf(work)), from, zone, days = 7)
         assertEquals(3, entries.size)
     }
+
+    @Test
+    fun `skipped policy alarm does not merge with a same-instant one-off`() {
+        val tuesday = LocalDate.parse("2026-11-03")
+        val snapshot = ScheduleSnapshot(
+            policies = listOf(work),
+            oneOffs = listOf(OneOff(7, tuesday, LocalTime.parse("07:55"), "Gym", OneOffMode.ADDITIVE)),
+            skips = listOf(Skip(1, tuesday)),
+        )
+        val tuesdayEntries = Timeline.build(snapshot, from, zone, days = 3).filter { it.occurrence.at.toLocalDate() == tuesday }
+        assertEquals(
+            listOf(Triple("Gym", "O:7", false), Triple("Work", "P:1:10:2026-11-03", true)),
+            tuesdayEntries.map { Triple(it.occurrence.label, it.occurrence.key, it.skipped) },
+        )
+    }
+
+    @Test
+    fun `skip on a replaced day shows nothing skipped`() {
+        val tuesday = LocalDate.parse("2026-11-03")
+        val snapshot = ScheduleSnapshot(
+            policies = listOf(work),
+            oneOffs = listOf(OneOff(7, tuesday, LocalTime.parse("09:00"), "Late", OneOffMode.REPLACE_DAY)),
+            skips = listOf(Skip(1, tuesday)),
+        )
+        val tuesdayEntries = Timeline.build(snapshot, from, zone, days = 3).filter { it.occurrence.at.toLocalDate() == tuesday }
+        assertEquals(listOf("O:7" to false), tuesdayEntries.map { it.occurrence.key to it.skipped })
+    }
 }

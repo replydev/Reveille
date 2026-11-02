@@ -54,4 +54,11 @@ class ModelTest {
         assertNull(Armed.decode("nope"))
         assertNull(Armed.decode("a\u001Fnot-a-number\u001Fb\u001F"))
     }
+
+    @Test
+    fun `snooze with sub-millisecond precision round-trips`() {
+        val snooze = Armed.snooze(Instant.parse("2026-11-05T08:04:00.123456789Z"), "Work")
+        assertEquals(Instant.parse("2026-11-05T08:04:00.123Z"), snooze.at)
+        assertEquals(snooze, Armed.decode(snooze.encode()))
+    }
 }
