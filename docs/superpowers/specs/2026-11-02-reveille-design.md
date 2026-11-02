@@ -152,7 +152,7 @@ Losing a wake-up is the worst failure. Defense in depth:
 
 5. **Missed-alarm detection.** On any `rearm()`, overdue occurrences without a FireLog row and older than the late window are recorded MISSED with a high-priority "Missed alarm at 07:55" notification; the ring guard does the same for claimed occurrences that were never resolved — so failures are visible, never silent.
 
-5b. **Residual ways to lose an alarm** (accepted, documented): force-stop (clears all alarms until Reveille or its widget runs again); notifications disabled *and* the service refused (the fallback cannot be shown — logged, and the guard keeps retrying the service for 30 min); the process dying in the milliseconds between committing a claim and arming the guard; the OS refusing `setAlarmClock` itself; the guard alarm's time appearing as the "next alarm" in the status bar while an alarm is unresolved (cosmetic); a dismissal that cannot be written re-rings every 90 s until the late window ends; a snooze withdrawn by a dismissal whose DataStore write also fails still rings; with storage failing, the auto-snooze cap resets if the process dies between snoozes.
+5b. **Residual ways to lose an alarm** (accepted, documented): force-stop (clears all alarms until Reveille is opened again); notifications disabled *and* the service refused (the fallback cannot be shown — logged, and the guard keeps retrying the service for 30 min); the process dying in the milliseconds between committing a claim and arming the guard; the OS refusing `setAlarmClock` itself; the guard alarm's time appearing as the "next alarm" in the status bar while an alarm is unresolved (cosmetic); a dismissal that cannot be written re-rings every 90 s until the late window ends; a snooze withdrawn by a dismissal whose DataStore write also fails still rings; with storage failing, the auto-snooze cap resets if the process dies between snoozes.
 
 6. **OEM setup checklist (HyperOS/MIUI first-class).** A "Reliability" screen; while anything is not green, Home shows a (non-blocking) banner linking to it and the widget a warning icon:
    - Notifications permission (`POST_NOTIFICATIONS`) — granted?
@@ -171,14 +171,14 @@ Losing a wake-up is the worst failure. Defense in depth:
 
 7. **Test alarm.** Creates an additive one-off labelled "Test alarm" at the next whole minute at least a minute away (so it rings in 1–2 min), usable with the screen off — the user validates the whole path end to end after setup; the result shows in the alarm log.
 
-8. **Force-stop caveat.** A user/system force-stop clears all alarms and the watchdog job, and a force-stopped app receives no boot broadcast, so restarting the phone does not help. Alarms come back the next time Reveille is opened or its widget updates (each re-arms); missed-alarm detection and the guard restore then report or re-ring what was lost. Documented in the Reliability screen.
+8. **Force-stop caveat.** A user/system force-stop clears all alarms and the watchdog job, and a force-stopped app receives no boot broadcast, so restarting the phone does not help. Alarms come back the next time Reveille is opened, e.g. by tapping its widget (Android does not send widget updates to a force-stopped app); missed-alarm detection and the guard restore then report or re-ring what was lost. Documented in the Reliability screen.
 
 ## Widget (Glance)
 
 - Shows next occurrence: `Thu 08:55 · Work` and relative time ("in 19 h"). Empty state: "No alarms".
 - **Skip** button: skips the displayed alarm only if it is still the armed one (a stale tap is a no-op): a policy alarm skips that policy's **whole day** (Skip row), a one-off is deleted, a snooze is cleared; a past catch-up is logged SKIPPED so it does not ring again; then `rearm()`.
 - Tap anywhere else → opens app.
-- Updated by `rearm()`; also `updatePeriodMillis` = 30 min, and each widget update re-arms (a watchdog trigger that survives force-stop). Renders the persisted armed state, never computes on its own.
+- Updated by `rearm()`; also `updatePeriodMillis` = 30 min, and each widget update re-arms as an extra safety net (not delivered while the app is force-stopped). Renders the persisted armed state, never computes on its own.
 - If the reliability checklist is not green, widget shows a small warning icon.
 
 ## Screens (Compose)
