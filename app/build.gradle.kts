@@ -33,6 +33,10 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            // Robolectric reads ~/.m2/settings.xml without interpolating ${user.home}; pin the local repo explicitly.
+            it.systemProperty("maven.repo.local", "${System.getProperty("user.home")}/.m2/repository")
+        }
     }
 }
 
