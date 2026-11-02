@@ -21,7 +21,7 @@ Run all four (test, test, lint, assemble) before committing. For UI changes, als
 
 ## UI testing (Maestro)
 
-`.maestro/` holds end-to-end flows driven by [Maestro](https://maestro.dev): `navigation.yaml`, `one_off_alarm.yaml`, `policy.yaml`. Each one starts from `subflows/launch_clean.yaml` (cleared state, all permissions granted). Only top-level files run as flows.
+`.maestro/` holds end-to-end flows driven by [Maestro](https://maestro.dev): `navigation.yaml`, `one_off_alarm.yaml`, `policy.yaml`, `update.yaml`. Each one starts from `subflows/launch_clean.yaml` (except `update.yaml`, which launches with the `fake_updates` argument so the debug build serves a canned release) (cleared state, all permissions granted). Only top-level files run as flows.
 
 - Setup: `brew install mobile-dev-inc/tap/maestro`; emulator `reveille` (Pixel 8, API 35 `google_apis` arm64). Start it headless with `$ANDROID_HOME/emulator/emulator -avd reveille -no-window -no-audio -no-boot-anim &`.
 - Set `MAESTRO_CLI_NO_ANALYTICS=1` to keep Maestro from sending analytics.
@@ -43,6 +43,7 @@ Run all four (test, test, lint, assemble) before committing. For UI changes, als
     - `WatchdogWorker`: 6 h safety re-arm.
   - `reliability/`: permission, battery and HyperOS checks.
   - `widget/`: Glance widget. It renders the persisted armed alarm and never computes its own.
+  - `update/`: in-app updates from GitHub Releases (`ReleaseSource`, `UpdateChecker`, `UpdateWorker`, `UpdateDownloader`, `ApkVerifier`, `UpdateInstaller`, `InstallGuard`). Spec: `docs/design/updates.md`. The only package that touches the network.
   - `ui/`: Compose screens. Writes go through `ScreenSession`, which launches in `AppContainer.appScope`, never the screen's scope.
   - `ui/theme/`: `Color.kt` (fixed dark palette + `ReveilleColors` CompositionLocal), `Type.kt` (Geist / Geist Mono, tabular numerals), `Theme.kt`, `Motion.kt`. No dynamic colour.
 - `AppContainer.kt`: manual DI. No DI framework.
@@ -55,6 +56,7 @@ The UI follows `docs/design/README.md` (tokens, components, per-screen spec) and
 - Dark-only, fixed palette; `Accent` (#FFB547) is the single accent. Policy colours come from `policyColor(id)`, not the database.
 - Navigation: a bottom bar with Today / Policies / Health / Settings. The editors are pushed screens (policy) or a bottom sheet (one-off) without the bar.
 - Cards are flat (1 dp outline, no elevation). Touch targets are ≥ 44 dp. Text meets 4.5:1 contrast; `Faint` is never used for body text.
+- In-app updates: `docs/design/updates.md` and `mockups/Update*.dc.html`.
 - When a screen changes, update its mockup and the spec if the design itself changed, not just the code.
 
 ## Invariants (don't break these)
@@ -66,6 +68,7 @@ The UI follows `docs/design/README.md` (tokens, components, per-screen spec) and
 - **Direct Boot**: nothing on the alarm path may touch credential-encrypted storage. WorkManager (on-demand init; the default initializer is removed in the manifest) and Glance are only used when `UserManager.isUserUnlocked`.
 - **API level**: minSdk 31. Don't call APIs above 31 without an SDK check. `LocalDate.ofInstant` is API 34; use `instant.atZone(zone).toLocalDate()`. Lint `NewApi` must stay clean, and `:engine` isn't linted, so be careful there too.
 - **Engine purity**: `:engine` stays free of Android dependencies.
+- **Updates never endanger an alarm**: nothing in `alarm/`, `engine/` or `data/` depends on `update/`; installs are refused while ringing and guarded within 30 min of the next alarm; `MY_PACKAGE_REPLACED` must re-arm (tested). An APK is installed only if its SHA-256 matches the release's `.sha256` asset and its signing certificate, package name and higher versionCode match the installed app.
 
 ## Testing
 

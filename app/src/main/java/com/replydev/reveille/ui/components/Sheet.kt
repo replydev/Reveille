@@ -31,13 +31,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import com.replydev.reveille.R
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import kotlinx.coroutines.launch
 
-/** The sheet's top edge sits this far below the top of the screen. */
+/** The sheet's top edge sits this far below the top of the screen, unless the sheet asks for another gap. */
 private val SheetTopGap = 120.dp
 
 /**
@@ -47,7 +48,7 @@ private val SheetTopGap = 120.dp
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NavBottomSheet(onDismissed: () -> Unit, content: @Composable ColumnScope.(close: () -> Unit) -> Unit) {
+fun NavBottomSheet(onDismissed: () -> Unit, topGap: Dp = SheetTopGap, content: @Composable ColumnScope.(close: () -> Unit) -> Unit) {
     // The destination's own dialog window stays clear: the sheet draws the only scrim.
     val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
     SideEffect { dialogWindow?.setDimAmount(0f) }
@@ -70,7 +71,7 @@ fun NavBottomSheet(onDismissed: () -> Unit, content: @Composable ColumnScope.(cl
             }
         },
     ) {
-        val height = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() } - SheetTopGap - 14.dp
+        val height = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() } - topGap - 14.dp
         Column(Modifier.fillMaxWidth().height(height.coerceAtLeast(320.dp))) { content(close) }
     }
 }

@@ -56,18 +56,21 @@ import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.rememberScreenSession
 import com.replydev.reveille.ui.components.topDivider
 import com.replydev.reveille.ui.theme.ReveilleTheme
+import com.replydev.reveille.ui.update.AboutRow
+import com.replydev.reveille.ui.update.UpdatesSection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private const val MAX_SNOOZE_MINUTES = 30
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onOpenUpdate: () -> Unit) {
     val context = LocalContext.current
     val container = context.container
     val snackbar = remember { SnackbarHostState() }
     val session = rememberScreenSession(snackbar)
     val settings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
+    val updatePrefs by container.updates.store.prefs.collectAsStateWithLifecycle(initialValue = null)
     val colors = ReveilleTheme.colors
     val type = ReveilleTheme.type
     val update: ((RingSettings) -> RingSettings) -> Unit = { transform ->
@@ -142,20 +145,12 @@ fun SettingsScreen() {
                         onPlus = { update { it.copy(maxRingMinutes = (it.maxRingMinutes + 1).coerceAtMost(RingDecisions.MAX_RING_MINUTES)) } },
                     )
                 }
-                Group("About") {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        Box(Modifier.size(40.dp).background(colors.accent, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                            ReveilleIcon(R.drawable.ic_mark, null, tint = colors.onAccent, size = 22.dp)
-                        }
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("Reveille", style = type.bodyL.copy(fontWeight = FontWeight.SemiBold))
-                            Text(BuildConfig.VERSION_NAME, style = type.mono, color = colors.muted)
-                        }
-                    }
+                updatePrefs?.let { prefs ->
+                    UpdatesSection(prefs, onView = onOpenUpdate, onMessage = { session.message(UiMessage(it)) })
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Overline("About", Modifier.padding(horizontal = 4.dp))
+                    AboutRow(BuildConfig.VERSION_NAME)
                 }
             }
         }

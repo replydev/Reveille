@@ -15,6 +15,10 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- In-app updates (update/ only): the GitHub Releases check and the APK download. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".ReveilleApp"
@@ -80,6 +84,11 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/reveille_widget_info" />
         </receiver>
+
+        <!-- PackageInstaller session results for in-app updates. Not on the alarm path. -->
+        <receiver
+            android:name=".update.InstallStatusReceiver"
+            android:exported="false" />
 
         <provider
             android:name="androidx.startup.InitializationProvider"

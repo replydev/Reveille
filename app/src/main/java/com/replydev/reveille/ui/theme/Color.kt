@@ -22,6 +22,7 @@ object Palette {
     val OnAccent = Color(0xFF1A1205)
     val AccentContainer = Color(0xFF2A2418)
     val AccentLine = Color(0xFF3A3020)
+    val AccentTint = Color(0xFF1A1810)
     val Danger = Color(0xFFFF7A66)
     val DangerText = Color(0xFFFF8A75)
     val DangerContainer = Color(0xFF1E1513)
@@ -55,6 +56,8 @@ class ReveilleColors(
     val onAccent: Color = Palette.OnAccent,
     val accentContainer: Color = Palette.AccentContainer,
     val accentLine: Color = Palette.AccentLine,
+    /** Fill of accent notices: the update card and status row, the alarm guard card. */
+    val accentTint: Color = Palette.AccentTint,
     val danger: Color = Palette.Danger,
     val dangerText: Color = Palette.DangerText,
     val dangerContainer: Color = Palette.DangerContainer,

@@ -16,6 +16,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.replydev.reveille.container
+import com.replydev.reveille.ui.update.UpdateSheet
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavBackStackEntry
@@ -47,6 +52,7 @@ object Routes {
     val POLICIES = Tab.Policies.route
     const val POLICY = "policy/{id}"
     const val ONE_OFF = "oneoff/{id}"
+    const val UPDATE = "update"
     val SETTINGS = Tab.Settings.route
     val RELIABILITY = Tab.Health.route
 
@@ -56,15 +62,18 @@ object Routes {
 
 private fun NavBackStackEntry.tab(): Tab? = Tab.of(destination.route)
 
-/** [launchTarget] is a screen the widget asked for (see [MainActivity.EXTRA_OPEN]); [onLaunched] clears it. */
+/** [launchTarget] is a screen the widget or a notification asked for (see [MainActivity.EXTRA_OPEN]); [onLaunched] clears it. */
 @Composable
 fun ReveilleNavHost(launchTarget: String? = null, onLaunched: () -> Unit = {}) {
     val nav = rememberNavController()
     val density = LocalDensity.current
     val failingChecks = rememberFailingChecks()
     val current by nav.currentBackStackEntryAsState()
-    // The one-off sheet floats over the screen that opened it; that screen (and its bar) stays where it is.
-    val base = if (current?.destination?.route == Routes.ONE_OFF) nav.previousBackStackEntry else current
+    val updates = LocalContext.current.container.updates
+    val updatePrefs by updates.store.prefs.collectAsStateWithLifecycle(initialValue = null)
+    val updateNudge = updatePrefs?.nudge(updates.installedVersionCode)
+    // The sheets float over the screen that opened them; that screen (and its bar) stays where it is.
+    val base = if (current?.destination?.route in SHEETS) nav.previousBackStackEntry else current
     val selectedTab = base?.tab()
 
     // Tab switches fade through in place; pushes and pops use Material shared axis X, and Back runs it in reverse. A
@@ -91,6 +100,7 @@ fun ReveilleNavHost(launchTarget: String? = null, onLaunched: () -> Unit = {}) {
                     onNewOneOff = { nav.navigate(Routes.oneOff(0)) },
                     onEditOneOff = { nav.navigate(Routes.oneOff(it)) },
                     onOpenPolicy = { nav.navigate(Routes.policy(it)) },
+                    onOpenUpdate = { nav.openUpdate() },
                 )
             }
             composable(Routes.POLICIES) { PoliciesScreen(onOpen = { nav.navigate(Routes.policy(it)) }) }
@@ -105,7 +115,13 @@ fun ReveilleNavHost(launchTarget: String? = null, onLaunched: () -> Unit = {}) {
             ) { entry ->
                 NavBottomSheet(onDismissed = { nav.leave(entry) }) { close -> OneOffEditorScreen(onDone = close) }
             }
-            composable(Routes.SETTINGS) { SettingsScreen() }
+            dialog(
+                Routes.UPDATE,
+                dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+            ) { entry ->
+                NavBottomSheet(onDismissed = { nav.leave(entry) }, topGap = 96.dp) { close -> UpdateSheet(onClose = close) }
+            }
+            composable(Routes.SETTINGS) { SettingsScreen(onOpenUpdate = { nav.openUpdate() }) }
             composable(Routes.RELIABILITY) { ReliabilityScreen() }
         }
         AnimatedVisibility(
@@ -118,6 +134,7 @@ fun ReveilleNavHost(launchTarget: String? = null, onLaunched: () -> Unit = {}) {
                 selected = selectedTab,
                 onSelect = { nav.openTab(it) },
                 healthBadge = failingChecks != null && failingChecks != 0,
+                settingsBadge = updateNudge != null,
             )
         }
     }
@@ -126,10 +143,18 @@ fun ReveilleNavHost(launchTarget: String? = null, onLaunched: () -> Unit = {}) {
         when (launchTarget) {
             MainActivity.OPEN_ONE_OFF -> if (nav.currentDestination?.route != Routes.ONE_OFF) nav.navigate(Routes.oneOff(0))
             MainActivity.OPEN_HEALTH -> nav.openTab(Tab.Health)
+            MainActivity.OPEN_UPDATE -> nav.openUpdate()
             null -> return@LaunchedEffect
         }
         onLaunched()
     }
+}
+
+private val SHEETS = setOf(Routes.ONE_OFF, Routes.UPDATE)
+
+/** Opens the release sheet unless it is already open (a notification tap while it shows). */
+private fun NavController.openUpdate() {
+    if (currentDestination?.route != Routes.UPDATE) navigate(Routes.UPDATE)
 }
 
 /** Switches to [tab], keeping one entry per tab: Back from any tab returns to Today, and each tab keeps its state. */

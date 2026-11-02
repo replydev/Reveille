@@ -16,6 +16,7 @@ import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.data.SchedulerState
 import com.replydev.reveille.data.SettingsStore
 import com.replydev.reveille.reliability.ReliabilityChecker
+import com.replydev.reveille.update.Updates
 import com.replydev.reveille.widget.WidgetUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +44,9 @@ class AppContainer(context: Context) {
     val settings: SettingsStore by lazy { SettingsStore(preferences) }
     val notifier: Notifier by lazy { Notifier(app) }
     val reliability: ReliabilityChecker by lazy { ReliabilityChecker(app, settings) }
+
+    /** In-app updates. Never touched by the alarm path, and only after the first unlock. */
+    val updates: Updates by lazy { Updates(app, appScope, schedulerState) }
 
     val repository: ScheduleRepository by lazy {
         ScheduleRepository(database.scheduleDao()) { scheduler.rearm("schedule changed") }

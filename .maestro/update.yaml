@@ -1,0 +1,37 @@
+# In-app updates against the debug FakeReleaseSource (no network): Check now finds v0.3.0, the status row opens the
+# release sheet, and Skip closes it and keeps the Today card away. Debug builds can't install (other signing key), so
+# the sheet offers "Open on GitHub" instead of "Download and install".
+appId: com.replydev.reveille
+name: Update
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+    arguments:
+      fake_updates: "true"
+- assertVisible: "Next wake-up"
+- tapOn: "Settings"
+- scrollUntilVisible:
+    element: "Check now"
+- assertVisible: "Updates are off in debug builds"
+- assertVisible: "Never"
+- tapOn: "Check now"
+- assertVisible: "v0.3.0 is available"
+- assertVisible: "Today, .*"
+- tapOn: "v0.3.0 is available"
+- assertVisible: "UPDATE AVAILABLE"
+- assertVisible: "Replace the launcher icon with the Daybreak mark"
+- assertVisible: "Verified before install.*"
+- assertVisible: "Open on GitHub"
+- tapOn: "Later"
+- assertNotVisible: "UPDATE AVAILABLE"
+- tapOn: "View"
+- assertVisible: "UPDATE AVAILABLE"
+- tapOn: "Skip v0.3.0"
+- assertNotVisible: "UPDATE AVAILABLE"
+# Skipped: Settings still offers it, Today no longer nudges.
+- assertVisible: "v0.3.0 is available"
+- tapOn: "Today"
+- assertVisible: "Next wake-up"
+- assertNotVisible: "Update ready: v0.3.0"
