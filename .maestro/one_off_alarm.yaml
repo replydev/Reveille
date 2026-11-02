@@ -1,0 +1,25 @@
+# Create a one-off alarm, skip it, undo the skip, then delete it.
+appId: com.replydev.reveille
+name: One-off alarm
+---
+- runFlow: subflows/launch_clean.yaml
+- tapOn: "New alarm"
+- tapOn: "Label (optional)"
+- inputText: "Maestro one-off"
+- hideKeyboard
+- tapOn: "Save"
+- assertVisible: "Tomorrow"
+- assertVisible: "Maestro one-off"
+- assertNotVisible: "None scheduled"
+- tapOn: "Skip"
+- assertNotVisible: "Maestro one-off"
+- tapOn: "Undo"
+- assertVisible: "Maestro one-off"
+- tapOn: "Edit"
+- assertVisible: "Edit alarm"
+- tapOn: "Delete"
+- assertVisible: "Delete alarm?"
+- tapOn:
+    text: "Delete"
+    below: "Delete alarm?"
+- assertVisible: "None scheduled"
