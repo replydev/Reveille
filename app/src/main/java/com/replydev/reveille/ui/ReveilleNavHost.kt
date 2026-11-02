@@ -69,7 +69,8 @@ fun ReveilleNavHost(launchTarget: String? = null, onLaunched: () -> Unit = {}) {
 
     // Tab switches fade through in place; pushes and pops use Material shared axis X, and Back runs it in reverse. A
     // fade leaves a moment where neither screen is opaque, so the host paints the app background: otherwise the window
-    // shows through as a flash. The back gesture keeps Navigation's predictive back preview.
+    // shows through as a flash. The system Back (and its predictive gesture) scrubs the same reverse shared axis instead
+    // of Navigation's default predictive scale-out.
     fun AnimatedContentTransitionScope<NavBackStackEntry>.betweenTabs() = initialState.tab() != null && targetState.tab() != null
     Box(Modifier.fillMaxSize().background(ReveilleTheme.colors.bg)) {
         NavHost(
@@ -80,6 +81,8 @@ fun ReveilleNavHost(launchTarget: String? = null, onLaunched: () -> Unit = {}) {
             exitTransition = { if (betweenTabs()) Motion.fadeThroughExit else Motion.sharedAxisExit(density, forward = true) },
             popEnterTransition = { if (betweenTabs()) Motion.fadeThroughEnter else Motion.sharedAxisEnter(density, forward = false) },
             popExitTransition = { if (betweenTabs()) Motion.fadeThroughExit else Motion.sharedAxisExit(density, forward = false) },
+            predictivePopEnterTransition = { if (betweenTabs()) Motion.fadeThroughEnter else Motion.sharedAxisEnter(density, forward = false) },
+            predictivePopExitTransition = { if (betweenTabs()) Motion.fadeThroughExit else Motion.sharedAxisExit(density, forward = false) },
         ) {
             composable(Routes.HOME) {
                 HomeScreen(
