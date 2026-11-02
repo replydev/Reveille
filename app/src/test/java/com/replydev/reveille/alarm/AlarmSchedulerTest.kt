@@ -215,6 +215,22 @@ class AlarmSchedulerTest {
         assertTrue(triggers().isEmpty())
     }
 
+    @Test
+    fun resavingAPolicyAfterItsAlarmWasClaimedDoesNotRingItAgain() = runBlocking {
+        val policyId = addDailyPolicy("07:00")
+        val armed = state.armed()!!
+        now = rome("2026-11-02", "07:00")
+        assertTrue(scheduler.claim(armed))
+        now = rome("2026-11-02", "07:01")
+
+        // The editor saves the policy unchanged while the alarm is still ringing (armed time in the past).
+        val saved = db.scheduleDao().policy(policyId)!!
+        repository.savePolicy(saved.policy, saved.rules, saved.pauses)
+
+        assertEquals(rome("2026-11-03", "07:00"), state.armed()?.at)
+        assertEquals(rome("2026-11-03", "07:00").toEpochMilli(), triggers().first())
+    }
+
     private suspend fun addDailyPolicy(time: String): Long = repository.savePolicy(
         PolicyEntity(name = "Work"),
         listOf(RuleEntity(policyId = 0, time = LocalTime.parse(time), days = DayOfWeek.entries.toSet(), anchorDate = LocalDate.parse("2026-11-02"))),

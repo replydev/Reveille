@@ -53,11 +53,17 @@ interface ScheduleDao {
     @Query("UPDATE policy SET enabled = :enabled WHERE id = :id")
     suspend fun setPolicyEnabled(id: Long, enabled: Boolean)
 
-    @Query("DELETE FROM rule WHERE policyId = :policyId")
-    suspend fun deleteRules(policyId: Long)
+    @Query("SELECT id FROM rule WHERE policyId = :policyId")
+    suspend fun ruleIds(policyId: Long): List<Long>
+
+    @Query("DELETE FROM rule WHERE id IN (:ids)")
+    suspend fun deleteRulesById(ids: List<Long>)
 
     @Insert
     suspend fun insertRules(rules: List<RuleEntity>)
+
+    @Update
+    suspend fun updateRules(rules: List<RuleEntity>)
 
     @Query("DELETE FROM pause WHERE policyId = :policyId")
     suspend fun deletePauses(policyId: Long)
@@ -65,12 +71,22 @@ interface ScheduleDao {
     @Insert
     suspend fun insertPauses(pauses: List<PauseEntity>)
 
-    /** Inserts or updates [policy] and replaces all its rules and pauses. Returns the policy id. */
+    /**
+     * Inserts or updates [policy], makes its rules exactly [rules] and replaces its pauses. Returns the policy id.
+     *
+     * Rule ids are part of occurrence keys (fire log, armed alarm), so a rule this policy already owns keeps its id:
+     * otherwise re-saving while an alarm rings would make the planner see an unhandled alarm and ring it again.
+     * Ids this policy does not own (new rules, or another policy's) are inserted as new rules.
+     */
     @Transaction
     suspend fun savePolicy(policy: PolicyEntity, rules: List<RuleEntity>, pauses: List<PauseEntity>): Long {
         val id = if (policy.id == 0L) insertPolicy(policy) else policy.id.also { updatePolicy(policy) }
-        deleteRules(id)
-        insertRules(rules.map { it.copy(id = 0, policyId = id) })
+        val owned = if (policy.id == 0L) emptySet() else ruleIds(id).toSet()
+        val (kept, added) = rules.map { it.copy(policyId = id) }.partition { it.id != 0L && it.id in owned }
+        val keptIds = kept.map { it.id }.toSet()
+        deleteRulesById(owned.filter { it !in keptIds })
+        updateRules(kept)
+        insertRules(added.map { it.copy(id = 0) })
         deletePauses(id)
         insertPauses(pauses.map { it.copy(id = 0, policyId = id) })
         return id

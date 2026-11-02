@@ -93,4 +93,39 @@ class ScheduleDaoTest {
         assertEquals(listOf(HandledOccurrence("O:1", 1_000)), log.handledSince(1_000))
         assertTrue(log.handledSince(1_001).isEmpty())
     }
+
+    @Test
+    fun savePolicyKeepsTheIdsOfKeptRules() = runBlocking {
+        val id = dao.savePolicy(PolicyEntity(name = "Work"), workRules(), emptyList())
+        val first = dao.policy(id)!!.rules.sortedBy { it.time }
+        val added = RuleEntity(policyId = id, time = LocalTime.of(10, 0), days = setOf(MONDAY), anchorDate = anchor)
+
+        // Unchanged first rule, edited second rule, one new rule.
+        dao.savePolicy(PolicyEntity(id = id, name = "Work"), listOf(first[0], first[1].copy(time = LocalTime.of(9, 0)), added), emptyList())
+
+        val second = dao.policy(id)!!.rules.sortedBy { it.time }
+        assertEquals(3, second.size)
+        assertEquals(first[0].id, second[0].id)
+        assertEquals(first[1].id, second[1].id)
+        assertEquals(LocalTime.of(9, 0), second[1].time)
+        assertTrue(second[2].id !in first.map { it.id })
+    }
+
+    @Test
+    fun savePolicyDeletesRemovedRulesAndNeverTakesOverAnotherPolicysRule() = runBlocking {
+        val work = dao.savePolicy(PolicyEntity(name = "Work"), workRules(), emptyList())
+        val gym = dao.savePolicy(PolicyEntity(name = "Gym"), workRules().take(1), emptyList())
+        val workRules = dao.policy(work)!!.rules
+        val gymRule = dao.policy(gym)!!.rules.single()
+
+        // A rule id owned by Gym must be inserted as a new Work rule, not moved.
+        dao.savePolicy(PolicyEntity(id = work, name = "Work"), listOf(workRules.first(), gymRule.copy(policyId = work)), emptyList())
+
+        val saved = dao.policy(work)!!.rules
+        assertEquals(2, saved.size)
+        assertTrue(workRules.first().id in saved.map { it.id })
+        assertTrue(workRules.last().id !in saved.map { it.id })
+        assertTrue(gymRule.id !in saved.map { it.id })
+        assertEquals(gymRule, dao.policy(gym)!!.rules.single())
+    }
 }
