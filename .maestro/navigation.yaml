@@ -1,0 +1,22 @@
+# Every top-level screen opens and Back returns to Home.
+appId: com.replydev.reveille
+name: Navigation
+---
+- runFlow: subflows/launch_clean.yaml
+- tapOn: "Policies"
+- assertVisible: "No policies yet.*"
+- tapOn: "Back"
+- assertVisible: "Next alarm"
+- tapOn: "Settings"
+- tapOn: "Back"
+- assertVisible: "Next alarm"
+- tapOn: "Reliability"
+- assertVisible: "Reveille uses the same alarm API.*"
+- scrollUntilVisible:
+    element: "Recent alarms"
+- tapOn: "Back"
+- assertVisible: "Next alarm"
+- tapOn: "New alarm"
+- assertVisible: "Save"
+- back
+- assertVisible: "Next alarm"

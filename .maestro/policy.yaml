@@ -1,0 +1,29 @@
+# Create a weekday policy, see it on Home, then delete it from Policies.
+appId: com.replydev.reveille
+name: Policy
+---
+- runFlow: subflows/launch_clean.yaml
+- tapOn: "New policy"
+- tapOn: "Name"
+- inputText: "Work"
+- hideKeyboard
+- runFlow:
+    when:
+      notVisible: "Remove"
+    commands:
+      - tapOn: "Add alarm time"
+- tapOn: "Save"
+- assertVisible: "Next alarm"
+- assertNotVisible: "None scheduled"
+- assertVisible: "Work"
+- tapOn: "Policies"
+- tapOn: "Work"
+- assertVisible: "Edit policy"
+- tapOn: "Delete"
+- assertVisible: "Delete policy?"
+- tapOn:
+    text: "Delete"
+    below: "Delete policy?"
+- assertVisible: "No policies yet.*"
+- tapOn: "Back"
+- assertVisible: "None scheduled"
