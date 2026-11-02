@@ -1,0 +1,4 @@
+<resources>
+    <!-- Dark window in dark mode, so a launch or a transition never shows a white window behind the UI. -->
+    <style name="Theme.Reveille" parent="android:Theme.Material.NoActionBar" />
+</resources>
