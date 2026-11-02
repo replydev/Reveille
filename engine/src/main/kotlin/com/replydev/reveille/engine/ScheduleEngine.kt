@@ -59,10 +59,6 @@ object ScheduleEngine {
         )
     }
 
-    /** Occurrences resolved from [day]'s alarms (a DST gap may push some onto the next day). */
-    fun occurrencesOn(snapshot: ScheduleSnapshot, day: LocalDate, zone: ZoneId): List<Occurrence> =
-        merge(resolvedOn(snapshot, day, zone))
-
     /** True if a REPLACE_DAY one-off on [day] silences every policy that day. */
     fun isDayReplaced(snapshot: ScheduleSnapshot, day: LocalDate): Boolean =
         snapshot.oneOffs.any { it.date == day && it.mode == OneOffMode.REPLACE_DAY }

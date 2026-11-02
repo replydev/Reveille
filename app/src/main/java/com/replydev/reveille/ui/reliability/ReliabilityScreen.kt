@@ -114,8 +114,9 @@ fun ReliabilityScreen(onBack: () -> Unit) {
             }
             item(key = "force-stop") {
                 Text(
-                    "If Reveille is force-stopped, Android deletes all its alarms. Reveille sets them again the next time the app, " +
-                        "its widget or the phone starts, and warns you about any alarm that was missed.",
+                    "If Reveille is force-stopped, Android deletes all its alarms, and restarting the phone does not bring them " +
+                        "back. They are set again the next time you open Reveille or its widget updates, and you are warned " +
+                        "about any alarm that was missed.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

@@ -84,7 +84,8 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
             label = existing.label.orEmpty()
             replaceDay = existing.mode == OneOffMode.REPLACE_DAY
         } else if (id != 0L) {
-            // Deleted since the link was opened (it rang, or was skipped): save as a new alarm, never resurrect the id.
+            // Deleted since the link was opened (by the user, skipped from the widget, or cleaned up after its day
+            // passed — ringing does not delete it): save as a new alarm, never resurrect the id.
             session.editId = 0L
             session.message(UiMessage("This alarm no longer exists. Saving creates a new one."))
         }
