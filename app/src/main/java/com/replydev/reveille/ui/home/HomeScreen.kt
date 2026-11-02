@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -96,7 +97,8 @@ fun HomeScreen(
             value = Instant.now()
         }
     }
-    var failingChecks by remember { mutableStateOf<Int?>(null) }
+    // Saveable so that returning to Home shows the last result at once instead of inserting the banner after the transition.
+    var failingChecks by rememberSaveable { mutableStateOf<Int?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {

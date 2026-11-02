@@ -1,6 +1,10 @@
 package com.replydev.reveille.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavBackStackEntry
@@ -34,11 +38,13 @@ object Routes {
 fun ReveilleNavHost() {
     val nav = rememberNavController()
     val density = LocalDensity.current
-    // Material shared axis X instead of the default 700 ms crossfade. Pop runs the same motion in reverse, which also
-    // drives the predictive back preview.
+    // Material shared axis X instead of the default 700 ms crossfade; Back runs it in reverse. The fade-through leaves
+    // a moment where neither screen is opaque, so the host paints the app background: otherwise the window shows
+    // through as a flash. The back gesture keeps Navigation's predictive back preview (the page shrinks as you swipe).
     NavHost(
         navController = nav,
         startDestination = Routes.HOME,
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         enterTransition = { Motion.sharedAxisEnter(density, forward = true) },
         exitTransition = { Motion.sharedAxisExit(density, forward = true) },
         popEnterTransition = { Motion.sharedAxisEnter(density, forward = false) },

@@ -30,7 +30,6 @@ object Motion {
 
     const val SHORT2 = 100
     const val SHORT3 = 150
-    const val MEDIUM1 = 250
     const val MEDIUM2 = 300
 
     /** Shared axis X: the screens travel this far while they fade through. */
@@ -41,7 +40,7 @@ object Motion {
     /** Forward: the new screen slides in from the end while the old one fades out early. */
     fun sharedAxisEnter(density: Density, forward: Boolean): EnterTransition =
         slideInHorizontally(tween(MEDIUM2, easing = Emphasized)) { if (forward) offsetPx(density) else -offsetPx(density) } +
-            fadeIn(tween(MEDIUM1 - SHORT2, delayMillis = SHORT2, easing = EmphasizedDecelerate))
+            fadeIn(tween(MEDIUM2 - SHORT2, delayMillis = SHORT2, easing = EmphasizedDecelerate))
 
     fun sharedAxisExit(density: Density, forward: Boolean): ExitTransition =
         slideOutHorizontally(tween(MEDIUM2, easing = Emphasized)) { if (forward) -offsetPx(density) else offsetPx(density) } +
