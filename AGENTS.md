@@ -28,22 +28,24 @@ Run all four (test, test, lint, assemble) before committing. For UI changes, als
 - Select elements by their visible text or, for icon-only buttons, their `contentDescription`. Top-level screens are reached through the bottom bar ("Today", "Policies", "Health", "Settings"). When a label appears twice, anchor it with `below:`.
 - `maestro hierarchy` dumps what is on screen; `adb exec-out screencap -p > shot.png` takes a screenshot.
 - To check motion, record with `adb shell screenrecord`, then tile the distinct frames: `ffmpeg -i nav.mp4 -vf "mpdecimate,setpts=N/FRAME_RATE/TB,scale=270:-1,tile=8x2" -frames:v 1 grid.png`.
+- Flows assume the device is in `en-US` and select English labels. `scripts/maestro-i18n.sh` runs `.maestro/i18n/` with the app set to Italian. It runs `pm clear` itself, because clearing app data also drops the per-app locale, so that flow launches without `clearState`. Maestro doesn't recurse into subfolders, so `maestro test .maestro` skips it.
 - An emulator cannot prove HyperOS kills, Direct Boot ringing or full-screen intents; those still need a real phone.
 
 ## Layout
 
-- `engine/`: pure Kotlin, `java.time` only, no Android. `Model.kt` (policies, rules, one-offs, skips, `Source` keys, `Armed`), `ScheduleEngine.kt` (`upcoming`, `between`, DST resolution, global ordering), `ArmPlanner.kt` (what to arm, catch-up within 30 min, missed beyond), `Timeline.kt`, `TimeText.kt`.
+- `engine/`: pure Kotlin, `java.time` only, no Android. `Model.kt` (policies, rules, one-offs, skips, `Source` keys, `Armed`), `ScheduleEngine.kt` (`upcoming`, `between`, DST resolution, global ordering), `ArmPlanner.kt` (what to arm, catch-up within 30 min, missed beyond), `Timeline.kt`, `TimeText.kt` (returns values, not text: `DayLabel`, `Relative`, `DaySet`). The engine holds no words; the default one-off label comes in through `ScheduleSnapshot.defaultOneOffLabel`.
 - `app/src/main/java/com/replydev/reveille/`:
   - `data/`: Room DB and DataStore, both in **device-protected storage**. `ScheduleRepository` calls `onChanged()` (which re-arms) after every write, under `NonCancellable`.
   - `alarm/`:
     - `AlarmScheduler`: `rearm()` is mutex-protected. It registers a primary and a backup alarm (+2 min), the ring guard and the direct snooze, and runs `restoreGuard`.
     - `AlarmReceiver` and `RingingService`: delivery and ringing.
     - `AlarmFiring` and `RingDecisions`: the delivery protocol, kept testable.
-    - `SystemEventsReceiver`: boot, time and time zone changes.
+    - `SystemEventsReceiver`: boot, time, time zone and locale changes.
     - `WatchdogWorker`: 6 h safety re-arm.
   - `reliability/`: permission, battery and HyperOS checks.
   - `widget/`: Glance widget. It renders the persisted armed alarm and never computes its own.
   - `update/`: in-app updates from GitHub Releases (`ReleaseSource`, `UpdateChecker`, `UpdateWorker`, `UpdateDownloader`, `ApkVerifier`, `UpdateInstaller`, `InstallGuard`). Spec: `docs/design/updates.md`. The only package that touches the network.
+  - `text/`: `TimeFormats` (locale and 12/24-hour aware times, dates, weekdays, sizes; `TimeFormats.of(context)`), `Labels` (engine time values → words via resources and plurals). The only place that turns values into text. In Compose use `ui/text/rememberLabels()`.
   - `ui/`: Compose screens. Writes go through `ScreenSession`, which launches in `AppContainer.appScope`, never the screen's scope.
   - `ui/theme/`: `Color.kt` (fixed dark palette + `ReveilleColors` CompositionLocal), `Type.kt` (Geist / Geist Mono, tabular numerals), `Theme.kt`, `Motion.kt`. No dynamic colour.
 - `AppContainer.kt`: manual DI. No DI framework.
@@ -68,6 +70,7 @@ The UI follows `docs/design/README.md` (tokens, components, per-screen spec) and
 - **Direct Boot**: nothing on the alarm path may touch credential-encrypted storage. WorkManager (on-demand init; the default initializer is removed in the manifest) and Glance are only used when `UserManager.isUserUnlocked`.
 - **API level**: minSdk 31. Don't call APIs above 31 without an SDK check. `LocalDate.ofInstant` is API 34; use `instant.atZone(zone).toLocalDate()`. Lint `NewApi` must stay clean, and `:engine` isn't linted, so be careful there too.
 - **Engine purity**: `:engine` stays free of Android dependencies.
+- **Text never breaks the alarm path**: time formatting must never throw (`TimeFormats` falls back per pattern), and notifier calls during a re-arm are guarded, so a failing notification can't abort it.
 - **Updates never endanger an alarm**: nothing in `alarm/`, `engine/` or `data/` depends on `update/`; installs are refused while ringing and guarded within 30 min of the next alarm; `MY_PACKAGE_REPLACED` must re-arm (tested). An APK is installed only if its SHA-256 matches the release's `.sha256` asset and its signing certificate, package name and higher versionCode match the installed app.
 
 ## Testing
@@ -80,7 +83,8 @@ The UI follows `docs/design/README.md` (tokens, components, per-screen spec) and
 
 ## Conventions
 
-- Kotlin official style. Match the surrounding code's comment density and naming. UI strings are English and hard-coded.
+- Kotlin official style. Match the surrounding code's comment density and naming.
+- UI strings live in `res/values/strings.xml` (English, the source) with translations in `values-it`, `values-es`, `values-fr`, `values-de`. Never hard-code user-visible text; add every key to every locale (`app/lint.xml` makes `MissingTranslation` and `ExtraTranslation` errors). Use plurals for counts (with a `many` form for it/es/fr) and positional args (`%1$s`). Format times, dates and sizes only through `text/TimeFormats` and `text/Labels`; never `Locale.ENGLISH` for user-visible text. Language follows the system or per-app setting; there is no in-app picker. See `docs/design/i18n.md`.
 - No Material icons artifact: icons are hand-written vector drawables in `res/drawable/ic_*.xml`. Icon-only buttons always have a `contentDescription`, which is also what Maestro selects on.
 - Commits: conventional style (`feat(alarm): …`, `fix(ui): …`, `docs: …`), unsigned. **No AI attribution lines or Co-Authored-By trailers.**
 - Commit types drive releases: merging to `main` publishes a release for `feat` (minor), `fix`/`perf` (patch) and `!`/`BREAKING CHANGE` (major); `docs`, `chore`, `ci`, `test`, `refactor` and `build` don't release. Pick the type deliberately.

@@ -28,6 +28,7 @@ An Android alarm clock for schedules the stock Clock app can't express, built so
 - **Policies.** A named group of recurring rules, for example *Work* = 07:55 Mon–Wed + 08:55 Thu–Fri. Each rule can repeat every N weeks. A policy can have start/end dates and pause ranges (holidays), and you can skip a single day.
 - **Home timeline.** The next 14 days at a glance, with Skip, Unskip and Undo.
 - **Widget.** Shows the next wake-up, with a Skip button.
+- **Languages.** English, Italian, Spanish, French and German. Follows the system language or the per-app language (Android 13+), and the phone's 12/24-hour setting.
 - **Reliability.**
   - Uses `setAlarmClock` (the same API the stock Clock app uses) and arms a backup 2 minutes after every alarm.
   - A ring guard re-rings if the app is killed mid-alarm.

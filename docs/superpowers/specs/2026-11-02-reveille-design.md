@@ -132,7 +132,9 @@ Stopping only clears the ringing state if it still refers to the same ring.
 **Android 12–13.** Exact alarms use `SCHEDULE_EXACT_ALARM` (`maxSdkVersion` 32, granted by default there) and `USE_EXACT_ALARM` from 33. Code stays within API 31 (lint `NewApi` must be clean); scheduler and firing tests run under Robolectric on SDK 31, 33 and 35. If `setAlarmClock` throws `SecurityException`, the alarm is not recorded as armed and a "could not be scheduled" notification is posted.
 
 ### System receivers → `rearm()`
-`BOOT_COMPLETED`, `LOCKED_BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED`, `AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`. Each also (re)schedules the watchdog once the user is unlocked.
+`BOOT_COMPLETED`, `LOCKED_BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED`, `LOCALE_CHANGED`, `AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`. Each also (re)schedules the watchdog once the user is unlocked and refreshes the widget (bounded to 5 s, so a slow Glance update can't hold the broadcast until it ANRs).
+
+**Language.** Alarm-path text (ringing screen and notification, fallback, missed-alarm and scheduling-failed notifications, channel names) comes from string resources, which are readable in Direct Boot; the per-app locale is held by the system, not in our storage. `Armed.label` is resolved at arm time (an unlabeled one-off gets the localized default) and refreshed by the re-arm on `LOCALE_CHANGED` and on app open (a per-app language change recreates the activity). Re-arming is keyed by occurrence, not label, so this never drops or duplicates an alarm. Time formatting falls back per pattern instead of throwing, and a missed-alarm (or any other) notification that fails during a re-arm is logged and can't abort it.
 
 ## Reliability (critical requirement)
 
