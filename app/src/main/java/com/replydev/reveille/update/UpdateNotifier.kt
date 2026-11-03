@@ -21,8 +21,8 @@ class UpdateNotifier(private val context: Context) {
     fun show(release: Release) {
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL, "App updates", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "A quiet notification when a new version of Reveille is released."
+            NotificationChannel(CHANNEL, context.getString(R.string.update_channel_name), NotificationManager.IMPORTANCE_LOW).apply {
+                description = context.getString(R.string.update_channel_description)
             },
         )
         val open = PendingIntent.getActivity(
@@ -33,10 +33,10 @@ class UpdateNotifier(private val context: Context) {
                 .putExtra(MainActivity.EXTRA_OPEN, MainActivity.OPEN_UPDATE),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val text = ReleaseNotes.parse(release.notes).headline ?: "See what's new and install it from Settings."
+        val text = ReleaseNotes.parse(release.notes).headline ?: context.getString(R.string.update_notification_text)
         val notification = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_mark)
-            .setContentTitle("Reveille v${release.versionName} is available")
+            .setContentTitle(context.getString(R.string.update_notification_title, release.versionName))
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)

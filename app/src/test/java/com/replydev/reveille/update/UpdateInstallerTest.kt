@@ -63,26 +63,26 @@ class UpdateInstallerTest {
         val pending = UpdateInstaller.result(status(PackageInstaller.STATUS_PENDING_USER_ACTION, confirm = confirm))
         assertEquals("android.content.pm.action.CONFIRM_INSTALL", (pending as InstallResult.NeedsUserAction).confirm.action)
         assertEquals(
-            InstallResult.Failed("Not enough storage to install the update."),
+            InstallResult.Failed(UpdateFailure.STORAGE),
             UpdateInstaller.result(status(PackageInstaller.STATUS_FAILURE_STORAGE, "INSTALL_FAILED_INSUFFICIENT_STORAGE")),
         )
         assertEquals(
-            InstallResult.Failed("The update conflicts with the installed app."),
+            InstallResult.Failed(UpdateFailure.CONFLICT),
             UpdateInstaller.result(status(PackageInstaller.STATUS_FAILURE_CONFLICT)),
         )
         assertEquals(
-            InstallResult.Failed("Android blocked the install."),
+            InstallResult.Failed(UpdateFailure.BLOCKED),
             UpdateInstaller.result(status(PackageInstaller.STATUS_FAILURE_BLOCKED)),
         )
         assertEquals(
-            InstallResult.Failed("The update isn't valid for this phone."),
+            InstallResult.Failed(UpdateFailure.INCOMPATIBLE),
             UpdateInstaller.result(status(PackageInstaller.STATUS_FAILURE_INVALID)),
         )
         assertEquals(
-            InstallResult.Failed("The update isn't valid for this phone."),
+            InstallResult.Failed(UpdateFailure.INCOMPATIBLE),
             UpdateInstaller.result(status(PackageInstaller.STATUS_FAILURE_INCOMPATIBLE)),
         )
-        assertEquals(InstallResult.Failed("Android couldn't install the update."), UpdateInstaller.result(status(PackageInstaller.STATUS_FAILURE)))
+        assertEquals(InstallResult.Failed(UpdateFailure.UNKNOWN), UpdateInstaller.result(status(PackageInstaller.STATUS_FAILURE)))
         // A pending-user-action status without the confirm intent can't continue.
         assertTrue(UpdateInstaller.result(status(PackageInstaller.STATUS_PENDING_USER_ACTION)) is InstallResult.Failed)
     }

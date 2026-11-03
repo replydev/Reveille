@@ -1,5 +1,8 @@
 package com.replydev.reveille.ui.home
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.replydev.reveille.engine.OneOff
 import com.replydev.reveille.engine.OneOffMode
 import com.replydev.reveille.engine.Policy
@@ -10,8 +13,11 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Test
+import org.junit.runner.RunWith
 
+@RunWith(AndroidJUnit4::class)
 class SkipMessageTest {
+    private val res = ApplicationProvider.getApplicationContext<Context>().resources
     private val day = LocalDate.parse("2026-11-02")
     private val everyDay = DayOfWeek.entries.toSet()
     private val work = Policy(1, "Work", rules = listOf(Rule(1, LocalTime.of(7, 0), everyDay)))
@@ -23,7 +29,7 @@ class SkipMessageTest {
         val after = ScheduleSnapshot(policies = listOf(work, gym))
         val names = policiesRingingAgain(after, listOf(replacing))
         assertEquals(listOf("Gym", "Work"), names)
-        assertEquals("Skipped 09:30 Dentist · Gym, Work alarms that day will ring again", skipMessage("09:30", "Dentist", names))
+        assertEquals("Skipped 09:30 Dentist · Gym, Work alarms that day will ring again", skipMessage(res, "09:30", "Dentist", names))
     }
 
     @Test
@@ -32,6 +38,6 @@ class SkipMessageTest {
         assertEquals(emptyList<String>(), policiesRingingAgain(ScheduleSnapshot(policies = listOf(work)), listOf(additive)))
         val stillReplaced = ScheduleSnapshot(policies = listOf(work), oneOffs = listOf(replacing.copy(id = 10, time = LocalTime.of(11, 0))))
         assertEquals(emptyList<String>(), policiesRingingAgain(stillReplaced, listOf(replacing)))
-        assertEquals("Skipped 09:30 Dentist", skipMessage("09:30", "Dentist", emptyList()))
+        assertEquals("Skipped 09:30 Dentist", skipMessage(res, "09:30", "Dentist", emptyList()))
     }
 }

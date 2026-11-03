@@ -21,7 +21,7 @@ sealed interface InstallResult {
     /** The user said no in Android's dialog. */
     data object Cancelled : InstallResult
 
-    data class Failed(val message: String) : InstallResult
+    data class Failed(val failure: UpdateFailure) : InstallResult
 }
 
 /** Hands a verified APK to Android through a [PackageInstaller] session (not the deprecated `ACTION_VIEW` route). */
@@ -32,8 +32,18 @@ class UpdateInstaller(private val context: Context) {
     fun permissionIntent(): Intent =
         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, "package:${context.packageName}".toUri())
 
-    /** Writes [apk] into a new session and commits it. The outcome arrives at [InstallStatusReceiver]. Returns the id. */
-    fun install(apk: File): Int {
+    /**
+     * Writes [apk] into a new session and commits it. The outcome arrives at [InstallStatusReceiver]. Returns the id.
+     * A failure is logged with its message and rethrown; the sheet shows [UpdateFailure.UNKNOWN].
+     */
+    fun install(apk: File): Int = try {
+        commit(apk)
+    } catch (e: Exception) {
+        Log.e("Reveille", "Could not start the update install", e)
+        throw e
+    }
+
+    private fun commit(apk: File): Int {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(context.packageName)
@@ -76,14 +86,14 @@ class UpdateInstaller(private val context: Context) {
                 PackageInstaller.STATUS_PENDING_USER_ACTION ->
                     IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java)
                         ?.let { InstallResult.NeedsUserAction(it) }
-                        ?: InstallResult.Failed("Android couldn't install the update.")
+                        ?: InstallResult.Failed(UpdateFailure.UNKNOWN)
                 PackageInstaller.STATUS_FAILURE_ABORTED -> InstallResult.Cancelled
-                PackageInstaller.STATUS_FAILURE_STORAGE -> InstallResult.Failed("Not enough storage to install the update.")
-                PackageInstaller.STATUS_FAILURE_CONFLICT -> InstallResult.Failed("The update conflicts with the installed app.")
-                PackageInstaller.STATUS_FAILURE_BLOCKED -> InstallResult.Failed("Android blocked the install.")
+                PackageInstaller.STATUS_FAILURE_STORAGE -> InstallResult.Failed(UpdateFailure.STORAGE)
+                PackageInstaller.STATUS_FAILURE_CONFLICT -> InstallResult.Failed(UpdateFailure.CONFLICT)
+                PackageInstaller.STATUS_FAILURE_BLOCKED -> InstallResult.Failed(UpdateFailure.BLOCKED)
                 PackageInstaller.STATUS_FAILURE_INVALID, PackageInstaller.STATUS_FAILURE_INCOMPATIBLE ->
-                    InstallResult.Failed("The update isn't valid for this phone.")
-                else -> InstallResult.Failed("Android couldn't install the update.")
+                    InstallResult.Failed(UpdateFailure.INCOMPATIBLE)
+                else -> InstallResult.Failed(UpdateFailure.UNKNOWN)
             }
     }
 }

@@ -1,15 +1,30 @@
 package com.replydev.reveille.update
 
+import androidx.annotation.StringRes
+import com.replydev.reveille.R
 import java.time.Instant
 
-enum class FailReason(val title: String) {
-    CHECKSUM("Checksum didn't match"),
-    SIGNATURE("Signature didn't match"),
+/** Which step failed: the failure card's title. */
+enum class FailReason(@StringRes val title: Int) {
+    CHECKSUM(R.string.update_failed_checksum),
+    SIGNATURE(R.string.update_failed_signature),
 
     /** Not our package, or not the newer version the release promised. */
-    PACKAGE("Package didn't match"),
-    DOWNLOAD("Download failed"),
-    INSTALL("Install failed"),
+    PACKAGE(R.string.update_failed_package),
+    DOWNLOAD(R.string.update_failed_download),
+    INSTALL(R.string.update_failed_install),
+}
+
+/**
+ * Why Android refused an install: the sentence the failure card puts before its body. Raw installer and exception
+ * messages only go to the log.
+ */
+enum class UpdateFailure(@StringRes val message: Int) {
+    STORAGE(R.string.update_failure_storage),
+    CONFLICT(R.string.update_failure_conflict),
+    BLOCKED(R.string.update_failure_blocked),
+    INCOMPATIBLE(R.string.update_failure_incompatible),
+    UNKNOWN(R.string.update_failure_unknown),
 }
 
 /** Drives the release sheet's footer (`UpdateStates.dc.html`). */
@@ -32,7 +47,7 @@ sealed interface UpdateUiState {
         enum class Then { DOWNLOAD, INSTALL }
     }
 
-    data class Failed(val reason: FailReason, val detail: String? = null) : UpdateUiState
+    data class Failed(val reason: FailReason, val detail: UpdateFailure? = null) : UpdateUiState
 
     /** Android's installer is on screen. */
     data object Installing : UpdateUiState
@@ -110,5 +125,5 @@ sealed interface UpdateEvent {
     /** "Cancel" while downloading. */
     data object Cancel : UpdateEvent
 
-    data class Fail(val reason: FailReason, val detail: String? = null) : UpdateEvent
+    data class Fail(val reason: FailReason, val detail: UpdateFailure? = null) : UpdateEvent
 }

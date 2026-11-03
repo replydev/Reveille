@@ -6,14 +6,17 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.replydev.reveille.container
+import com.replydev.reveille.widget.WidgetUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Re-arms after reboot (including before the first unlock), app update, clock or time zone change, and exact-alarm
- * permission changes. Direct-boot aware: everything [AlarmScheduler.rearm] touches lives in device-protected storage,
+ * Re-arms after reboot (including before the first unlock), app update, clock or time zone change, system language
+ * change and exact-alarm permission changes, then refreshes the widget. A language change also renames the
+ * notification channels. Direct-boot aware: everything [AlarmScheduler.rearm] touches lives in device-protected storage,
  * and the watchdog and widget skip themselves while the user is locked.
  */
 class SystemEventsReceiver : BroadcastReceiver() {
@@ -28,7 +31,17 @@ class SystemEventsReceiver : BroadcastReceiver() {
                 Log.e(TAG, "Re-arm failed ($reason)", e)
             } finally {
                 try {
+                    // After the re-arm, and isolated: channel names are cosmetic and must never hold up or abort it.
+                    if (reason == Intent.ACTION_LOCALE_CHANGED) {
+                        try {
+                            context.container.notifier.createChannels()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Renaming notification channels failed", e)
+                        }
+                    }
                     WatchdogWorker.schedule(context)
+                    // Bounded: a slow Glance update must not hold goAsync until the broadcast ANRs.
+                    withTimeoutOrNull(WIDGET_TIMEOUT_MS) { WidgetUpdater.update(context) }
                 } finally {
                     pending.finish()
                 }
@@ -38,12 +51,14 @@ class SystemEventsReceiver : BroadcastReceiver() {
 
     private companion object {
         const val TAG = "Reveille"
+        const val WIDGET_TIMEOUT_MS = 5_000L
         val ACTIONS = setOf(
             Intent.ACTION_LOCKED_BOOT_COMPLETED,
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
+            Intent.ACTION_LOCALE_CHANGED,
             AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED,
         )
     }

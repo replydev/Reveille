@@ -1,16 +1,20 @@
 package com.replydev.reveille.ui.home
 
+import android.content.res.Resources
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -22,10 +26,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.replydev.reveille.R
@@ -37,8 +46,8 @@ import com.replydev.reveille.data.toModel
 import com.replydev.reveille.engine.Armed
 import com.replydev.reveille.engine.ScheduleSnapshot
 import com.replydev.reveille.engine.Source
-import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.engine.Timeline
+import com.replydev.reveille.text.Labels
 import com.replydev.reveille.ui.components.Chip
 import com.replydev.reveille.ui.components.ChipText
 import com.replydev.reveille.ui.components.Dot
@@ -54,14 +63,15 @@ import com.replydev.reveille.ui.components.StatusPill
 import com.replydev.reveille.ui.components.TabHeader
 import com.replydev.reveille.ui.components.TabScaffold
 import com.replydev.reveille.ui.components.TextAction
+import com.replydev.reveille.ui.components.TimeDisplay
 import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.rememberScreenSession
 import com.replydev.reveille.ui.components.topDivider
 import com.replydev.reveille.ui.theme.Motion
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.theme.animatedItem
-import com.replydev.reveille.ui.theme.lineBox
 import com.replydev.reveille.ui.theme.sourceColor
+import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.sourceKeyColor
 import com.replydev.reveille.ui.update.UpdateNotice
 import com.replydev.reveille.update.GuardResult
@@ -73,16 +83,11 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 private const val TIMELINE_DAYS = 14
 
 /** A schedule/armed mismatch must last this long before it is shown: a save re-arms right after the schedule changes. */
 private const val MISMATCH_GRACE_MS = 3_000L
-
-private val headerDate = DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)
-private val weekday = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH)
 
 /** Wraps the armed alarm so "not loaded yet" (null) differs from "nothing armed". */
 private class ArmedState(val armed: Armed?)
@@ -97,6 +102,7 @@ fun HomeScreen(
     onOpenUpdate: () -> Unit,
 ) {
     val container = LocalContext.current.container
+    val labels = rememberLabels()
     val repository = container.repository
     val snackbar = remember { SnackbarHostState() }
     val session = rememberScreenSession(snackbar)
@@ -126,7 +132,7 @@ fun HomeScreen(
     }
 
     TabScaffold(
-        floatingActionButton = { ReveilleFab("One-off alarm", onClick = onNewOneOff) },
+        floatingActionButton = { ReveilleFab(stringResource(R.string.today_new_one_off), onClick = onNewOneOff) },
         snackbarHostState = snackbar,
     ) { padding ->
         LazyColumn(
@@ -135,9 +141,9 @@ fun HomeScreen(
         ) {
             item(key = "header") {
                 TabHeader(
-                    title = "Today",
-                    overline = today.format(headerDate),
-                    trailing = failingChecks?.takeIf { it != 0 }?.let { failing -> { StatusPill(issuesLabel(failing), onClick = onOpenReliability) } },
+                    title = stringResource(R.string.today_title),
+                    overline = labels.formats.headerDate(today),
+                    trailing = failingChecks?.takeIf { it != 0 }?.let { failing -> { StatusPill(issuesLabel(labels.res, failing), onClick = onOpenReliability) } },
                 )
             }
             val loadedSnapshot = snapshot
@@ -151,9 +157,10 @@ fun HomeScreen(
                         ringingKey = ringing?.armed?.key,
                         now = now,
                         zone = zone,
+                        labels = labels,
                         skippable = skippableEntry(state, entries),
                         skipEnabled = !session.busy,
-                        onSkip = { toggleSkip(session, repository, it) },
+                        onSkip = { toggleSkip(session, repository, labels, it) },
                         onOpen = { target ->
                             when (target) {
                                 is HeroTarget.Policy -> onOpenPolicy(target.id)
@@ -178,14 +185,14 @@ fun HomeScreen(
                         Modifier.animatedItem(this).fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 26.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.Bottom,
                     ) {
-                        Text("Next $TIMELINE_DAYS days", Modifier.weight(1f), style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.SemiBold))
-                        Text(alarmCount(entries.count { !it.skipped }), style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.muted)
+                        Text(pluralStringResource(R.plurals.today_next_days, TIMELINE_DAYS, TIMELINE_DAYS), Modifier.weight(1f), style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.SemiBold))
+                        Text(alarmCount(labels.res, entries.count { !it.skipped }), style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.muted)
                     }
                 }
                 if (entries.isEmpty()) {
                     item(key = "empty") {
                         Text(
-                            "No alarms in the next $TIMELINE_DAYS days. Add a policy or a one-off alarm.",
+                            pluralStringResource(R.plurals.today_empty, TIMELINE_DAYS, TIMELINE_DAYS),
                             Modifier.animatedItem(this).padding(horizontal = 20.dp, vertical = 12.dp),
                             style = ReveilleTheme.type.body,
                             color = ReveilleTheme.colors.muted,
@@ -199,8 +206,9 @@ fun HomeScreen(
                         date = date,
                         entries = dayEntries,
                         intervals = intervals,
+                        labels = labels,
                         enabled = !session.busy,
-                        onToggleSkip = { toggleSkip(session, repository, it) },
+                        onToggleSkip = { toggleSkip(session, repository, labels, it) },
                         onEditOneOff = onEditOneOff,
                         modifier = Modifier.animatedItem(this),
                     )
@@ -241,6 +249,8 @@ private class Hero(
     val backup: String?,
     val armedOk: Boolean,
     val warning: String?,
+    /** The warning is the transient "Setting the alarm…", not a problem. */
+    val settling: Boolean,
     val target: HeroTarget?,
 )
 
@@ -250,6 +260,7 @@ private fun NextUpCard(
     ringingKey: String?,
     now: Instant,
     zone: ZoneId,
+    labels: Labels,
     skippable: Timeline.Entry?,
     skipEnabled: Boolean,
     onSkip: (Timeline.Entry) -> Unit,
@@ -264,15 +275,19 @@ private fun NextUpCard(
         else -> null
     }
     val warn = persistent(unarmed?.let { it.key to it.at })
+    val res = labels.res
+    val nextWakeUp = stringResource(R.string.today_next_wake_up)
     val hero = when (state) {
-        NextUp.None -> Hero("Next wake-up", null, null, colors.accent, null, armedOk = false, warning = null, target = null)
+        NextUp.None -> Hero(nextWakeUp, null, null, colors.accent, null, armedOk = false, warning = null, settling = false, target = null)
         is NextUp.Overdue -> {
             val armed = state.armed
             val isRinging = ringingKey == armed.key
             Hero(
-                if (isRinging) "Ringing now" else "Overdue", armed.at, armedLabel(armed), sourceKeyColor(armed.sourceKeys), null,
+                res.getString(if (isRinging) R.string.today_ringing_now else R.string.today_overdue), armed.at, armedLabel(res, armed),
+                sourceKeyColor(armed.sourceKeys), null,
                 armedOk = false,
-                warning = if (isRinging) null else "Due at ${TimeText.time(armed.at.atZone(zone).toLocalTime())} and should ring any moment. If it does not, check Health.",
+                warning = if (isRinging) null else res.getString(R.string.today_overdue_warning, labels.formats.time(armed.at.atZone(zone).toLocalTime())),
+                settling = false,
                 target = null,
             )
         }
@@ -280,18 +295,20 @@ private fun NextUpCard(
             val armed = state.armed
             val earlier = state.earlierUnarmed?.takeIf { warn }
             Hero(
-                "Next wake-up", armed.at, armedLabel(armed), sourceKeyColor(armed.sourceKeys), backupText(armed.at, zone),
+                nextWakeUp, armed.at, armedLabel(res, armed), sourceKeyColor(armed.sourceKeys), backupText(labels, armed.at, zone),
                 armedOk = earlier == null,
                 warning = earlier?.let {
-                    "Not set with the system: ${TimeText.dayAndTime(it.at.toInstant(), now, zone)} ${it.label} is scheduled earlier. Check Health."
+                    res.getString(R.string.today_not_set_earlier, labels.dayAndTime(it.at.toInstant(), now, zone), it.label)
                 },
+                settling = false,
                 target = heroTarget(armed.sourceKeys),
             )
         }
         is NextUp.NotSet -> Hero(
-            "Next wake-up", state.scheduled.at.toInstant(), state.scheduled.label, sourceColor(state.scheduled.sources), null,
+            nextWakeUp, state.scheduled.at.toInstant(), state.scheduled.label, sourceColor(state.scheduled.sources), null,
             armedOk = false,
-            warning = if (warn) "Not set with the system, so it will not ring. Check Health." else "Setting the alarm…",
+            warning = res.getString(if (warn) R.string.today_not_set else R.string.today_setting),
+            settling = !warn,
             target = heroTarget(state.scheduled.sources.map { it.key }),
         )
     }
@@ -302,19 +319,19 @@ private fun NextUpCard(
                 if (hero.armedOk) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Dot(colors.accent)
-                        Text("Armed with system", style = type.small, color = colors.muted)
+                        Text(stringResource(R.string.today_armed), style = type.small, color = colors.muted)
                     }
                 }
             }
             val at = hero.at
             if (at == null) {
-                Text("None scheduled", style = type.headline)
+                Text(stringResource(R.string.today_none_scheduled), style = type.headline)
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(TimeText.time(at.atZone(zone).toLocalTime()), Modifier.lineBox(type.displayL, 0.9f).alignByBaseline(), style = type.displayL)
+                    TimeDisplay(labels.formats.timeParts(at.atZone(zone).toLocalTime()), type.displayL, type.titleS, Modifier.alignByBaseline(), lineBox = 0.9f)
                     Column(Modifier.alignByBaseline(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(dayPart(at, now, zone), style = type.titleS.copy(fontWeight = FontWeight.Medium))
-                        Text(TimeText.relative(at, now), style = type.body, color = colors.muted)
+                        Text(labels.dayPart(at, now, zone), style = type.titleS.copy(fontWeight = FontWeight.Medium))
+                        Text(labels.relative(at, now), style = type.body, color = colors.muted)
                     }
                 }
             }
@@ -328,7 +345,7 @@ private fun NextUpCard(
                 }
             }
             hero.warning?.let { text ->
-                val settling = text == "Setting the alarm…"
+                val settling = hero.settling
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (!settling) ReveilleIcon(R.drawable.ic_warning, null, Modifier.padding(top = 1.dp), tint = colors.dangerText, size = 16.dp)
                     Text(text, style = type.caption, color = if (settling) colors.muted else colors.dangerText)
@@ -336,15 +353,20 @@ private fun NextUpCard(
             }
             val target = hero.target
             if (skippable != null || target != null) {
-                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Equal heights when one label wraps onto two lines.
+                Row(Modifier.padding(top = 4.dp).height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (skippable != null) {
-                        PillButton("Skip this one", { onSkip(skippable) }, Modifier.weight(1f), style = PillStyle.Outlined, enabled = skipEnabled)
+                        PillButton(
+                            stringResource(R.string.today_skip_this_one), { onSkip(skippable) }, Modifier.weight(1f).fillMaxHeight(),
+                            style = PillStyle.Outlined,
+                            enabled = skipEnabled,
+                        )
                     }
                     if (target != null) {
                         PillButton(
-                            if (target is HeroTarget.OneOff) "Edit" else "Open policy",
+                            stringResource(if (target is HeroTarget.OneOff) R.string.common_edit else R.string.today_open_policy),
                             { onOpen(target) },
-                            Modifier.weight(1f),
+                            Modifier.weight(1f).fillMaxHeight(),
                             style = PillStyle.Secondary,
                         )
                     }
@@ -354,7 +376,8 @@ private fun NextUpCard(
     }
 }
 
-private fun armedLabel(armed: Armed): String = if (armed.isSnooze) "Snoozed: ${armed.label}" else armed.label
+private fun armedLabel(res: Resources, armed: Armed): String =
+    if (armed.isSnooze) res.getString(R.string.today_snoozed, armed.label) else armed.label
 
 /** One date of the timeline: the weekday and day number on the left, its alarms on the right. */
 @Composable
@@ -362,6 +385,7 @@ private fun DayGroup(
     date: LocalDate,
     entries: List<Timeline.Entry>,
     intervals: Map<Long, Int>,
+    labels: Labels,
     enabled: Boolean,
     onToggleSkip: (Timeline.Entry) -> Unit,
     onEditOneOff: (Long) -> Unit,
@@ -377,12 +401,12 @@ private fun DayGroup(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Column(Modifier.width(44.dp).padding(top = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(date.format(weekday).uppercase(), style = ReveilleTheme.type.dayOverline, color = colors.muted)
+            Text(labels.formats.weekdayShort(date.dayOfWeek).uppercase(labels.formats.locale), style = ReveilleTheme.type.dayOverline, color = colors.muted)
             Text("${date.dayOfMonth}", style = ReveilleTheme.type.dayNumber)
         }
         Column(Modifier.weight(1f).animateContentSize(Motion.size), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             entries.forEach { entry ->
-                OccurrenceRow(entry, intervals, enabled, { onToggleSkip(entry) }, onEditOneOff)
+                OccurrenceRow(entry, intervals, labels, enabled, { onToggleSkip(entry) }, onEditOneOff)
             }
         }
     }
@@ -392,6 +416,7 @@ private fun DayGroup(
 private fun OccurrenceRow(
     entry: Timeline.Entry,
     intervals: Map<Long, Int>,
+    labels: Labels,
     enabled: Boolean,
     onToggleSkip: () -> Unit,
     onEditOneOff: (Long) -> Unit,
@@ -401,23 +426,90 @@ private fun OccurrenceRow(
     val occurrence = entry.occurrence
     val oneOff = occurrence.sources.filterIsInstance<Source.OneOffAlarm>().firstOrNull()
     val faded = Modifier.alpha(if (entry.skipped) 0.45f else 1f)
-    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            TimeText.time(occurrence.at.toLocalTime()),
-            faded.width(62.dp),
-            style = type.timeRow.copy(textDecoration = if (entry.skipped) TextDecoration.LineThrough else null),
-        )
-        Spacer(Modifier.width(12.dp))
-        Row(faded.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PolicyDot(sourceColor(occurrence.sources))
-            Text(occurrence.label, Modifier.weight(1f, fill = false), style = type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            occurrenceNote(occurrence.sources, entry.skipped, intervals::get)?.let {
-                Text(it, style = type.small, color = colors.muted, maxLines = 1)
+    // "12:55 PM" doesn't fit the 24-hour column; a wider minimum keeps the labels aligned across rows.
+    val timeWidth = if (labels.formats.is24Hour) 62.dp else 92.dp
+    ActionRow(
+        // The time, the dot and a few characters of the label.
+        minContent = timeWidth + 12.dp + 16.dp + 64.dp,
+        content = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    labels.formats.time(occurrence.at.toLocalTime()),
+                    faded.widthIn(min = timeWidth),
+                    style = type.timeRow.copy(textDecoration = if (entry.skipped) TextDecoration.LineThrough else null),
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                Spacer(Modifier.width(12.dp))
+                Row(faded.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PolicyDot(sourceColor(occurrence.sources))
+                    LabelAndNote(occurrence.label, occurrenceNote(labels.res, occurrence.sources, entry.skipped, intervals::get), Modifier.weight(1f))
+                }
+            }
+        },
+        actions = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // A one-off keeps both actions: Edit opens it, Skip deletes it with Undo.
+                if (oneOff != null) TextAction(stringResource(R.string.common_edit), { onEditOneOff(oneOff.oneOffId) })
+                TextAction(stringResource(if (entry.skipped) R.string.today_unskip else R.string.today_skip), onToggleSkip, enabled = enabled)
+            }
+        },
+    )
+}
+
+/**
+ * [content] and [actions] on one line, at least 40 dp tall. When the actions would leave [content] less than
+ * [minContent] (long translations on a narrow phone), they move to a second line, aligned to the end.
+ */
+@Composable
+private fun ActionRow(minContent: Dp, content: @Composable () -> Unit, actions: @Composable () -> Unit) {
+    Layout(contents = listOf(content, actions), modifier = Modifier.fillMaxWidth()) { (contentSlot, actionsSlot), constraints ->
+        val width = constraints.maxWidth
+        val minHeight = 40.dp.roundToPx()
+        val actionsPlaceable = actionsSlot.single().measure(Constraints(maxWidth = width))
+        val oneLine = width - actionsPlaceable.width >= minContent.roundToPx()
+        val contentWidth = if (oneLine) width - actionsPlaceable.width else width
+        val contentPlaceable = contentSlot.single().measure(Constraints.fixedWidth(contentWidth))
+        val lineHeight = maxOf(minHeight, contentPlaceable.height, if (oneLine) actionsPlaceable.height else 0)
+        val height = if (oneLine) lineHeight else lineHeight + actionsPlaceable.height
+        layout(width, height) {
+            contentPlaceable.place(0, (lineHeight - contentPlaceable.height) / 2)
+            if (oneLine) {
+                actionsPlaceable.place(width - actionsPlaceable.width, (lineHeight - actionsPlaceable.height) / 2)
+            } else {
+                actionsPlaceable.place(width - actionsPlaceable.width, lineHeight)
             }
         }
-        // A one-off keeps both actions: Edit opens it, Skip deletes it with Undo.
-        if (oneOff != null) TextAction("Edit", { onEditOneOff(oneOff.oneOffId) })
-        TextAction(if (entry.skipped) "Unskip" else "Skip", onToggleSkip, enabled = enabled)
+    }
+}
+
+/**
+ * The occurrence label and its muted [note] on one line. When both don't fit, the label keeps its full width up to
+ * half the line (so a long note can't squeeze it to "…") and both are ellipsized.
+ */
+@Composable
+private fun LabelAndNote(label: String, note: String?, modifier: Modifier = Modifier) {
+    val colors = ReveilleTheme.colors
+    val type = ReveilleTheme.type
+    Layout(
+        content = {
+            Text(label, style = type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (note != null) Text(note, style = type.small, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        modifier = modifier,
+    ) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val gap = 8.dp.roundToPx()
+        val labelWant = measurables[0].maxIntrinsicWidth(Constraints.Infinity)
+        val noteWant = measurables.getOrNull(1)?.let { it.maxIntrinsicWidth(Constraints.Infinity) + gap } ?: 0
+        val labelWidth = if (labelWant + noteWant <= width) labelWant else maxOf(width - noteWant, minOf(labelWant, width / 2))
+        val labelPlaceable = measurables[0].measure(Constraints(maxWidth = labelWidth.coerceIn(0, width)))
+        val notePlaceable = measurables.getOrNull(1)?.measure(Constraints(maxWidth = (width - labelPlaceable.width - gap).coerceAtLeast(0)))
+        val height = maxOf(labelPlaceable.height, notePlaceable?.height ?: 0)
+        layout(width, height) {
+            labelPlaceable.place(0, (height - labelPlaceable.height) / 2)
+            notePlaceable?.place(labelPlaceable.width + gap, (height - notePlaceable.height) / 2)
+        }
     }
 }
 
@@ -425,16 +517,17 @@ private fun OccurrenceRow(
  * Skip skips the policy alarms of the occurrence (for their whole date) and deletes its one-offs; Undo re-saves the
  * one-offs and removes the skips. Unskip (skipped entries are policy alarms only) removes the skips.
  */
-private fun toggleSkip(session: ScreenSession, repository: ScheduleRepository, entry: Timeline.Entry) {
+private fun toggleSkip(session: ScreenSession, repository: ScheduleRepository, labels: Labels, entry: Timeline.Entry) {
+    val res = labels.res
     val policies = entry.occurrence.sources.filterIsInstance<Source.PolicyRule>()
     if (entry.skipped) {
-        session.write("Could not unskip the alarm.", action = { policies.forEach { repository.unskip(it.policyId, it.date) } })
+        session.write(res.getString(R.string.today_unskip_failed), action = { policies.forEach { repository.unskip(it.policyId, it.date) } })
         return
     }
     val oneOffIds = entry.occurrence.sources.filterIsInstance<Source.OneOffAlarm>().map { it.oneOffId }
-    val time = TimeText.time(entry.occurrence.at.toLocalTime())
+    val time = labels.formats.time(entry.occurrence.at.toLocalTime())
     session.write(
-        "Could not skip the alarm.",
+        res.getString(R.string.today_skip_failed),
         action = {
             val removed: List<OneOffEntity> = oneOffIds.mapNotNull { repository.oneOff(it) }
             repository.skipOccurrence(entry.occurrence.sources.map { it.key })
@@ -442,9 +535,9 @@ private fun toggleSkip(session: ScreenSession, repository: ScheduleRepository, e
         },
         onSuccess = { (removed, ringingAgain) ->
             session.message(
-                UiMessage(skipMessage(time, entry.occurrence.label, ringingAgain), actionLabel = "Undo") {
+                UiMessage(skipMessage(res, time, entry.occurrence.label, ringingAgain), actionLabel = res.getString(R.string.common_undo)) {
                     session.write(
-                        "Could not undo the skip.",
+                        res.getString(R.string.today_undo_skip_failed),
                         guarded = false,
                         action = {
                             // A one-off whose time passed meanwhile stays deleted: restoring it would ring it at once.

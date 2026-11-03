@@ -9,16 +9,20 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 /** All schedule writes go through here; each write calls [onChanged] so the scheduler re-arms. */
-class ScheduleRepository(private val dao: ScheduleDao, private val onChanged: suspend () -> Unit) {
+class ScheduleRepository(
+    private val dao: ScheduleDao,
+    private val defaultOneOffLabel: () -> String = { "Alarm" },
+    private val onChanged: suspend () -> Unit,
+) {
     val policies: Flow<List<PolicyWithChildren>> = dao.observePolicies()
 
     val snapshots: Flow<ScheduleSnapshot> =
         combine(dao.observePolicies(), dao.observeOneOffs(), dao.observeSkips()) { policies, oneOffs, skips ->
-            ScheduleSnapshot(policies.map { it.toModel() }, oneOffs.map { it.toModel() }, skips.map { it.toModel() })
+            ScheduleSnapshot(policies.map { it.toModel() }, oneOffs.map { it.toModel() }, skips.map { it.toModel() }, defaultOneOffLabel())
         }
 
     suspend fun snapshot(): ScheduleSnapshot =
-        ScheduleSnapshot(dao.policies().map { it.toModel() }, dao.oneOffs().map { it.toModel() }, dao.skips().map { it.toModel() })
+        ScheduleSnapshot(dao.policies().map { it.toModel() }, dao.oneOffs().map { it.toModel() }, dao.skips().map { it.toModel() }, defaultOneOffLabel())
 
     suspend fun policy(id: Long): PolicyWithChildren? = dao.policy(id)
 

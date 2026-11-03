@@ -1,10 +1,15 @@
 package com.replydev.reveille.ui.reliability
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.replydev.reveille.engine.Armed
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.junit.runner.RunWith
 import java.time.Instant
 
+@RunWith(AndroidJUnit4::class)
 class TestAlarmResultTest {
     private val now = Instant.parse("2026-11-02T06:00:30Z")
     private val testAt = Instant.parse("2026-11-02T06:02:00Z")
@@ -30,5 +35,19 @@ class TestAlarmResultTest {
         assertEquals(TestAlarmResult.NOT_CONFIRMED, testAlarmResult(Armed("O:1", now.minusSeconds(60), "Overdue"), testKey, testAt, now))
         // Same minute but not the test alarm (refused re-arm left an old alarm): not proof.
         assertEquals(TestAlarmResult.NOT_CONFIRMED, testAlarmResult(Armed("O:1", testAt, "Other"), testKey, testAt, now))
+    }
+
+    @Test
+    fun messagesSayWhatHappenedToTheTest() {
+        val res = ApplicationProvider.getApplicationContext<Context>().resources
+        assertEquals("Test alarm set for 07:02. Lock your phone now.", testAlarmMessage(res, TestAlarmResult.SET, "07:02", null))
+        assertEquals(
+            "Test alarm saved for 07:02; it is set once the alarm at 07:01 has rung.",
+            testAlarmMessage(res, TestAlarmResult.AFTER_ANOTHER, "07:02", "07:01"),
+        )
+        assertEquals(
+            "Test alarm saved for 07:02, but the system did not confirm it. Fix the items above.",
+            testAlarmMessage(res, TestAlarmResult.NOT_CONFIRMED, "07:02", null),
+        )
     }
 }

@@ -14,6 +14,8 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.replydev.reveille.R
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -28,8 +30,8 @@ fun PickTimeDialog(initial: LocalTime, onDismiss: () -> Unit, minuteFirst: Boole
     LaunchedEffect(state) { if (minuteFirst) state.selection = TimePickerSelectionMode.Minute }
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) }) { Text("OK") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) }) { Text(stringResource(R.string.common_ok)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
         text = { TimePicker(state = state) },
     )
 }
@@ -44,9 +46,9 @@ fun PickDateDialog(initial: LocalDate, onDismiss: () -> Unit, onConfirm: (LocalD
         confirmButton = {
             TextButton(onClick = {
                 state.selectedDateMillis?.let { onConfirm(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
-            }) { Text("OK") }
+            }) { Text(stringResource(R.string.common_ok)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
     ) {
         DatePicker(state = state)
     }
@@ -60,6 +62,6 @@ fun ConfirmDialog(title: String, text: String, confirmLabel: String, onDismiss: 
         title = { Text(title) },
         text = { Text(text) },
         confirmButton = { TextButton(onClick = onConfirm) { Text(confirmLabel) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
     )
 }

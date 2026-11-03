@@ -1,5 +1,8 @@
 package com.replydev.reveille.ui.policies
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.replydev.reveille.data.PauseEntity
 import com.replydev.reveille.data.PolicyEntity
 import com.replydev.reveille.data.PolicyWithChildren
@@ -9,11 +12,14 @@ import com.replydev.reveille.engine.OneOff
 import com.replydev.reveille.engine.OneOffMode
 import com.replydev.reveille.engine.ScheduleSnapshot
 import com.replydev.reveille.engine.Skip
+import com.replydev.reveille.text.Labels
+import com.replydev.reveille.text.TimeFormats
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
 import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.TUESDAY
 import java.time.DayOfWeek.WEDNESDAY
@@ -21,8 +27,12 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.Locale
 
+@RunWith(AndroidJUnit4::class)
 class PolicyTextTest {
+    private val res = ApplicationProvider.getApplicationContext<Context>().resources
+    private val labels = Labels(res, TimeFormats(Locale.UK, is24Hour = true))
     private val today = LocalDate.parse("2026-11-02") // a Monday
     private val zone = ZoneId.of("Europe/Rome")
     private val now = ZonedDateTime.of(today, LocalTime.of(8, 0), zone).toInstant()
@@ -31,25 +41,27 @@ class PolicyTextTest {
 
     @Test
     fun `status line falls back to the next alarm when the policy is active`() {
-        assertEquals("Active · next Tue 07:55", statusLine(null, "Tue 07:55"))
-        assertEquals("Active", statusLine(null, null))
-        assertEquals("Off", statusLine("Off", "Tue 07:55"))
+        assertEquals("Active · next Tue 07:55", statusLine(res, null, "Tue 07:55"))
+        assertEquals("Active", statusLine(res, null, null))
+        assertEquals("Off", statusLine(res, "Off", "Tue 07:55"))
     }
 
     @Test
     fun `only pause statuses are highlighted`() {
-        assertTrue(isPauseStatus("Paused, resumes 14 Nov"))
-        assertTrue(isPauseStatus("Paused until it ends on 30 Jun"))
-        assertFalse(isPauseStatus("Off"))
+        assertTrue(isPauseStatus(PolicyStatus.Paused(today.plusDays(12))))
+        assertTrue(isPauseStatus(PolicyStatus.PausedUntilEnd(today.plusDays(30))))
+        assertFalse(isPauseStatus(PolicyStatus.Off))
+        assertFalse(isPauseStatus(PolicyStatus.Ended(today.minusDays(1))))
+        assertFalse(isPauseStatus(PolicyStatus.Starts(today.plusDays(1))))
         assertFalse(isPauseStatus(null))
     }
 
     @Test
     fun `rule note shows the interval and the label`() {
-        assertNull(ruleNote(rule))
-        assertEquals("every 2 wk", ruleNote(rule.copy(intervalWeeks = 2)))
-        assertEquals("Early", ruleNote(rule.copy(label = "Early")))
-        assertEquals("every 3 wk · Early", ruleNote(rule.copy(intervalWeeks = 3, label = "Early")))
+        assertNull(ruleNote(res, rule))
+        assertEquals("every 2 wk", ruleNote(res, rule.copy(intervalWeeks = 2)))
+        assertEquals("Early", ruleNote(res, rule.copy(label = "Early")))
+        assertEquals("every 3 wk · Early", ruleNote(res, rule.copy(intervalWeeks = 3, label = "Early")))
     }
 
     @Test
@@ -71,14 +83,14 @@ class PolicyTextTest {
 
     @Test
     fun `next text names the day and the time`() {
-        assertEquals("Tomorrow, 07:55", nextText(ZonedDateTime.of(today.plusDays(1), LocalTime.of(7, 55), zone), today))
-        assertEquals("Thu 5 Nov, 06:30", nextText(ZonedDateTime.of(today.plusDays(3), LocalTime.of(6, 30), zone), today))
+        assertEquals("Tomorrow, 07:55", nextText(labels, ZonedDateTime.of(today.plusDays(1), LocalTime.of(7, 55), zone), today))
+        assertEquals("Thu, 5 Nov, 06:30", nextText(labels, ZonedDateTime.of(today.plusDays(3), LocalTime.of(6, 30), zone), today))
     }
 
     @Test
     fun `pause dates drop the year only when it is this year`() {
         val pause = PauseEntity(policyId = 1, fromDate = LocalDate.parse("2026-12-23"), toDate = LocalDate.parse("2027-01-06"))
-        assertEquals("23 Dec", shortDate(pause.fromDate, today))
-        assertEquals("6 Jan 2027", shortDate(pause.toDate, today))
+        assertEquals("23 Dec", shortDate(labels, pause.fromDate, today))
+        assertEquals("6 Jan 2027", shortDate(labels, pause.toDate, today))
     }
 }

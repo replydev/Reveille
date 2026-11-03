@@ -28,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -93,7 +94,7 @@ fun SheetScaffold(
         ) {
             Text(title, Modifier.weight(1f), style = ReveilleTheme.type.titleSheet)
             actions()
-            IconCircleButton(R.drawable.ic_close, "Close", onClose)
+            IconCircleButton(R.drawable.ic_close, stringResource(R.string.common_close), onClose)
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             content(PaddingValues(0.dp))

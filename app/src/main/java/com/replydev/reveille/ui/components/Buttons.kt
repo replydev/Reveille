@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -20,6 +23,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.replydev.reveille.R
@@ -27,7 +31,10 @@ import com.replydev.reveille.ui.theme.ReveilleTheme
 
 enum class PillStyle { Primary, Secondary, Outlined, Danger, Dashed }
 
-/** A fully rounded button. Disabled pills keep their shape and fade. */
+/**
+ * A fully rounded button. Disabled pills keep their shape and fade. A label too long for one line (German, French on a
+ * narrow phone) wraps and the pill grows taller rather than cutting it off.
+ */
 @Composable
 fun PillButton(
     text: String,
@@ -55,10 +62,10 @@ fun PillButton(
         height = height,
         enabled = enabled,
         contentPadding = contentPadding,
-    ) { Text(text, style = textStyle, maxLines = 1) }
+    ) { Text(text, Modifier.padding(vertical = 6.dp), style = textStyle, textAlign = TextAlign.Center) }
 }
 
-/** The base of every pill: fully rounded, centred content, [height] tall. */
+/** The base of every pill: fully rounded, centred content, at least [height] tall. */
 @Composable
 fun Pill(
     onClick: () -> Unit,
@@ -71,16 +78,20 @@ fun Pill(
     contentPadding: PaddingValues = PaddingValues(horizontal = 18.dp),
     body: @Composable () -> Unit,
 ) {
-    Surface(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.height(height).alpha(if (enabled) 1f else 0.4f),
-        shape = RoundedCornerShape(50),
-        color = container,
-        contentColor = content,
-        border = border,
-    ) {
-        Box(Modifier.padding(contentPadding), contentAlignment = Alignment.Center) { body() }
+    // [height] is the size; without this, Material's 48 dp minimum would make every shorter pill 48 dp tall now
+    // that the height is a minimum.
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+        Surface(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier.heightIn(min = height).alpha(if (enabled) 1f else 0.4f),
+            shape = RoundedCornerShape(50),
+            color = container,
+            contentColor = content,
+            border = border,
+        ) {
+            Box(Modifier.padding(contentPadding), contentAlignment = Alignment.Center) { body() }
+        }
     }
 }
 

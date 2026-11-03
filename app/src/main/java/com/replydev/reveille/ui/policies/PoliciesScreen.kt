@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,14 +26,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.replydev.reveille.R
 import com.replydev.reveille.container
 import com.replydev.reveille.data.PolicyWithChildren
 import com.replydev.reveille.data.RuleEntity
 import com.replydev.reveille.data.toModel
 import com.replydev.reveille.engine.ScheduleSnapshot
-import com.replydev.reveille.engine.TimeText
+import com.replydev.reveille.text.Labels
 import com.replydev.reveille.ui.components.MiniDayCells
 import com.replydev.reveille.ui.components.PolicyDot
 import com.replydev.reveille.ui.components.ReveilleCard
@@ -43,6 +46,7 @@ import com.replydev.reveille.ui.components.TabScaffold
 import com.replydev.reveille.ui.components.rememberScreenSession
 import com.replydev.reveille.ui.components.rememberToday
 import com.replydev.reveille.ui.components.topDivider
+import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.theme.animatedItem
 import com.replydev.reveille.ui.theme.policyColor
@@ -57,6 +61,8 @@ fun PoliciesScreen(onOpen: (Long) -> Unit) {
     val snackbar = remember { SnackbarHostState() }
     val session = rememberScreenSession(snackbar)
     val today = rememberToday()
+    val labels = rememberLabels()
+    val res = labels.res
     val policies by container.repository.policies.collectAsStateWithLifecycle(initialValue = null)
     val snapshot by container.repository.snapshots.collectAsStateWithLifecycle(initialValue = null)
     val now by produceState(Instant.now(), snapshot) {
@@ -67,7 +73,7 @@ fun PoliciesScreen(onOpen: (Long) -> Unit) {
         }
     }
     TabScaffold(
-        floatingActionButton = { ReveilleFab("New policy", onClick = { onOpen(0) }) },
+        floatingActionButton = { ReveilleFab(stringResource(R.string.policy_new), onClick = { onOpen(0) }) },
         snackbarHostState = snackbar,
     ) { padding ->
         LazyColumn(
@@ -76,9 +82,9 @@ fun PoliciesScreen(onOpen: (Long) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "header") {
-                TabHeader("Policies", bottom = 4.dp) {
+                TabHeader(stringResource(R.string.policy_title), bottom = 4.dp) {
                     Text(
-                        "Named groups of recurring alarms. Turn a whole routine on or off in one tap.",
+                        stringResource(R.string.policy_intro),
                         Modifier.padding(top = 4.dp),
                         style = ReveilleTheme.type.paragraph,
                         color = ReveilleTheme.colors.muted,
@@ -89,7 +95,7 @@ fun PoliciesScreen(onOpen: (Long) -> Unit) {
             if (list.isEmpty()) {
                 item(key = "empty") {
                     Text(
-                        "No policies yet. A policy groups recurring alarms, for example \"Work\".",
+                        stringResource(R.string.policy_empty),
                         Modifier.animatedItem(this).padding(horizontal = 20.dp),
                         style = ReveilleTheme.type.body,
                     )
@@ -99,12 +105,13 @@ fun PoliciesScreen(onOpen: (Long) -> Unit) {
                 val status = policyStatus(item.policy, item.pauses, today)
                 PolicyCard(
                     item = item,
-                    status = statusLine(status, if (status == null) nextLabel(item, snapshot, now) else null),
+                    status = statusLine(res, status?.text(labels, today), if (status == null) nextLabel(labels, item, snapshot, now) else null),
                     highlight = isPauseStatus(status),
+                    labels = labels,
                     onOpen = { onOpen(item.policy.id) },
                     onEnabledChange = { enabled ->
                         session.write(
-                            "Could not update the policy.",
+                            res.getString(R.string.policy_update_failed),
                             guarded = false,
                             action = { container.repository.setPolicyEnabled(item.policy.id, enabled) },
                         )
@@ -117,10 +124,10 @@ fun PoliciesScreen(onOpen: (Long) -> Unit) {
 }
 
 /** "Tue 07:55" for the policy's next alarm in the lookahead, judged with the rest of the schedule. */
-private fun nextLabel(item: PolicyWithChildren, snapshot: ScheduleSnapshot?, now: Instant): String? {
+private fun nextLabel(labels: Labels, item: PolicyWithChildren, snapshot: ScheduleSnapshot?, now: Instant): String? {
     val zone = ZoneId.systemDefault()
     val next = nextPolicyAlarm(item.toModel(), snapshot ?: return null, now, zone) ?: return null
-    return TimeText.dayAndTime(next.at.toInstant(), now, zone)
+    return labels.dayAndTime(next.at.toInstant(), now, zone)
 }
 
 @Composable
@@ -128,6 +135,7 @@ private fun PolicyCard(
     item: PolicyWithChildren,
     status: String,
     highlight: Boolean,
+    labels: Labels,
     onOpen: () -> Unit,
     onEnabledChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -158,19 +166,26 @@ private fun PolicyCard(
                 Modifier.fillMaxWidth().topDivider(colors.outline).padding(top = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                rules.forEach { RuleRow(it, policyColor(id)) }
+                rules.forEach { RuleRow(it, policyColor(id), labels) }
             }
         }
     }
 }
 
 @Composable
-private fun RuleRow(rule: RuleEntity, color: Color) {
+private fun RuleRow(rule: RuleEntity, color: Color, labels: Labels) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(TimeText.time(rule.time), Modifier.width(66.dp), style = ReveilleTheme.type.timeRule)
+        // "12:55 PM" doesn't fit the 24-hour column; a wider minimum keeps the day cells aligned across rows.
+        Text(
+            labels.formats.time(rule.time),
+            Modifier.widthIn(min = if (labels.formats.is24Hour) 66.dp else 104.dp),
+            style = ReveilleTheme.type.timeRule,
+            maxLines = 1,
+            softWrap = false,
+        )
         Spacer(Modifier.width(12.dp))
         MiniDayCells(rule.days, color)
         Spacer(Modifier.weight(1f).width(12.dp))
-        ruleNote(rule)?.let { Text(it, style = ReveilleTheme.type.small, color = ReveilleTheme.colors.muted, maxLines = 1) }
+        ruleNote(labels.res, rule)?.let { Text(it, style = ReveilleTheme.type.small, color = ReveilleTheme.colors.muted, maxLines = 1) }
     }
 }

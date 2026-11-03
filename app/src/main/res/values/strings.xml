@@ -1,4 +1,417 @@
 <resources>
-    <string name="app_name">Reveille</string>
+    <string name="app_name" translatable="false">Reveille</string>
     <string name="widget_description">Shows your next wake-up</string>
+
+    <!-- Time words shared across screens -->
+    <string name="time_today">Today</string>
+    <string name="time_tomorrow">Tomorrow</string>
+    <string name="time_yesterday">Yesterday</string>
+    <string name="time_now">now</string>
+    <plurals name="time_in_minutes">
+        <item quantity="one">in %d min</item>
+        <item quantity="other">in %d min</item>
+    </plurals>
+    <plurals name="time_in_hours">
+        <item quantity="one">in %d h</item>
+        <item quantity="other">in %d h</item>
+    </plurals>
+    <plurals name="time_in_days">
+        <item quantity="one">in %d d</item>
+        <item quantity="other">in %d d</item>
+    </plurals>
+    <string name="time_every_day">Every day</string>
+    <string name="time_weekdays">Mon–Fri</string>
+    <!-- %1$s day ("Tomorrow", "Thu"), %2$s time -->
+    <string name="time_day_and_time">%1$s %2$s</string>
+    <string name="oneoff_default_label">Alarm</string>
+
+    <!-- Bottom bar -->
+    <string name="nav_today">Today</string>
+    <string name="nav_policies">Policies</string>
+    <string name="nav_health">Health</string>
+    <string name="nav_settings">Settings</string>
+    <!-- State of a tab that shows a badge dot -->
+    <string name="nav_update_available">Update available</string>
+    <string name="nav_needs_attention">Needs attention</string>
+
+    <!-- Shared buttons -->
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_close">Close</string>
+    <string name="common_back">Back</string>
+    <string name="common_edit">Edit</string>
+    <string name="common_undo">Undo</string>
+    <string name="common_save">Save</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_remove">Remove</string>
+
+    <!-- Today -->
+    <string name="today_title">Today</string>
+    <string name="today_new_one_off">One-off alarm</string>
+    <plurals name="today_issues">
+        <item quantity="one">%d issue</item>
+        <item quantity="other">%d issues</item>
+    </plurals>
+    <!-- Shown instead of an issue count when the reliability checks could not run -->
+    <string name="today_check_failed">Check failed</string>
+    <!-- %1$s is the time the backup alarm rings -->
+    <string name="today_backup">backup %1$s</string>
+    <plurals name="today_alarm_count">
+        <item quantity="one">%d alarm</item>
+        <item quantity="other">%d alarms</item>
+    </plurals>
+    <plurals name="today_next_days">
+        <item quantity="one">Next %d day</item>
+        <item quantity="other">Next %d days</item>
+    </plurals>
+    <plurals name="today_empty">
+        <item quantity="one">No alarms in the next %d day. Add a policy or a one-off alarm.</item>
+        <item quantity="other">No alarms in the next %d days. Add a policy or a one-off alarm.</item>
+    </plurals>
+    <!-- Muted notes after an alarm label in the timeline -->
+    <string name="today_note_skipped">skipped</string>
+    <string name="today_note_one_off">one-off</string>
+    <string name="today_next_wake_up">Next wake-up</string>
+    <string name="today_ringing_now">Ringing now</string>
+    <string name="today_overdue">Overdue</string>
+    <string name="today_armed">Armed with system</string>
+    <string name="today_none_scheduled">None scheduled</string>
+    <!-- %1$s is the alarm label -->
+    <string name="today_snoozed">Snoozed: %1$s</string>
+    <!-- %1$s is the time the alarm was due -->
+    <string name="today_overdue_warning">Due at %1$s and should ring any moment. If it does not, check Health.</string>
+    <!-- %1$s day and time ("Tomorrow 07:55"), %2$s alarm label -->
+    <string name="today_not_set_earlier">Not set with the system: %1$s %2$s is scheduled earlier. Check Health.</string>
+    <string name="today_not_set">Not set with the system, so it will not ring. Check Health.</string>
+    <string name="today_setting">Setting the alarm…</string>
+    <string name="today_skip_this_one">Skip this one</string>
+    <string name="today_open_policy">Open policy</string>
+    <string name="today_skip">Skip</string>
+    <string name="today_unskip">Unskip</string>
+    <!-- %1$s time, %2$s alarm label -->
+    <string name="today_skipped">Skipped %1$s %2$s</string>
+    <!-- %1$s time, %2$s alarm label, %3$s comma-separated policy names -->
+    <string name="today_skipped_ringing_again">Skipped %1$s %2$s · %3$s alarms that day will ring again</string>
+    <string name="today_skip_failed">Could not skip the alarm.</string>
+    <string name="today_unskip_failed">Could not unskip the alarm.</string>
+    <string name="today_undo_skip_failed">Could not undo the skip.</string>
+
+    <!-- Policies -->
+    <!-- A rule that rings every N weeks -->
+    <plurals name="policy_every_n_weeks">
+        <item quantity="one">every %d wk</item>
+        <item quantity="other">every %d wk</item>
+    </plurals>
+    <string name="policy_title">Policies</string>
+    <string name="policy_intro">Named groups of recurring alarms. Turn a whole routine on or off in one tap.</string>
+    <string name="policy_empty">No policies yet. A policy groups recurring alarms, for example \"Work\".</string>
+    <string name="policy_new">New policy</string>
+    <string name="policy_edit">Edit policy</string>
+    <string name="policy_update_failed">Could not update the policy.</string>
+    <string name="policy_active">Active</string>
+    <!-- %1$s day and time of the next alarm ("Tue 07:55") -->
+    <string name="policy_active_next">Active · next %1$s</string>
+    <!-- Why a policy does not ring today. %1$s is a date ("3 Oct", or "6 Jan 2027" in another year) -->
+    <string name="policy_status_off">Off</string>
+    <string name="policy_status_ended">Ended %1$s</string>
+    <string name="policy_status_starts">Starts %1$s</string>
+    <string name="policy_status_paused">Paused, resumes %1$s</string>
+    <string name="policy_status_paused_until_end">Paused until it ends on %1$s</string>
+    <!-- Editor -->
+    <string name="policy_deleted_recreate">This policy was deleted. Saving creates a new one.</string>
+    <string name="policy_delete">Delete policy</string>
+    <string name="policy_delete_title">Delete policy?</string>
+    <string name="policy_delete_text">Its upcoming alarms will not ring. An alarm that is already snoozed still rings.</string>
+    <string name="policy_save_failed">Could not save the policy.</string>
+    <string name="policy_delete_failed">Could not delete the policy.</string>
+    <string name="policy_name">Name</string>
+    <string name="policy_enabled">Enabled</string>
+    <string name="policy_active_from">Active from</string>
+    <string name="policy_active_until">Active until</string>
+    <string name="policy_clear_active_from">Clear active from</string>
+    <string name="policy_clear_active_until">Clear active until</string>
+    <!-- An unset start or end date -->
+    <string name="policy_always">Always</string>
+    <string name="policy_alarm_times">Alarm times</string>
+    <string name="policy_add_alarm_time">+ Alarm time</string>
+    <string name="policy_add_pause">+ Pause</string>
+    <!-- %1$s is when the policy rings next ("Tomorrow, 07:55") -->
+    <string name="policy_next">Next: %1$s</string>
+    <!-- %1$s day ("Tomorrow", "Thu 5 Nov"), %2$s time -->
+    <string name="policy_next_text">%1$s, %2$s</string>
+    <string name="policy_change_time">Change time</string>
+    <string name="policy_remove_alarm_time">Remove alarm time</string>
+    <string name="policy_repeat_every">Repeat every</string>
+    <plurals name="policy_weeks">
+        <item quantity="one">%d week</item>
+        <item quantity="other">%d weeks</item>
+    </plurals>
+    <string name="policy_fewer_weeks">Fewer weeks</string>
+    <string name="policy_more_weeks">More weeks</string>
+    <string name="policy_including_week_of">Including the week of</string>
+    <string name="policy_label_optional">Label (optional)</string>
+    <!-- Followed by the pause's start and end dates: "Paused 23 Dec → 6 Jan 2027" -->
+    <string name="policy_paused">Paused</string>
+    <string name="policy_change_pause_start">Change pause start</string>
+    <string name="policy_change_pause_end">Change pause end</string>
+    <string name="policy_warning_off">This policy is off: none of its alarms will ring.</string>
+    <plurals name="policy_warning_no_alarms">
+        <item quantity="one">This policy has no alarms in the next %d day.</item>
+        <item quantity="other">This policy has no alarms in the next %d days.</item>
+    </plurals>
+    <!-- Why a policy cannot be saved -->
+    <string name="policy_error_no_name">Give the policy a name.</string>
+    <string name="policy_error_no_rules">Add at least one alarm time.</string>
+    <string name="policy_error_rule_without_days">Every alarm time needs at least one weekday.</string>
+    <string name="policy_error_end_before_start">The end date is before the start date.</string>
+    <string name="policy_error_pause_reversed">A pause ends before it starts.</string>
+    <!-- One-off editor -->
+    <string name="oneoff_new">One-off alarm</string>
+    <string name="oneoff_edit">Edit alarm</string>
+    <string name="oneoff_deleted_recreate">This alarm no longer exists. Saving creates a new one.</string>
+    <string name="oneoff_in_past">This time is in the past.</string>
+    <string name="oneoff_save_failed">Could not save the alarm.</string>
+    <string name="oneoff_delete_failed">Could not delete the alarm.</string>
+    <string name="oneoff_delete">Delete alarm</string>
+    <string name="oneoff_delete_title">Delete alarm?</string>
+    <string name="oneoff_delete_text">It will not ring. If it is already snoozed, the snooze still rings.</string>
+    <string name="oneoff_date">Date</string>
+    <string name="oneoff_label_optional">Label (optional)</string>
+    <!-- %1$s is a date ("Fri 6 Nov", or "Wed 6 Jan 2027" in another year); drawn upper case -->
+    <string name="oneoff_on_date">On %1$s</string>
+    <!-- Modes: the one-off replaces the day's recurring alarms, or rings alongside them -->
+    <string name="oneoff_mode_replace">Replace the day</string>
+    <string name="oneoff_mode_additive">Ring in addition</string>
+    <string name="oneoff_replaced_by_other">Another alarm on this day already replaces its recurring alarms, so they won\'t ring.</string>
+    <!-- Primary button. %1$s date ("Fri 6 Nov"), %2$s time ("09:30") -->
+    <string name="oneoff_set_for">Set for %1$s, %2$s</string>
+    <!-- Content descriptions of the hour and minute boxes. %1$s is the two-digit value -->
+    <string name="oneoff_hour">Hour, %1$s</string>
+    <string name="oneoff_minute">Minute, %1$s</string>
+    <string name="oneoff_pick_date">Pick another date</string>
+    <!-- What happens to a recurring alarm on the chosen day -->
+    <string name="oneoff_wont_ring">won\'t ring</string>
+    <string name="oneoff_also_rings">also rings</string>
+
+    <!-- Health -->
+    <string name="health_title">Health</string>
+    <plurals name="health_summary">
+        <item quantity="one">%1$d of %2$d check passes</item>
+        <item quantity="other">%1$d of %2$d checks pass</item>
+    </plurals>
+    <string name="health_all_good">All good</string>
+    <string name="health_may_not_ring">Alarms may not ring</string>
+    <!-- Muted note on a passing check: HyperOS-only checks, and manual checks the user confirmed -->
+    <string name="health_note_hyperos">HyperOS</string>
+    <string name="health_note_confirmed">Confirmed</string>
+    <string name="health_open_settings">Open settings</string>
+    <string name="health_mark_done">Mark as done</string>
+    <string name="health_mark_not_done">Mark as not done</string>
+    <string name="health_unconfirm_title">Mark as not done?</string>
+    <string name="health_unconfirm_text">\"%1$s\" will be listed as needing attention again.</string>
+    <string name="health_save_failed">Could not save.</string>
+    <string name="health_open_failed">Could not open the settings screen. Open it from the phone\'s Settings app.</string>
+    <string name="health_test_title">Ring a test alarm</string>
+    <string name="health_test_detail">In 2 minutes. Lock the phone and wait.</string>
+    <string name="health_test_start">Start</string>
+    <string name="health_test_failed">Could not set the test alarm.</string>
+    <string name="health_test_label">Test alarm</string>
+    <string name="health_test_set">Test alarm set for %1$s. Lock your phone now.</string>
+    <string name="health_test_after_another">Test alarm saved for %1$s; it is set once the alarm at %2$s has rung.</string>
+    <string name="health_test_not_confirmed">Test alarm saved for %1$s, but the system did not confirm it. Fix the items above.</string>
+    <string name="health_force_stop">If Reveille is force-stopped, Android deletes all its alarms, and restarting the phone does not bring them back. They are set again the next time you open Reveille (tapping its widget works too), and you are warned about any alarm that was missed.</string>
+    <string name="health_recent_alarms">Recent alarms</string>
+    <string name="health_log_empty">Nothing yet.</string>
+    <!-- Outcome of a logged alarm -->
+    <string name="health_outcome_fired">rang, not answered yet</string>
+    <string name="health_outcome_dismissed">dismissed</string>
+    <string name="health_outcome_snoozed">snoozed</string>
+    <string name="health_outcome_auto_snoozed">auto snoozed</string>
+    <string name="health_outcome_skipped">skipped</string>
+    <string name="health_outcome_superseded">superseded</string>
+    <string name="health_outcome_missed">missed</string>
+    <!-- Reliability checks -->
+    <string name="health_check_notifications_title">Notifications allowed</string>
+    <string name="health_check_notifications_detail">The ringing alarm and missed-alarm warnings are notifications.</string>
+    <string name="health_check_full_screen_title">Full-screen alarms allowed</string>
+    <string name="health_check_full_screen_detail">Lets the alarm screen appear over the lock screen.</string>
+    <string name="health_check_alarm_channel_title">Alarm notifications at high importance</string>
+    <string name="health_check_alarm_channel_detail">If lowered, the alarm screen will not pop up.</string>
+    <string name="health_check_fallback_channel_title">Fallback alarms at high importance with sound</string>
+    <string name="health_check_fallback_channel_detail">The fallback alarm is the last resort when the normal alarm cannot start. It rings through this notification channel, so it must stay at high importance and keep its sound.</string>
+    <string name="health_check_exact_alarms_title">Exact alarms allowed</string>
+    <string name="health_check_exact_alarms_detail">Required to ring at the exact minute.</string>
+    <string name="health_check_battery_optimization_title">Battery optimization off</string>
+    <string name="health_check_battery_optimization_detail">Battery-optimized apps can be delayed or stopped in the background.</string>
+    <string name="health_check_alarm_volume_title">Alarm volume not muted</string>
+    <string name="health_check_alarm_volume_detail">Alarms play on the alarm volume, which is separate from the ringer.</string>
+    <string name="health_check_oem_battery_title">Manufacturer battery settings</string>
+    <string name="health_check_oem_battery_detail">Some phones stop apps despite Android\'s own settings. Open the app\'s battery settings, choose Unrestricted, then tick Done.</string>
+    <string name="health_check_miui_autostart_title">Autostart on</string>
+    <string name="health_check_miui_autostart_detail">Without Autostart, HyperOS does not tell Reveille that the phone restarted, so alarms are lost after a reboot.</string>
+    <string name="health_check_miui_battery_title">Battery saver: No restrictions</string>
+    <string name="health_check_miui_battery_detail">In the app\'s battery saver setting, choose \"No restrictions\".</string>
+    <string name="health_check_miui_permissions_title">Lock screen and pop-up permissions</string>
+    <string name="health_check_miui_permissions_detail">Under Other permissions, allow \"Show on Lock screen\" and \"Display pop-up windows while running in the background\".</string>
+    <string name="health_check_miui_recents_title">Locked in Recents</string>
+    <string name="health_check_miui_recents_detail">Open the recent apps view, long-press Reveille and tap the lock icon.</string>
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_save_failed">Could not save the setting.</string>
+    <string name="settings_sound">Sound</string>
+    <string name="settings_alarm_sound">Alarm sound</string>
+    <string name="settings_choose_sound">Choose the alarm sound</string>
+    <string name="settings_no_sound_picker">This phone has no sound picker.</string>
+    <string name="settings_default_sound">Default alarm sound</string>
+    <string name="settings_custom_sound">Custom sound</string>
+    <string name="settings_vibrate">Vibrate</string>
+    <string name="settings_vibrate_hint">Pulse while the alarm rings</string>
+    <string name="settings_volume_ramp">Gradually increase volume</string>
+    <string name="settings_volume_ramp_hint">Starts quiet, reaches full volume</string>
+    <string name="settings_snooze">Snooze</string>
+    <string name="settings_snooze_length">Snooze length</string>
+    <string name="settings_snooze_length_decrease">Decrease snooze length</string>
+    <string name="settings_snooze_length_increase">Increase snooze length</string>
+    <string name="settings_auto_snooze">Auto-snooze after ringing for</string>
+    <string name="settings_auto_snooze_decrease">Decrease auto-snooze after ringing for</string>
+    <string name="settings_auto_snooze_increase">Increase auto-snooze after ringing for</string>
+    <plurals name="settings_minutes">
+        <item quantity="one">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
+    <string name="settings_about">About</string>
+    <string name="settings_release_notes">Release notes</string>
+    <!-- Updates: Settings section -->
+    <string name="update_section">Updates</string>
+    <string name="update_version">v%1$s</string>
+    <string name="update_available_title">v%1$s is available</string>
+    <string name="update_available_subtitle">You have v%1$s · released %2$s</string>
+    <string name="update_view">View</string>
+    <string name="update_debug_title">Updates are off in debug builds</string>
+    <string name="update_debug_subtitle">v%1$s · signed with a debug key</string>
+    <string name="update_up_to_date_title">You\'re up to date</string>
+    <string name="update_auto_check">Check automatically</string>
+    <string name="update_auto_check_hint">Once a day, on any network</string>
+    <string name="update_notify">Notify me</string>
+    <string name="update_notify_hint">A quiet notification when a release is found</string>
+    <string name="update_last_checked">Last checked</string>
+    <string name="update_last_checked_at">%1$s, %2$s</string>
+    <string name="update_never">Never</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_check_now">Check now</string>
+    <string name="update_footnote">Releases come from %1$s. Each APK is checked against its published SHA-256 and must be signed with the same key as this app.</string>
+    <string name="update_message_up_to_date">You\'re up to date.</string>
+    <string name="update_message_offline">No connection.</string>
+    <string name="update_message_busy">GitHub is busy. Try again later.</string>
+    <string name="update_message_malformed">Couldn\'t read the release.</string>
+    <!-- Updates: Today card -->
+    <string name="update_ready">Update ready: v%1$s</string>
+    <string name="update_dismiss">Dismiss until next release</string>
+    <!-- Updates: release sheet -->
+    <string name="update_sheet_overline">Update available</string>
+    <string name="update_sheet_subtitle">From v%1$s · released %2$s · %3$s</string>
+    <string name="update_size_mb">%1$s MB</string>
+    <string name="update_whats_new">What\'s new</string>
+    <string name="update_on_github">On GitHub</string>
+    <string name="update_notes_breaking">Breaking changes</string>
+    <string name="update_notes_features">Features</string>
+    <string name="update_notes_fixes">Fixes</string>
+    <string name="update_notes_performance">Performance</string>
+    <plurals name="update_notes_more">
+        <item quantity="one">and %d more</item>
+        <item quantity="other">and %d more</item>
+    </plurals>
+    <string name="update_notes_none">No release notes. See the release on GitHub.</string>
+    <string name="update_trust_verified">Verified before install.</string>
+    <string name="update_trust_verified_detail">The APK must match its published SHA-256 and be signed with this app\'s key.</string>
+    <string name="update_trust_alarms">Your alarms stay set.</string>
+    <string name="update_trust_alarms_detail">Installing restarts Reveille; it re-arms every alarm as soon as the update is in.</string>
+    <string name="update_open_on_github">Open on GitHub</string>
+    <string name="update_download_and_install">Download and install</string>
+    <string name="update_later">Later</string>
+    <string name="update_skip">Skip v%1$s</string>
+    <string name="update_downloading">Downloading…</string>
+    <string name="update_verifying">Verifying…</string>
+    <string name="update_verifying_description">Verifying</string>
+    <string name="update_download_progress">Download progress</string>
+    <string name="update_percent">%1$d%%</string>
+    <string name="update_verifying_detail">Checking SHA-256 and signing key</string>
+    <string name="update_downloading_detail">Then verify checksum and signature</string>
+    <string name="update_verified">Verified</string>
+    <string name="update_verified_detail">SHA-256 and signing key match</string>
+    <string name="update_install">Install</string>
+    <string name="update_installing">Installing…</string>
+    <string name="update_permission_title">Allow Reveille to install apps</string>
+    <string name="update_permission_body">Android asks once. Turn on “Allow from this source”, then come back.</string>
+    <string name="update_open_settings">Open settings</string>
+    <string name="update_alarm_ringing">%1$s is ringing</string>
+    <plurals name="update_rings_in">
+        <item quantity="one">%1$s rings in %2$d min</item>
+        <item quantity="other">%1$s rings in %2$d min</item>
+    </plurals>
+    <string name="update_due_now">%1$s is due now</string>
+    <string name="update_alarm_soon_body">Updates wait until it has rung. We’ll remind you after %1$s.</string>
+    <string name="update_remind_me">Remind me</string>
+    <string name="update_install_anyway">Install anyway</string>
+    <string name="update_failed_body">The download was deleted and nothing was installed. Your alarms are unaffected.</string>
+    <string name="update_failed_body_detail">%1$s %2$s</string>
+    <string name="update_try_again">Try again</string>
+    <string name="update_failed_checksum">Checksum didn\'t match</string>
+    <string name="update_failed_signature">Signature didn\'t match</string>
+    <string name="update_failed_package">Package didn\'t match</string>
+    <string name="update_failed_download">Download failed</string>
+    <string name="update_failed_install">Install failed</string>
+    <string name="update_failure_storage">Not enough storage to install the update.</string>
+    <string name="update_failure_conflict">The update conflicts with the installed app.</string>
+    <string name="update_failure_blocked">Android blocked the install.</string>
+    <string name="update_failure_incompatible">The update isn\'t valid for this phone.</string>
+    <string name="update_failure_unknown">Android couldn\'t install the update.</string>
+    <!-- Updates: notification -->
+    <string name="update_channel_name">App updates</string>
+    <string name="update_channel_description">A quiet notification when a new version of Reveille is released.</string>
+    <string name="update_notification_title">Reveille v%1$s is available</string>
+    <string name="update_notification_text">See what\'s new and install it from Settings.</string>
+
+    <!-- Notifications (alarm path) -->
+    <string name="notif_channel_alarm_name">Ringing alarms</string>
+    <string name="notif_channel_alarm_desc">Shown while an alarm rings. Keep this at high importance.</string>
+    <string name="notif_channel_fallback_name">Fallback alarms</string>
+    <string name="notif_channel_fallback_desc">Rings by itself when the normal alarm cannot start. Keep this at high importance with sound.</string>
+    <string name="notif_channel_alerts_name">Missed alarms and problems</string>
+    <!-- %1$s is the alarm time -->
+    <string name="notif_alarm_for">Alarm for %1$s</string>
+    <!-- %1$s is the alarm time -->
+    <string name="notif_alarm_for_fallback">Alarm for %1$s (fallback)</string>
+    <string name="notif_snooze">Snooze</string>
+    <string name="notif_dismiss">Dismiss</string>
+    <string name="notif_missed_title">Missed alarm</string>
+    <!-- %1$s is the alarm label, %2$s its time -->
+    <string name="notif_missed_text">%1$s at %2$s did not ring. Open Reveille → Health.</string>
+    <string name="notif_scheduling_failed_title">Alarms could not be scheduled</string>
+    <string name="notif_scheduling_failed_text">Reveille is not allowed to schedule exact alarms. Open Reveille → Health.</string>
+
+    <!-- Ringing screen -->
+    <!-- %1$s is the alarm label -->
+    <string name="ringing_backup_title">%1$s (backup)</string>
+    <!-- %1$s is the alarm label, %2$s its time -->
+    <string name="ringing_fallback_title">%1$s · %2$s</string>
+    <string name="ringing_dismiss">Dismiss</string>
+    <string name="ringing_snooze">Snooze</string>
+    <!-- %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_minutes">
+        <item quantity="one">Snooze %d min</item>
+        <item quantity="other">Snooze %d min</item>
+    </plurals>
+    <!-- %d is the number of minutes the alarm rings before it snoozes itself -->
+    <plurals name="ringing_auto_snooze">
+        <item quantity="one">Auto-snoozes after %d min of ringing</item>
+        <item quantity="other">Auto-snoozes after %d min of ringing</item>
+    </plurals>
+
+    <!-- Widget -->
+    <!-- %1$s is the day ("Today", "Tomorrow", a weekday…), %2$s the alarm label -->
+    <string name="widget_subtitle">%1$s · %2$s</string>
+    <string name="widget_tap_to_fix">Tap to fix</string>
+    <string name="widget_no_alarms">No alarms set</string>
+    <string name="widget_new_one_off">New one-off alarm</string>
 </resources>

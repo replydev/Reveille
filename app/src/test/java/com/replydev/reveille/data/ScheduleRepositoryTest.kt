@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -113,5 +114,12 @@ class ScheduleRepositoryTest {
 
         assertEquals(1, repo.snapshot().oneOffs.size)
         assertTrue(rearmed)
+    }
+
+    @Test
+    fun snapshotCarriesTheDefaultOneOffLabel() = runBlocking {
+        val repository = ScheduleRepository(db.scheduleDao(), defaultOneOffLabel = { "Sveglia" }) {}
+        assertEquals("Sveglia", repository.snapshot().defaultOneOffLabel)
+        assertEquals("Sveglia", repository.snapshots.first().defaultOneOffLabel)
     }
 }

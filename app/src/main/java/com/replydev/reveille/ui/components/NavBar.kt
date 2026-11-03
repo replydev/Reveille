@@ -1,6 +1,7 @@
 package com.replydev.reveille.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -34,11 +36,11 @@ import com.replydev.reveille.R
 import com.replydev.reveille.ui.theme.ReveilleTheme
 
 /** The four top-level destinations, in bar order. [route] is the navigation route. */
-enum class Tab(val route: String, val label: String, @DrawableRes val icon: Int) {
-    Today("home", "Today", R.drawable.ic_today),
-    Policies("policies", "Policies", R.drawable.ic_policies),
-    Health("reliability", "Health", R.drawable.ic_health),
-    Settings("settings", "Settings", R.drawable.ic_settings),
+enum class Tab(val route: String, @StringRes val label: Int, @DrawableRes val icon: Int) {
+    Today("home", R.string.nav_today, R.drawable.ic_today),
+    Policies("policies", R.string.nav_policies, R.drawable.ic_policies),
+    Health("reliability", R.string.nav_health, R.drawable.ic_health),
+    Settings("settings", R.string.nav_settings, R.drawable.ic_settings),
     ;
 
     companion object {
@@ -86,11 +88,12 @@ fun ReveilleNavBar(selected: Tab?, onSelect: (Tab) -> Unit, healthBadge: Boolean
 @Composable
 private fun NavItem(tab: Tab, selected: Boolean, badge: Color?, onClick: () -> Unit, modifier: Modifier) {
     val colors = ReveilleTheme.colors
+    val badgeState = if (badge == null) null else stringResource(if (tab == Tab.Settings) R.string.nav_update_available else R.string.nav_needs_attention)
     Column(
         modifier
             .fillMaxHeight()
             .selectable(selected, role = Role.Tab, onClick = onClick)
-            .semantics(mergeDescendants = true) { if (badge != null) stateDescription = if (tab == Tab.Settings) "Update available" else "Needs attention" }
+            .semantics(mergeDescendants = true) { if (badgeState != null) stateDescription = badgeState }
             .padding(top = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -103,7 +106,7 @@ private fun NavItem(tab: Tab, selected: Boolean, badge: Color?, onClick: () -> U
             if (badge != null) Dot(badge, Modifier.align(Alignment.TopEnd).offset(x = (-14).dp, y = 3.dp))
         }
         Text(
-            tab.label,
+            stringResource(tab.label),
             style = ReveilleTheme.type.small.copy(fontWeight = FontWeight.Medium),
             color = if (selected) colors.onBg else colors.muted,
         )

@@ -94,7 +94,7 @@ class UpdateUiStateTest {
         assertEquals(Failed(FailReason.DOWNLOAD), Downloading(0.3f).on(Fail(FailReason.DOWNLOAD)))
         assertEquals(Failed(FailReason.CHECKSUM), Downloading(1f).on(Fail(FailReason.CHECKSUM)))
         assertEquals(Failed(FailReason.SIGNATURE), Verifying.on(Fail(FailReason.SIGNATURE)))
-        assertEquals(Failed(FailReason.INSTALL, "Storage full"), Installing.on(Fail(FailReason.INSTALL, "Storage full")))
+        assertEquals(Failed(FailReason.INSTALL, UpdateFailure.STORAGE), Installing.on(Fail(FailReason.INSTALL, UpdateFailure.STORAGE)))
         assertEquals(Downloading(null), Failed(FailReason.CHECKSUM).on(Start(GuardResult.Allowed)))
         assertEquals(AlarmSoon(work.label, work.at, false, Then.DOWNLOAD), Failed(FailReason.CHECKSUM).on(Start(soon)))
     }

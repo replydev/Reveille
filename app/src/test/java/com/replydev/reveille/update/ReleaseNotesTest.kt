@@ -93,4 +93,11 @@ class ReleaseNotesTest {
         assertTrue(notes.sections.isEmpty())
         assertNull(notes.headline)
     }
+
+    @Test
+    fun sectionsAreFoundByTheirEnglishHeadingsWhateverTheAppLanguage() {
+        // GitHub release bodies are English; the shown titles are resources.
+        assertEquals(listOf("Breaking changes", "Features", "Fixes", "Performance"), Kind.entries.map { it.heading })
+        assertEquals(Kind.entries.size, Kind.entries.map { it.title }.toSet().size)
+    }
 }

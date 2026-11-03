@@ -6,10 +6,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -41,13 +44,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import java.time.DayOfWeek
-import java.util.Locale
-import java.time.format.TextStyle as DayNameStyle
 
-/** M T W T F S S, Monday first like [DayOfWeek.entries]. */
-fun dayLetter(day: DayOfWeek): String = day.getDisplayName(DayNameStyle.NARROW, Locale.ENGLISH)
+/** The day's narrow name in the app language (M T W T F S S in English). */
+@Composable
+fun dayLetter(day: DayOfWeek): String = rememberLabels().formats.weekdayNarrow(day)
 
 /** Material's switch in the palette. The thumb keeps its 24 dp size when off, as in the mockups. */
 @Composable
@@ -112,9 +115,11 @@ private fun StepperButton(symbol: String, description: String, onClick: () -> Un
 @Composable
 fun DayToggleRow(selected: Set<DayOfWeek>, onChange: (Set<DayOfWeek>) -> Unit, modifier: Modifier = Modifier) {
     val colors = ReveilleTheme.colors
+    val labels = rememberLabels()
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         DayOfWeek.entries.forEach { day ->
             val on = day in selected
+            val fullName = labels.formats.weekdayFull(day)
             Box(
                 Modifier
                     .weight(1f)
@@ -122,7 +127,7 @@ fun DayToggleRow(selected: Set<DayOfWeek>, onChange: (Set<DayOfWeek>) -> Unit, m
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (on) colors.accent else colors.surfaceHigh)
                     .toggleable(on, role = Role.Checkbox) { onChange(if (on) selected - day else selected + day) }
-                    .semantics { contentDescription = day.getDisplayName(DayNameStyle.FULL, Locale.ENGLISH) },
+                    .semantics { contentDescription = fullName },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -161,7 +166,7 @@ fun MiniDayCells(days: Set<DayOfWeek>, color: Color, modifier: Modifier = Modifi
 fun SegmentedControl(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val colors = ReveilleTheme.colors
     Row(
-        modifier.fillMaxWidth().background(colors.surfaceHigh, RoundedCornerShape(16.dp)).padding(4.dp).selectableGroup(),
+        modifier.fillMaxWidth().height(IntrinsicSize.Min).background(colors.surfaceHigh, RoundedCornerShape(16.dp)).padding(4.dp).selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         options.forEachIndexed { index, option ->
@@ -169,14 +174,18 @@ fun SegmentedControl(options: List<String>, selected: Int, onSelect: (Int) -> Un
             Box(
                 Modifier
                     .weight(1f)
-                    .height(44.dp)
+                    .fillMaxHeight()
+                    .heightIn(min = 44.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (on) colors.onBg else Color.Transparent)
-                    .selectable(on, role = Role.RadioButton) { onSelect(index) },
+                    .selectable(on, role = Role.RadioButton) { onSelect(index) }
+                    .padding(horizontal = 4.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
+                // A long option ("Ring in addition" in German) wraps; both segments keep the same height.
                 Text(
                     option,
+                    textAlign = TextAlign.Center,
                     style = ReveilleTheme.type.body.copy(fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium),
                     color = if (on) colors.bg else colors.muted,
                 )

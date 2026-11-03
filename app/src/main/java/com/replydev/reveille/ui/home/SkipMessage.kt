@@ -1,5 +1,7 @@
 package com.replydev.reveille.ui.home
 
+import android.content.res.Resources
+import com.replydev.reveille.R
 import com.replydev.reveille.engine.OneOff
 import com.replydev.reveille.engine.OneOffMode
 import com.replydev.reveille.engine.ScheduleEngine
@@ -23,6 +25,6 @@ fun policiesRingingAgain(after: ScheduleSnapshot, removed: List<OneOff>): List<S
         .sorted()
 }
 
-fun skipMessage(time: String, label: String, ringingAgain: List<String>): String =
-    if (ringingAgain.isEmpty()) "Skipped $time $label"
-    else "Skipped $time $label · ${ringingAgain.joinToString(", ")} alarms that day will ring again"
+fun skipMessage(res: Resources, time: String, label: String, ringingAgain: List<String>): String =
+    if (ringingAgain.isEmpty()) res.getString(R.string.today_skipped, time, label)
+    else res.getString(R.string.today_skipped_ringing_again, time, label, ringingAgain.joinToString(", "))

@@ -134,8 +134,8 @@ class AlarmScheduler(
         } else {
             Log.w(TAG, "Unresolved ${owner.key} is past the late window; reporting missed")
             recordOutcome(owner, FireOutcome.MISSED)
-            notifier.showMissed(owner)
-            notifier.cancelFallbackAlarm(owner)
+            notifySafely("missed ${owner.key}") { notifier.showMissed(owner) }
+            notifySafely("cancel fallback ${owner.key}") { notifier.cancelFallbackAlarm(owner) }
             alarmManager.cancel(guardIntent(null, 0))
             state.setGuard(null)
         }
@@ -188,7 +188,14 @@ class AlarmScheduler(
 
     private suspend fun recordMissed(missed: Armed) {
         fireLog.insert(log(missed, FireOutcome.MISSED, firedAt = null))
-        notifier.showMissed(missed)
+        notifySafely("missed ${missed.key}") { notifier.showMissed(missed) }
+    }
+
+    /** Runs a notifier call on the re-arm path: a failing notification is logged and must never abort the re-arm. */
+    private inline fun notifySafely(what: String, block: () -> Unit) = try {
+        block()
+    } catch (e: Exception) {
+        Log.e(TAG, "Notification ($what) failed", e)
     }
 
     /**
@@ -242,7 +249,7 @@ class AlarmScheduler(
             true
         } catch (e: SecurityException) {
             Log.e(TAG, "Exact alarms not permitted", e)
-            notifier.showSchedulingFailed("Reveille is not allowed to schedule exact alarms. Open Reveille → Reliability.")
+            notifySafely("scheduling failed") { notifier.showSchedulingFailed() }
             false
         }
     }

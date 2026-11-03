@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.replydev.reveille.R
@@ -112,7 +113,7 @@ fun Chip(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 
 @Composable
 fun ChipText(text: String, color: Color = ReveilleTheme.colors.onBg, style: TextStyle = ReveilleTheme.type.caption) {
-    Text(text, style = style, color = color, maxLines = 1)
+    Text(text, style = style, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
 /** A 1 dp dashed outline with rounded corners ([radius] null = fully rounded). */

@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -50,7 +51,6 @@ import com.replydev.reveille.engine.DayAlarm
 import com.replydev.reveille.engine.OneOffMode
 import com.replydev.reveille.engine.ScheduleEngine
 import com.replydev.reveille.engine.Source
-import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.ui.components.ConfirmDialog
 import com.replydev.reveille.ui.components.IconCircleButton
 import com.replydev.reveille.ui.components.IconField
@@ -66,6 +66,8 @@ import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.borderOutline
 import com.replydev.reveille.ui.components.dashedBorder
 import com.replydev.reveille.ui.components.rememberScreenSession
+import com.replydev.reveille.text.Labels
+import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.Motion
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.theme.lineBox
@@ -74,10 +76,6 @@ import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-
-private val weekday = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH)
 
 /** A one-off must be after this moment: anything earlier would ring the moment it is saved. */
 private fun isInPast(date: LocalDate, time: LocalTime, now: LocalDateTime = LocalDateTime.now()): Boolean =
@@ -86,6 +84,8 @@ private fun isInPast(date: LocalDate, time: LocalTime, now: LocalDateTime = Loca
 @Composable
 fun OneOffEditorScreen(onDone: () -> Unit) {
     val container = LocalContext.current.container
+    val labels = rememberLabels()
+    val res = labels.res
     val repository = container.repository
     val snackbar = remember { SnackbarHostState() }
     val session = rememberScreenSession(snackbar)
@@ -121,7 +121,7 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
             // Deleted since the link was opened (by the user, skipped from the widget, or cleaned up after its day
             // passed — ringing does not delete it): save as a new alarm, never resurrect the id.
             session.editId = 0L
-            session.message(UiMessage("This alarm no longer exists. Saving creates a new one."))
+            session.message(UiMessage(res.getString(R.string.oneoff_deleted_recreate)))
         }
         loaded = true
     }
@@ -133,7 +133,7 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
     val inPast = isInPast(date, time, now)
     val save = {
         if (isInPast(date, time)) {
-            session.message(UiMessage("This time is in the past."))
+            session.message(UiMessage(res.getString(R.string.oneoff_in_past)))
         } else {
             val entity = OneOffEntity(
                 id = editId,
@@ -143,7 +143,7 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
                 mode = if (replaceDay) OneOffMode.REPLACE_DAY else OneOffMode.ADDITIVE,
             )
             session.write(
-                "Could not save the alarm.",
+                res.getString(R.string.oneoff_save_failed),
                 action = { repository.saveOneOff(entity) },
                 onSuccess = { savedId ->
                     // Set before anything else: if the screen stays open, saving again updates this alarm.
@@ -155,13 +155,13 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
     }
 
     SheetScaffold(
-        title = if (editId == 0L) "One-off alarm" else "Edit alarm",
+        title = stringResource(if (editId == 0L) R.string.oneoff_new else R.string.oneoff_edit),
         onClose = onDone,
         snackbarHostState = snackbar,
         actions = {
             if (editId != 0L) {
                 IconCircleButton(
-                    R.drawable.ic_delete, "Delete alarm", { confirmDelete = true },
+                    R.drawable.ic_delete, stringResource(R.string.oneoff_delete), { confirmDelete = true },
                     container = Color.Transparent, enabled = loaded && !session.busy,
                 )
             }
@@ -169,15 +169,15 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
     ) {
         if (confirmDelete) {
             ConfirmDialog(
-                title = "Delete alarm?",
-                text = "It will not ring. If it is already snoozed, the snooze still rings.",
-                confirmLabel = "Delete",
+                title = stringResource(R.string.oneoff_delete_title),
+                text = stringResource(R.string.oneoff_delete_text),
+                confirmLabel = stringResource(R.string.common_delete),
                 onDismiss = { confirmDelete = false },
                 onConfirm = {
                     confirmDelete = false
                     val target = editId
                     session.write(
-                        "Could not delete the alarm.",
+                        res.getString(R.string.oneoff_delete_failed),
                         action = { repository.deleteOneOff(target) },
                         onSuccess = { session.saved = true },
                     )
@@ -190,15 +190,15 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 18.dp, bottom = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                TimeBoxes(time) { time = it }
+                TimeBoxes(labels, time) { time = it }
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Overline("Date", Modifier.padding(horizontal = 20.dp))
-                    DateStrip(today, date) { date = it }
+                    Overline(stringResource(R.string.oneoff_date), Modifier.padding(horizontal = 20.dp))
+                    DateStrip(labels, today, date) { date = it }
                 }
                 IconField(
                     value = label,
                     onValueChange = { label = it },
-                    placeholder = "Label (optional)",
+                    placeholder = stringResource(R.string.oneoff_label_optional),
                     icon = R.drawable.ic_label,
                     modifier = Modifier.padding(horizontal = 20.dp),
                     height = 52.dp,
@@ -206,17 +206,17 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
                     textStyle = ReveilleTheme.type.input,
                 )
                 Column(Modifier.padding(horizontal = 20.dp).animateContentSize(Motion.size), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Overline(modeOverline(date, today))
-                    SegmentedControl(listOf("Replace the day", "Ring in addition"), if (replaceDay) 0 else 1, { replaceDay = it == 0 })
+                    Overline(modeOverline(labels, date, today))
+                    SegmentedControl(listOf(stringResource(R.string.oneoff_mode_replace), stringResource(R.string.oneoff_mode_additive)), if (replaceDay) 0 else 1, { replaceDay = it == 0 })
                     if (sameDay.isNotEmpty()) {
                         if (replacedByOther && !replaceDay) {
                             Text(
-                                "Another alarm on this day already replaces its recurring alarms, so they won't ring.",
+                                stringResource(R.string.oneoff_replaced_by_other),
                                 style = ReveilleTheme.type.caption,
                                 color = ReveilleTheme.colors.muted,
                             )
                         } else {
-                            sameDay.forEach { ImpactRow(it, replaced = replaceDay) }
+                            sameDay.forEach { ImpactRow(it, labels, replaced = replaceDay) }
                         }
                     }
                 }
@@ -226,10 +226,10 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 AnimatedVisibility(inPast, enter = Motion.expand, exit = Motion.collapse) {
-                    Text("This time is in the past.", style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.dangerText)
+                    Text(stringResource(R.string.oneoff_in_past), style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.dangerText)
                 }
                 PillButton(
-                    setForText(date, time, today),
+                    setForText(labels, date, time, today),
                     save,
                     Modifier.fillMaxWidth(),
                     height = 56.dp,
@@ -243,7 +243,8 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
 
 /** Hour and minute boxes; either opens the time picker (on its own unit). */
 @Composable
-private fun TimeBoxes(time: LocalTime, onChange: (LocalTime) -> Unit) {
+private fun TimeBoxes(labels: Labels, time: LocalTime, onChange: (LocalTime) -> Unit) {
+    val locale = labels.formats.locale
     var picking by rememberSaveable { mutableStateOf<Boolean?>(null) } // true: minutes first
     var minuteFocused by rememberSaveable { mutableStateOf(false) }
     Row(
@@ -251,12 +252,12 @@ private fun TimeBoxes(time: LocalTime, onChange: (LocalTime) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TimeBox("%02d".format(time.hour), "Hour, %02d".format(time.hour), focused = !minuteFocused) {
+        TimeBox(String.format(locale, "%02d", time.hour), stringResource(R.string.oneoff_hour, String.format(locale, "%02d", time.hour)), focused = !minuteFocused) {
             minuteFocused = false
             picking = false
         }
         Text(":", Modifier.lineBox(ReveilleTheme.type.displayColon, 1f), style = ReveilleTheme.type.displayColon, color = ReveilleTheme.colors.faint)
-        TimeBox("%02d".format(time.minute), "Minute, %02d".format(time.minute), focused = minuteFocused) {
+        TimeBox(String.format(locale, "%02d", time.minute), stringResource(R.string.oneoff_minute, String.format(locale, "%02d", time.minute)), focused = minuteFocused) {
             minuteFocused = true
             picking = true
         }
@@ -286,18 +287,18 @@ private fun TimeBox(value: String, description: String, focused: Boolean, onClic
 
 /** Today and the next seven days, then a calendar tile for any other date (which it shows once picked). */
 @Composable
-private fun DateStrip(today: LocalDate, selected: LocalDate, onPick: (LocalDate) -> Unit) {
+private fun DateStrip(labels: Labels, today: LocalDate, selected: LocalDate, onPick: (LocalDate) -> Unit) {
     val dates = quickDates(today)
     var picking by rememberSaveable { mutableStateOf(false) }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = dates.indexOf(selected).coerceAtLeast(0).let { (it - 2).coerceAtLeast(0) })
     LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(dates, key = { it.toEpochDay() }) { day ->
-            DateTile(day, TimeText.dayHeader(day, today), selected = day == selected) { onPick(day) }
+            DateTile(day, labels.dayHeader(day, today), labels, selected = day == selected) { onPick(day) }
         }
         item(key = "other") {
             val other = selected.takeIf { it !in dates }
             if (other != null) {
-                DateTile(other, TimeText.dayHeader(other, today), selected = true) { picking = true }
+                DateTile(other, labels.dayHeader(other, today), labels, selected = true) { picking = true }
             } else {
                 Box(
                     Modifier
@@ -306,7 +307,7 @@ private fun DateStrip(today: LocalDate, selected: LocalDate, onPick: (LocalDate)
                     contentAlignment = Alignment.Center,
                 ) {
                     IconCircleButton(
-                        R.drawable.ic_calendar, "Pick another date", { picking = true },
+                        R.drawable.ic_calendar, stringResource(R.string.oneoff_pick_date), { picking = true },
                         size = 54.dp, iconSize = 20.dp, container = Color.Transparent,
                     )
                 }
@@ -322,7 +323,7 @@ private fun DateStrip(today: LocalDate, selected: LocalDate, onPick: (LocalDate)
 }
 
 @Composable
-private fun DateTile(day: LocalDate, description: String, selected: Boolean, onClick: () -> Unit) {
+private fun DateTile(day: LocalDate, description: String, labels: Labels, selected: Boolean, onClick: () -> Unit) {
     val colors = ReveilleTheme.colors
     Surface(
         onClick = onClick,
@@ -335,7 +336,7 @@ private fun DateTile(day: LocalDate, description: String, selected: Boolean, onC
         contentColor = if (selected) colors.onAccent else colors.onBg,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
-            Text(day.format(weekday).uppercase(), Modifier.alpha(0.85f), style = ReveilleTheme.type.dayOverline)
+            Text(labels.formats.weekdayShort(day.dayOfWeek).uppercase(labels.formats.locale), Modifier.alpha(0.85f), style = ReveilleTheme.type.dayOverline)
             Text("${day.dayOfMonth}", style = ReveilleTheme.type.dayNumber)
         }
     }
@@ -343,7 +344,7 @@ private fun DateTile(day: LocalDate, description: String, selected: Boolean, onC
 
 /** A policy alarm on the chosen day: struck through when the one-off replaces the day. */
 @Composable
-private fun ImpactRow(alarm: DayAlarm, replaced: Boolean) {
+private fun ImpactRow(alarm: DayAlarm, labels: Labels, replaced: Boolean) {
     val colors = ReveilleTheme.colors
     val policyId = (alarm.source as? Source.PolicyRule)?.policyId
     Row(
@@ -352,7 +353,7 @@ private fun ImpactRow(alarm: DayAlarm, replaced: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            TimeText.time(alarm.time),
+            labels.formats.time(alarm.time),
             style = ReveilleTheme.type.timeSmall.copy(textDecoration = if (replaced) TextDecoration.LineThrough else null),
             color = colors.muted,
         )
@@ -360,6 +361,6 @@ private fun ImpactRow(alarm: DayAlarm, replaced: Boolean) {
             policyId?.let { PolicyDot(policyColor(it)) }
             Text(alarm.label, style = ReveilleTheme.type.body, maxLines = 1)
         }
-        Text(if (replaced) "won't ring" else "also rings", style = ReveilleTheme.type.small, color = colors.muted)
+        Text(stringResource(if (replaced) R.string.oneoff_wont_ring else R.string.oneoff_also_rings), style = ReveilleTheme.type.small, color = colors.muted)
     }
 }

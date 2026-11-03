@@ -1,5 +1,8 @@
 package com.replydev.reveille.update
 
+import androidx.annotation.StringRes
+import com.replydev.reveille.R
+
 /**
  * Release notes as the sheet shows them. The body comes from `scripts/semver.sh notes` followed by `## Install`:
  * the four semver sections are kept, everything else is dropped, and each bullet loses its commit prefix
@@ -10,11 +13,12 @@ data class ReleaseNotes(
     /** The first lines of a body without sections; empty when there are sections. */
     val fallback: List<String>,
 ) {
-    enum class Kind(val title: String, val accent: Boolean) {
-        BREAKING("Breaking changes", accent = true),
-        FEATURES("Features", accent = true),
-        FIXES("Fixes", accent = false),
-        PERFORMANCE("Performance", accent = false),
+    /** [heading] is the section's Markdown heading in the (English) release body; [title] is what the sheet shows. */
+    enum class Kind(val heading: String, @StringRes val title: Int, val accent: Boolean) {
+        BREAKING("Breaking changes", R.string.update_notes_breaking, accent = true),
+        FEATURES("Features", R.string.update_notes_features, accent = true),
+        FIXES("Fixes", R.string.update_notes_fixes, accent = false),
+        PERFORMANCE("Performance", R.string.update_notes_performance, accent = false),
     }
 
     /** [bullets] holds at most [MAX_BULLETS]; [more] counts the rest ("and N more"). */
@@ -47,7 +51,7 @@ data class ReleaseNotes(
                 if (line.isEmpty()) continue
                 val heading = HEADING.matchEntire(line)?.groupValues?.get(1)?.trim()
                 if (heading != null && line.startsWith("## ")) {
-                    current = Kind.entries.firstOrNull { it.title.equals(heading, ignoreCase = true) }
+                    current = Kind.entries.firstOrNull { it.heading.equals(heading, ignoreCase = true) }
                     inInstall = heading.equals("Install", ignoreCase = true)
                     if (current != null) bullets.getOrPut(current) { mutableListOf() }
                     continue
