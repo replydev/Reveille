@@ -102,7 +102,7 @@ class UpdateController(
             // Android's dialog is up; the state stays Installing until it answers.
             is InstallResult.NeedsUserAction -> Unit
             InstallResult.Cancelled -> dispatch(UpdateEvent.InstallCancelled)
-            is InstallResult.Failed -> dispatch(UpdateEvent.Fail(FailReason.INSTALL, result.message))
+            is InstallResult.Failed -> dispatch(UpdateEvent.Fail(FailReason.INSTALL, result.failure))
         }
     }
 
@@ -148,8 +148,9 @@ class UpdateController(
         try {
             installer.install(file)
         } catch (e: Exception) {
-            // E.g. the session could not be created or written (storage, a revoked permission).
-            dispatch(UpdateEvent.Fail(FailReason.INSTALL, e.message))
+            // E.g. the session could not be created or written (storage, a revoked permission). The installer logs the
+            // message; the sheet only shows a translated sentence.
+            dispatch(UpdateEvent.Fail(FailReason.INSTALL, UpdateFailure.UNKNOWN))
         }
     }
 

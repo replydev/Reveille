@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
+import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -34,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -73,8 +75,10 @@ fun SettingsScreen(onOpenUpdate: () -> Unit) {
     val updatePrefs by container.updates.store.prefs.collectAsStateWithLifecycle(initialValue = null)
     val colors = ReveilleTheme.colors
     val type = ReveilleTheme.type
+    val saveFailed = stringResource(R.string.settings_save_failed)
+    val noSoundPicker = stringResource(R.string.settings_no_sound_picker)
     val update: ((RingSettings) -> RingSettings) -> Unit = { transform ->
-        session.write("Could not save the setting.", guarded = false, action = { container.settings.update(transform) })
+        session.write(saveFailed, guarded = false, action = { container.settings.update(transform) })
     }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -93,14 +97,14 @@ fun SettingsScreen(onOpenUpdate: () -> Unit) {
             value = withContext(Dispatchers.IO) { ringtoneTitle(context, current.ringtoneUri) }
         }
         Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-            TabHeader("Settings", bottom = 18.dp)
+            TabHeader(stringResource(R.string.settings_title), bottom = 18.dp)
             Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
-                Group("Sound") {
+                Group(stringResource(R.string.settings_sound)) {
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .heightIn(min = 64.dp)
-                            .clickable(onClickLabel = "Choose the alarm sound") {
+                            .clickable(onClickLabel = stringResource(R.string.settings_choose_sound)) {
                                 val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
                                     .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
                                     .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
@@ -109,7 +113,7 @@ fun SettingsScreen(onOpenUpdate: () -> Unit) {
                                 try {
                                     picker.launch(intent)
                                 } catch (_: ActivityNotFoundException) {
-                                    session.message(UiMessage("This phone has no sound picker."))
+                                    session.message(UiMessage(noSoundPicker))
                                 }
                             }
                             .padding(horizontal = 16.dp),
@@ -120,27 +124,35 @@ fun SettingsScreen(onOpenUpdate: () -> Unit) {
                             ReveilleIcon(R.drawable.ic_music, null, tint = colors.accent, size = 18.dp)
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("Alarm sound", style = type.bodyL)
+                            Text(stringResource(R.string.settings_alarm_sound), style = type.bodyL)
                             Text(ringtoneName, style = type.caption, color = colors.muted)
                         }
                         ReveilleIcon(R.drawable.ic_chevron_right, null, tint = colors.muted, size = 18.dp)
                     }
-                    SwitchRow("Vibrate", "Pulse while the alarm rings", current.vibrate) { value -> update { it.copy(vibrate = value) } }
-                    SwitchRow("Gradually increase volume", "Starts quiet, reaches full volume", current.volumeRamp) { value ->
+                    SwitchRow(stringResource(R.string.settings_vibrate), stringResource(R.string.settings_vibrate_hint), current.vibrate) { value -> update { it.copy(vibrate = value) } }
+                    SwitchRow(
+                        stringResource(R.string.settings_volume_ramp),
+                        stringResource(R.string.settings_volume_ramp_hint),
+                        current.volumeRamp,
+                    ) { value ->
                         update { it.copy(volumeRamp = value) }
                     }
                 }
-                Group("Snooze") {
+                Group(stringResource(R.string.settings_snooze)) {
                     StepperRow(
-                        label = "Snooze length",
-                        value = "${current.snoozeMinutes} min",
+                        label = R.string.settings_snooze_length,
+                        minusDescription = R.string.settings_snooze_length_decrease,
+                        plusDescription = R.string.settings_snooze_length_increase,
+                        value = stringResource(R.string.settings_minutes, current.snoozeMinutes),
                         onMinus = { update { it.copy(snoozeMinutes = (it.snoozeMinutes - 1).coerceAtLeast(1)) } },
                         onPlus = { update { it.copy(snoozeMinutes = (it.snoozeMinutes + 1).coerceAtMost(MAX_SNOOZE_MINUTES)) } },
                         divider = false,
                     )
                     StepperRow(
-                        label = "Auto-snooze after ringing for",
-                        value = "${current.maxRingMinutes} min",
+                        label = R.string.settings_auto_snooze,
+                        minusDescription = R.string.settings_auto_snooze_decrease,
+                        plusDescription = R.string.settings_auto_snooze_increase,
+                        value = stringResource(R.string.settings_minutes, current.maxRingMinutes),
                         onMinus = { update { it.copy(maxRingMinutes = (it.maxRingMinutes - 1).coerceAtLeast(1)) } },
                         onPlus = { update { it.copy(maxRingMinutes = (it.maxRingMinutes + 1).coerceAtMost(RingDecisions.MAX_RING_MINUTES)) } },
                     )
@@ -149,7 +161,7 @@ fun SettingsScreen(onOpenUpdate: () -> Unit) {
                     UpdatesSection(prefs, onView = onOpenUpdate, onMessage = { session.message(UiMessage(it)) })
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Overline("About", Modifier.padding(horizontal = 4.dp))
+                    Overline(stringResource(R.string.settings_about), Modifier.padding(horizontal = 4.dp))
                     AboutRow(BuildConfig.VERSION_NAME)
                 }
             }
@@ -188,7 +200,15 @@ private fun SwitchRow(label: String, hint: String, checked: Boolean, onChange: (
 }
 
 @Composable
-private fun StepperRow(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit, divider: Boolean = true) {
+private fun StepperRow(
+    @StringRes label: Int,
+    @StringRes minusDescription: Int,
+    @StringRes plusDescription: Int,
+    value: String,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+    divider: Boolean = true,
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -198,13 +218,13 @@ private fun StepperRow(label: String, value: String, onMinus: () -> Unit, onPlus
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(label, Modifier.weight(1f), style = ReveilleTheme.type.bodyL)
+        Text(stringResource(label), Modifier.weight(1f), style = ReveilleTheme.type.bodyL)
         PillStepper(
             value = value,
             onMinus = onMinus,
             onPlus = onPlus,
-            minusDescription = "Decrease ${label.lowercase()}",
-            plusDescription = "Increase ${label.lowercase()}",
+            minusDescription = stringResource(minusDescription),
+            plusDescription = stringResource(plusDescription),
             height = 44.dp,
             valueWidth = 58.dp,
             valueStyle = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.Medium),
@@ -213,6 +233,7 @@ private fun StepperRow(label: String, value: String, onMinus: () -> Unit, onPlus
 }
 
 private fun ringtoneTitle(context: Context, uri: String?): String {
-    if (uri == null) return "Default alarm sound"
-    return runCatching { RingtoneManager.getRingtone(context, uri.toUri())?.getTitle(context) }.getOrNull() ?: "Custom sound"
+    if (uri == null) return context.getString(R.string.settings_default_sound)
+    return runCatching { RingtoneManager.getRingtone(context, uri.toUri())?.getTitle(context) }.getOrNull()
+        ?: context.getString(R.string.settings_custom_sound)
 }

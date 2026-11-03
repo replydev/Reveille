@@ -174,8 +174,8 @@ class UpdateControllerTest {
         controller.installResult(InstallResult.Cancelled)
         assertEquals(UpdateUiState.Ready, state)
         controller.install()
-        controller.installResult(InstallResult.Failed("Not enough storage to install the update."))
-        assertEquals(UpdateUiState.Failed(FailReason.INSTALL, "Not enough storage to install the update."), state)
+        controller.installResult(InstallResult.Failed(UpdateFailure.STORAGE))
+        assertEquals(UpdateUiState.Failed(FailReason.INSTALL, UpdateFailure.STORAGE), state)
     }
 
     @Test
@@ -191,7 +191,7 @@ class UpdateControllerTest {
         throwing.show(release)
         throwing.start()
         throwing.install()
-        assertEquals(UpdateUiState.Failed(FailReason.INSTALL, "no"), throwing.state.value)
+        assertEquals(UpdateUiState.Failed(FailReason.INSTALL, UpdateFailure.UNKNOWN), throwing.state.value)
     }
 
     @Test

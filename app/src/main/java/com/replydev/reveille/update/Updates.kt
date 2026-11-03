@@ -81,7 +81,7 @@ class Updates(context: Context, private val scope: CoroutineScope, private val s
 
     /** "Remind me" in the alarm guard: remind 5 minutes after the alarm, once it has rung. */
     suspend fun remindAfter(alarmAt: Instant) {
-        val at = UpdateText.remindAfter(alarmAt)
+        val at = reminderAt(alarmAt)
         store.setRemindAfter(at)
         UpdateWorker.scheduleRemind(app, at)
     }

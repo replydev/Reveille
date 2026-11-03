@@ -1,6 +1,7 @@
 package com.replydev.reveille.ui.update
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -41,6 +42,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -62,6 +65,7 @@ import com.replydev.reveille.ui.components.PillStyle
 import com.replydev.reveille.ui.components.ReveilleCard
 import com.replydev.reveille.ui.components.ReveilleIcon
 import com.replydev.reveille.ui.components.TextAction
+import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -82,6 +86,8 @@ fun UpdateSheet(onClose: () -> Unit) {
     val release = prefs?.available(updates.installedVersionCode)
     val zone = ZoneId.systemDefault()
     val scope = context.container.appScope
+    val labels = rememberLabels()
+    val text = remember(labels) { UpdateText(labels.res, labels) }
 
     LaunchedEffect(release) {
         // Opening the sheet answers the notification.
@@ -119,11 +125,11 @@ fun UpdateSheet(onClose: () -> Unit) {
         Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             DaybreakTile(56.dp, radius = 16.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Overline("Update available", color = colors.accent)
+                Overline(stringResource(R.string.update_sheet_overline), color = colors.accent)
                 Text("v${release.versionName}", style = type.headline.copy(fontWeight = FontWeight.SemiBold))
-                Text(UpdateText.sheetSubtitle(release, updates.installedVersionName, zone), style = type.caption, color = colors.muted)
+                Text(text.sheetSubtitle(release, updates.installedVersionName, zone), style = type.caption, color = colors.muted)
             }
-            IconCircleButton(R.drawable.ic_close, "Close", onClose)
+            IconCircleButton(R.drawable.ic_close, stringResource(R.string.common_close), onClose)
         }
         Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(top = 18.dp, bottom = 18.dp),
@@ -131,17 +137,18 @@ fun UpdateSheet(onClose: () -> Unit) {
         ) {
             WhatsNew(notes, onGitHub = { openUrl(context, release.htmlUrl) })
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                TrustLine(R.drawable.ic_shield_check, "Verified before install.", "The APK must match its published SHA-256 and be signed with this app's key.")
-                TrustLine(R.drawable.ic_clock, "Your alarms stay set.", "Installing restarts Reveille; it re-arms every alarm as soon as the update is in.")
+                TrustLine(R.drawable.ic_shield_check, R.string.update_trust_verified, R.string.update_trust_verified_detail)
+                TrustLine(R.drawable.ic_clock, R.string.update_trust_alarms, R.string.update_trust_alarms_detail)
             }
         }
         val skip = {
             scope.launch { updates.store.skip(release.versionCode) }
             onClose()
         }
+        val skipLabel = stringResource(R.string.update_skip, release.versionName)
         if (!updates.selfUpdate) {
             // Debug builds are signed with another key: they can only point at the release.
-            IdleFooter("Open on GitHub", "Skip v${release.versionName}", onPrimary = { openUrl(context, release.htmlUrl) }, onLater = onClose, onSkip = skip)
+            IdleFooter(stringResource(R.string.update_open_on_github), skipLabel, onPrimary = { openUrl(context, release.htmlUrl) }, onLater = onClose, onSkip = skip)
             return@Column
         }
         AnimatedContent(
@@ -152,8 +159,8 @@ fun UpdateSheet(onClose: () -> Unit) {
         ) { footer ->
             when (footer) {
                 is UpdateUiState.Idle -> IdleFooter(
-                    "Download and install",
-                    "Skip v${release.versionName}",
+                    stringResource(R.string.update_download_and_install),
+                    skipLabel,
                     onPrimary = updates.controller::start,
                     onLater = onClose,
                     onSkip = skip,
@@ -167,6 +174,7 @@ fun UpdateSheet(onClose: () -> Unit) {
                 UpdateUiState.NeedsPermission -> PermissionCard(onOpenSettings = { startActivitySafely(context, updates.permissionIntent()) })
                 is UpdateUiState.AlarmSoon -> AlarmSoonCard(
                     footer,
+                    text = text,
                     zone = zone,
                     onRemind = {
                         scope.launch { updates.remindAfter(footer.at) }
@@ -186,19 +194,19 @@ private fun WhatsNew(notes: ReleaseNotes, onGitHub: () -> Unit) {
     val type = ReveilleTheme.type
     ReveilleCard(Modifier.fillMaxWidth(), spacing = 12.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Overline("What's new", Modifier.weight(1f))
-            TextAction("On GitHub", onClick = onGitHub, color = colors.accent)
+            Overline(stringResource(R.string.update_whats_new), Modifier.weight(1f))
+            TextAction(stringResource(R.string.update_on_github), onClick = onGitHub, color = colors.accent)
         }
         notes.sections.forEach { section ->
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(section.kind.title, style = type.caption.copy(fontWeight = FontWeight.SemiBold))
+                Text(stringResource(section.kind.title), style = type.caption.copy(fontWeight = FontWeight.SemiBold))
                 section.bullets.forEach { Bullet(it, if (section.kind.accent) colors.accent else colors.muted) }
-                if (section.more > 0) Text("and ${section.more} more", style = type.caption, color = colors.muted)
+                if (section.more > 0) Text(pluralStringResource(R.plurals.update_notes_more, section.more, section.more), style = type.caption, color = colors.muted)
             }
         }
         notes.fallback.forEach { Text(it, style = type.paragraph) }
         if (notes.sections.isEmpty() && notes.fallback.isEmpty()) {
-            Text("No release notes. See the release on GitHub.", style = type.paragraph, color = colors.muted)
+            Text(stringResource(R.string.update_notes_none), style = type.paragraph, color = colors.muted)
         }
     }
 }
@@ -212,15 +220,15 @@ private fun Bullet(text: String, dot: Color) {
 }
 
 @Composable
-private fun TrustLine(@DrawableRes icon: Int, lead: String, rest: String) {
+private fun TrustLine(@DrawableRes icon: Int, @StringRes lead: Int, @StringRes rest: Int) {
     val colors = ReveilleTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         ReveilleIcon(icon, null, Modifier.padding(top = 1.dp), tint = colors.success, size = 18.dp)
         Text(
             buildAnnotatedString {
-                withStyle(SpanStyle(color = colors.onBg)) { append(lead) }
+                withStyle(SpanStyle(color = colors.onBg)) { append(stringResource(lead)) }
                 append(" ")
-                append(rest)
+                append(stringResource(rest))
             },
             style = ReveilleTheme.type.paragraphSmall,
             color = colors.muted,
@@ -234,7 +242,7 @@ private fun IdleFooter(primary: String, skipLabel: String, onPrimary: () -> Unit
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         PillButton(primary, onPrimary, Modifier.fillMaxWidth(), height = 56.dp, textStyle = ReveilleTheme.type.button)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FooterText("Later", colors.onBg, onLater, Modifier.weight(1f))
+            FooterText(stringResource(R.string.update_later), colors.onBg, onLater, Modifier.weight(1f))
             FooterText(skipLabel, colors.muted, onSkip, Modifier.weight(1f))
         }
     }
@@ -255,10 +263,11 @@ private fun ProgressCard(progress: Float?, onCancel: (() -> Unit)?) {
     val verifying = onCancel == null
     ReveilleCard(Modifier.fillMaxWidth(), spacing = 10.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(if (verifying) "Verifying…" else "Downloading…", Modifier.weight(1f), style = type.bodyL.copy(fontWeight = FontWeight.SemiBold))
-            if (!verifying && progress != null) Text("${(progress * 100).toInt()}%", style = type.mono, color = colors.muted)
+            Text(stringResource(if (verifying) R.string.update_verifying else R.string.update_downloading), Modifier.weight(1f), style = type.bodyL.copy(fontWeight = FontWeight.SemiBold))
+            if (!verifying && progress != null) Text(stringResource(R.string.update_percent, (progress * 100).toInt()), style = type.mono, color = colors.muted)
         }
-        val barModifier = Modifier.fillMaxWidth().height(6.dp).semantics { contentDescription = if (verifying) "Verifying" else "Download progress" }
+        val barDescription = stringResource(if (verifying) R.string.update_verifying_description else R.string.update_download_progress)
+        val barModifier = Modifier.fillMaxWidth().height(6.dp).semantics { contentDescription = barDescription }
         if (progress == null || verifying) {
             LinearProgressIndicator(barModifier, color = colors.accent, trackColor = colors.surfaceHigh, strokeCap = StrokeCap.Round, gapSize = 0.dp)
         } else {
@@ -273,8 +282,8 @@ private fun ProgressCard(progress: Float?, onCancel: (() -> Unit)?) {
             )
         }
         Row(Modifier.height(36.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (verifying) "Checking SHA-256 and signing key" else "Then verify checksum and signature", Modifier.weight(1f), style = type.caption, color = colors.muted)
-            if (onCancel != null) TextAction("Cancel", onCancel)
+            Text(stringResource(if (verifying) R.string.update_verifying_detail else R.string.update_downloading_detail), Modifier.weight(1f), style = type.caption, color = colors.muted)
+            if (onCancel != null) TextAction(stringResource(R.string.common_cancel), onCancel)
         }
     }
 }
@@ -286,11 +295,11 @@ private fun ReadyCard(installing: Boolean, onInstall: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ReveilleIcon(R.drawable.ic_shield_check, null, tint = colors.success, size = 22.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Verified", style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.SemiBold))
-                Text("SHA-256 and signing key match", style = ReveilleTheme.type.caption, color = colors.muted)
+                Text(stringResource(R.string.update_verified), style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.SemiBold))
+                Text(stringResource(R.string.update_verified_detail), style = ReveilleTheme.type.caption, color = colors.muted)
             }
             PillButton(
-                if (installing) "Installing…" else "Install",
+                stringResource(if (installing) R.string.update_installing else R.string.update_install),
                 onInstall,
                 height = 44.dp,
                 enabled = !installing,
@@ -306,15 +315,15 @@ private fun PermissionCard(onOpenSettings: () -> Unit) {
     NoticeCard(
         icon = R.drawable.ic_lock,
         iconTint = ReveilleTheme.colors.accent,
-        title = "Allow Reveille to install apps",
-        body = "Android asks once. Turn on “Allow from this source”, then come back.",
+        title = stringResource(R.string.update_permission_title),
+        body = stringResource(R.string.update_permission_body),
     ) {
-        PillButton("Open settings", onOpenSettings, style = PillStyle.Outlined, height = 40.dp, textStyle = ReveilleTheme.type.body.copy(fontWeight = FontWeight.Medium))
+        PillButton(stringResource(R.string.update_open_settings), onOpenSettings, style = PillStyle.Outlined, height = 40.dp, textStyle = ReveilleTheme.type.body.copy(fontWeight = FontWeight.Medium))
     }
 }
 
 @Composable
-private fun AlarmSoonCard(state: UpdateUiState.AlarmSoon, zone: ZoneId, onRemind: () -> Unit, onInstallAnyway: () -> Unit) {
+private fun AlarmSoonCard(state: UpdateUiState.AlarmSoon, text: UpdateText, zone: ZoneId, onRemind: () -> Unit, onInstallAnyway: () -> Unit) {
     val colors = ReveilleTheme.colors
     val now by produceState(Instant.now(), state.at) {
         while (true) {
@@ -322,37 +331,38 @@ private fun AlarmSoonCard(state: UpdateUiState.AlarmSoon, zone: ZoneId, onRemind
             delay(15_000)
         }
     }
-    val title = if (state.ringing) "${state.label} is ringing" else UpdateText.ringsIn(state.label, state.at, now)
+    val title = if (state.ringing) stringResource(R.string.update_alarm_ringing, state.label) else text.ringsIn(state.label, state.at, now)
     NoticeCard(
         icon = R.drawable.ic_alarm_soon,
         iconTint = colors.accent,
         title = title,
-        body = "Updates wait until it has rung. We’ll remind you after ${UpdateText.time(state.at, zone)}.",
+        body = stringResource(R.string.update_alarm_soon_body, text.time(state.at, zone)),
         container = colors.accentTint,
         border = colors.accentLine,
     ) {
         Pill(onClick = onRemind, container = colors.accentContainer, content = colors.accent, height = 40.dp, contentPadding = PaddingValues(horizontal = 16.dp)) {
-            Text("Remind me", style = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold))
+            Text(stringResource(R.string.update_remind_me), style = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold))
         }
         // Never offered while an alarm rings (spec §1.2).
-        if (!state.ringing) TextAction("Install anyway", onInstallAnyway, Modifier.height(40.dp))
+        if (!state.ringing) TextAction(stringResource(R.string.update_install_anyway), onInstallAnyway, Modifier.height(40.dp))
     }
 }
 
 @Composable
 private fun FailedCard(state: UpdateUiState.Failed, onRetry: () -> Unit) {
     val colors = ReveilleTheme.colors
-    val body = "The download was deleted and nothing was installed. Your alarms are unaffected."
+    val body = stringResource(R.string.update_failed_body)
+    val detail = state.detail?.let { stringResource(it.message) }
     NoticeCard(
         icon = R.drawable.ic_warning,
         iconTint = colors.dangerText,
-        title = state.reason.title,
-        body = state.detail?.let { "$it $body" } ?: body,
+        title = stringResource(state.reason.title),
+        body = detail?.let { stringResource(R.string.update_failed_body_detail, it, body) } ?: body,
         container = colors.dangerContainer,
         border = colors.dangerLine,
         bodyColor = colors.dangerOnContainerMuted,
     ) {
-        PillButton("Try again", onRetry, style = PillStyle.Danger, height = 40.dp, textStyle = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold))
+        PillButton(stringResource(R.string.update_try_again), onRetry, style = PillStyle.Danger, height = 40.dp, textStyle = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold))
     }
 }
 

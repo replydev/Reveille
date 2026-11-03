@@ -51,8 +51,9 @@ class TimeFormatsTest {
 
     @Test
     fun `sizes use the locale's decimal separator`() {
-        assertEquals("6.4 MB", en24.size(6_400_000))
-        assertEquals("6,4 MB", it24.size(6_400_000))
+        assertEquals("6.4", en24.megabytes(6_400_000))
+        assertEquals("6,4", it24.megabytes(6_400_000))
+        assertEquals("30.4", en24.megabytes(30_370_722))
     }
 
     @Test
@@ -63,7 +64,7 @@ class TimeFormatsTest {
                 f.time(LocalTime.NOON); f.timeParts(LocalTime.NOON)
                 f.headerDate(date); f.shortDate(date); f.shortDate(date, 2025); f.dayMonth(date); f.fullDate(date)
                 DayOfWeek.entries.forEach { f.weekdayShort(it); f.weekdayNarrow(it); f.weekdayFull(it) }
-                f.size(1_234_567)
+                f.megabytes(1_234_567)
             }
         }
     }

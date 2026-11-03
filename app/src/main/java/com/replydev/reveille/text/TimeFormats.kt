@@ -55,8 +55,11 @@ class TimeFormats(val locale: Locale, val is24Hour: Boolean) {
     fun weekdayNarrow(day: DayOfWeek): String = day.getDisplayName(TextStyle.NARROW, locale)
     fun weekdayFull(day: DayOfWeek): String = day.getDisplayName(TextStyle.FULL, locale)
 
-    /** Decimal megabytes with one decimal, as Android's own storage screens count them. */
-    fun size(bytes: Long): String = "${sizeFormat.format(bytes / 1_000_000.0)} MB"
+    /**
+     * Decimal megabytes with one decimal, as Android's own storage screens count them: "6.4", "6,4". The unit is a
+     * resource (`update_size_mb`), since some languages abbreviate it differently ("Mo").
+     */
+    fun megabytes(bytes: Long): String = sizeFormat.format(bytes / 1_000_000.0)
 
     companion object {
         fun of(context: Context): TimeFormats =

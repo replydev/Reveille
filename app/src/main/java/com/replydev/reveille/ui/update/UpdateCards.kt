@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,12 +33,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.replydev.reveille.R
@@ -49,6 +50,7 @@ import com.replydev.reveille.update.Release
 import com.replydev.reveille.update.ReleaseNotes
 import com.replydev.reveille.update.UpdatePrefs
 import com.replydev.reveille.update.UpdateText
+import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.components.Pill
 import com.replydev.reveille.ui.components.IconCircleButton
 import com.replydev.reveille.ui.components.Overline
@@ -77,13 +79,13 @@ fun UpdateNotice(release: Release, onView: () -> Unit, onDismiss: () -> Unit, mo
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconTile(R.drawable.ic_download, colors.accentContainer, colors.accent, size = 36)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Update ready: v${release.versionName}", style = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold), maxLines = 1)
+                Text(stringResource(R.string.update_ready, release.versionName), style = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold), maxLines = 1)
                 if (headline != null) {
                     Text(headline, style = ReveilleTheme.type.caption, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            Text("View", Modifier.padding(horizontal = 6.dp), style = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold), color = colors.accent)
-            IconCircleButton(R.drawable.ic_close, "Dismiss until next release", onDismiss, container = Color.Transparent)
+            Text(stringResource(R.string.update_view), Modifier.padding(horizontal = 6.dp), style = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold), color = colors.accent)
+            IconCircleButton(R.drawable.ic_close, stringResource(R.string.update_dismiss), onDismiss, container = Color.Transparent)
         }
     }
 }
@@ -97,6 +99,8 @@ fun UpdatesSection(prefs: UpdatePrefs, onView: () -> Unit, onMessage: (String) -
     val colors = ReveilleTheme.colors
     val type = ReveilleTheme.type
     val zone = ZoneId.systemDefault()
+    val labels = rememberLabels()
+    val text = remember(labels) { UpdateText(labels.res, labels) }
     var checking by remember { mutableStateOf(false) }
     val now by produceState(Instant.now(), prefs.lastCheckedAt) {
         while (true) {
@@ -105,7 +109,6 @@ fun UpdatesSection(prefs: UpdatePrefs, onView: () -> Unit, onMessage: (String) -
         }
     }
     val available = prefs.available(updates.installedVersionCode)
-    val installed = "v${updates.installedVersionName}"
     val write: (suspend () -> Unit) -> Unit = { action ->
         context.container.appScope.launch {
             try {
@@ -117,34 +120,38 @@ fun UpdatesSection(prefs: UpdatePrefs, onView: () -> Unit, onMessage: (String) -
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Overline("Updates", Modifier.padding(horizontal = 4.dp))
+        Overline(stringResource(R.string.update_section), Modifier.padding(horizontal = 4.dp))
         ReveilleCard(Modifier.fillMaxWidth(), padding = PaddingValues(0.dp)) {
             when {
                 available != null -> StatusRow(
                     tile = { IconTile(R.drawable.ic_download, colors.accent, colors.onAccent) },
-                    title = "v${available.versionName} is available",
-                    subtitle = "You have $installed · released ${UpdateText.released(available.publishedAt, zone)}",
+                    title = stringResource(R.string.update_available_title, available.versionName),
+                    subtitle = stringResource(
+                        R.string.update_available_subtitle,
+                        updates.installedVersionName,
+                        text.released(available.publishedAt, zone),
+                    ),
                     background = colors.accentTint,
                     onClick = onView,
                 ) {
                     Pill(onClick = onView, container = colors.accent, content = colors.onAccent, height = 36.dp, contentPadding = PaddingValues(horizontal = 14.dp)) {
-                        Text("View", style = type.caption.copy(fontWeight = FontWeight.SemiBold))
+                        Text(stringResource(R.string.update_view), style = type.caption.copy(fontWeight = FontWeight.SemiBold))
                     }
                 }
                 !updates.selfUpdate -> StatusRow(
                     tile = { IconTile(R.drawable.ic_download, colors.surfaceHigh, colors.muted) },
-                    title = "Updates are off in debug builds",
-                    subtitle = "$installed · signed with a debug key",
+                    title = stringResource(R.string.update_debug_title),
+                    subtitle = stringResource(R.string.update_debug_subtitle, updates.installedVersionName),
                 )
                 else -> StatusRow(
                     tile = { IconTile(R.drawable.ic_check, colors.surfaceHigh, colors.success) },
-                    title = "You're up to date",
-                    subtitle = installed,
+                    title = stringResource(R.string.update_up_to_date_title),
+                    subtitle = "v${updates.installedVersionName}",
                 )
             }
             SettingSwitch(
-                "Check automatically",
-                "Once a day, on any network",
+                stringResource(R.string.update_auto_check),
+                stringResource(R.string.update_auto_check_hint),
                 checked = prefs.autoCheck && updates.selfUpdate,
                 enabled = updates.selfUpdate,
             ) { value ->
@@ -153,7 +160,7 @@ fun UpdatesSection(prefs: UpdatePrefs, onView: () -> Unit, onMessage: (String) -
                     updates.syncSchedule()
                 }
             }
-            SettingSwitch("Notify me", "A quiet notification when a release is found", prefs.notify) { value ->
+            SettingSwitch(stringResource(R.string.update_notify), stringResource(R.string.update_notify_hint), prefs.notify) { value ->
                 write { updates.store.setNotify(value) }
             }
             Row(
@@ -162,8 +169,8 @@ fun UpdatesSection(prefs: UpdatePrefs, onView: () -> Unit, onMessage: (String) -
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Last checked", style = type.bodyL)
-                    Text(UpdateText.lastChecked(prefs.lastCheckedAt, now, zone), style = type.caption, color = colors.muted)
+                    Text(stringResource(R.string.update_last_checked), style = type.bodyL)
+                    Text(text.lastChecked(prefs.lastCheckedAt, now, zone), style = type.caption, color = colors.muted)
                 }
                 Pill(
                     onClick = {
@@ -175,7 +182,7 @@ fun UpdatesSection(prefs: UpdatePrefs, onView: () -> Unit, onMessage: (String) -
                             } finally {
                                 checking = false
                             }
-                            checkMessage(outcome)?.let(onMessage)
+                            checkMessage(outcome)?.let { onMessage(labels.res.getString(it)) }
                         }
                     },
                     container = Color.Transparent,
@@ -190,16 +197,18 @@ fun UpdatesSection(prefs: UpdatePrefs, onView: () -> Unit, onMessage: (String) -
                         } else {
                             ReveilleIcon(R.drawable.ic_refresh, null, tint = colors.onBg, size = 16.dp)
                         }
-                        Text(if (checking) "Checking…" else "Check now", style = type.body.copy(fontWeight = FontWeight.Medium))
+                        Text(stringResource(if (checking) R.string.update_checking else R.string.update_check_now), style = type.body.copy(fontWeight = FontWeight.Medium))
                     }
                 }
             }
         }
+        val repo = "github.com/replydev/Reveille"
+        val footnote = stringResource(R.string.update_footnote, repo)
         Text(
             buildAnnotatedString {
-                append("Releases come from ")
-                withStyle(SpanStyle(fontFamily = type.mono.fontFamily, color = colors.onBg)) { append("github.com/replydev/Reveille") }
-                append(". Each APK is checked against its published SHA-256 and must be signed with the same key as this app.")
+                append(footnote)
+                val start = footnote.indexOf(repo)
+                if (start >= 0) addStyle(SpanStyle(fontFamily = type.mono.fontFamily, color = colors.onBg), start, start + repo.length)
             },
             Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp),
             style = type.paragraphSmall,
@@ -222,10 +231,10 @@ fun AboutRow(versionName: String) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             DaybreakTile(40.dp, radius = 12.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Reveille", style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.SemiBold))
+                Text(stringResource(R.string.app_name), style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.SemiBold))
                 Text("v$versionName", style = ReveilleTheme.type.mono, color = colors.muted)
             }
-            Text("Release notes", style = ReveilleTheme.type.caption, color = colors.muted)
+            Text(stringResource(R.string.settings_release_notes), style = ReveilleTheme.type.caption, color = colors.muted)
         }
     }
 }
@@ -286,13 +295,14 @@ private fun SettingSwitch(label: String, hint: String, checked: Boolean, enabled
 }
 
 /** The snackbar after "Check now", or null when the status row already says it all. */
-fun checkMessage(outcome: CheckOutcome): String? = when (outcome) {
-    CheckOutcome.UpToDate -> "You're up to date."
+@StringRes
+fun checkMessage(outcome: CheckOutcome): Int? = when (outcome) {
+    CheckOutcome.UpToDate -> R.string.update_message_up_to_date
     is CheckOutcome.Available, CheckOutcome.Disabled -> null
     is CheckOutcome.Failed -> when (outcome.error) {
-        FetchError.Offline -> "No connection."
-        is FetchError.RateLimited, is FetchError.Http -> "GitHub is busy. Try again later."
-        FetchError.Malformed -> "Couldn't read the release."
+        FetchError.Offline -> R.string.update_message_offline
+        is FetchError.RateLimited, is FetchError.Http -> R.string.update_message_busy
+        FetchError.Malformed -> R.string.update_message_malformed
     }
 }
 
