@@ -1,0 +1,28 @@
+# Italian smoke test. Run via scripts/maestro-i18n.sh, which clears the app and sets its language to Italian first.
+# Lives in a subfolder so `maestro test .maestro` (top-level files only) skips it.
+appId: com.replydev.reveille
+name: Italian
+---
+- launchApp:
+    permissions:
+      all: allow
+- assertVisible: "Oggi"
+- assertVisible: "Prossima sveglia"
+- tapOn: "Programmi"
+- assertVisible: "Ancora nessun programma.*"
+- tapOn: "Stato"
+- assertVisible: ".* su .* controll. superat."
+- tapOn: "Impostazioni"
+- assertVisible: "Suono sveglia"
+- assertVisible: "Durata posticipo"
+- tapOn: "Oggi"
+- assertVisible: "Prossima sveglia"
+- tapOn: "Sveglia singola"
+- tapOn: "Etichetta \\(facoltativa\\)"
+- inputText: "Maestro singola"
+- hideKeyboard
+- assertVisible: "Imposta per .*"
+- tapOn: "Imposta per .*"
+- assertVisible: "Domani"
+- assertVisible: "Maestro singola"
+- assertNotVisible: "Nessuna in programma"
