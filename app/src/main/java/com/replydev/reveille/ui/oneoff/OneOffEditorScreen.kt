@@ -190,7 +190,7 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 18.dp, bottom = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                TimeBoxes(time) { time = it }
+                TimeBoxes(labels, time) { time = it }
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Overline(stringResource(R.string.oneoff_date), Modifier.padding(horizontal = 20.dp))
                     DateStrip(labels, today, date) { date = it }
@@ -243,7 +243,8 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
 
 /** Hour and minute boxes; either opens the time picker (on its own unit). */
 @Composable
-private fun TimeBoxes(time: LocalTime, onChange: (LocalTime) -> Unit) {
+private fun TimeBoxes(labels: Labels, time: LocalTime, onChange: (LocalTime) -> Unit) {
+    val locale = labels.formats.locale
     var picking by rememberSaveable { mutableStateOf<Boolean?>(null) } // true: minutes first
     var minuteFocused by rememberSaveable { mutableStateOf(false) }
     Row(
@@ -251,12 +252,12 @@ private fun TimeBoxes(time: LocalTime, onChange: (LocalTime) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TimeBox("%02d".format(time.hour), stringResource(R.string.oneoff_hour, "%02d".format(time.hour)), focused = !minuteFocused) {
+        TimeBox(String.format(locale, "%02d", time.hour), stringResource(R.string.oneoff_hour, String.format(locale, "%02d", time.hour)), focused = !minuteFocused) {
             minuteFocused = false
             picking = false
         }
         Text(":", Modifier.lineBox(ReveilleTheme.type.displayColon, 1f), style = ReveilleTheme.type.displayColon, color = ReveilleTheme.colors.faint)
-        TimeBox("%02d".format(time.minute), stringResource(R.string.oneoff_minute, "%02d".format(time.minute)), focused = minuteFocused) {
+        TimeBox(String.format(locale, "%02d", time.minute), stringResource(R.string.oneoff_minute, String.format(locale, "%02d", time.minute)), focused = minuteFocused) {
             minuteFocused = true
             picking = true
         }
