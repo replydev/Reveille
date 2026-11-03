@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ringing — Horizon</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@200..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #10142A; color: #F3F4F6; font-family: 'Geist', system-ui, sans-serif; font-variant-numeric: tabular-nums">
+
+  <div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 300px; height: 300px; display: flex; flex-direction: column">
+    <div style="height: 80px; background: #1C1F45"></div>
+    <div style="height: 60px; background: #352A5C"></div>
+    <div style="height: 60px; background: #63365E"></div>
+    <div style="height: 50px; background: #A84A5E"></div>
+    <div style="height: 50px; background: #E57B4E"></div>
+  </div>
+  <div aria-hidden="true" style="position: absolute; left: 105px; top: 510px; width: 180px; height: 180px; border-radius: 50%; background: {{accent}}"></div>
+  <div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 600px; bottom: 0; background: #0B0D11; border-top: 3px solid {{accent}}"></div>
+
+  <div style="position: absolute; left: 0; right: 0; top: 104px; display: flex; flex-direction: column; align-items: center">
+    <span style="font-size: 13px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #C9CDE8">Tuesday, 3 November</span>
+    <span style="font-size: 120px; font-weight: 200; letter-spacing: -0.05em; line-height: 1; margin-top: 14px">07:55</span>
+    <span style="margin-top: 14px; font-size: 17px; font-weight: 500; color: #E4E6F5">Work</span>
+  </div>
+
+  <div style="position: absolute; left: 24px; right: 24px; bottom: 32px; display: flex; flex-direction: column; gap: 12px">
+    <button style="height: 72px; border-radius: 36px; border: none; background: {{accent}}; color: #1A1205; font-size: 20px; font-weight: 600">Dismiss</button>
+    <button style="height: 64px; border-radius: 32px; border: 1.5px solid #2A2F38; background: transparent; color: #F3F4F6; font-size: 18px; font-weight: 500">Snooze 9 min</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#FFB547","options":["#FFB547","#FFD08A","#F2A0C8"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FFB547' };
+  }
+}
+</script>
+</body>
+</html>

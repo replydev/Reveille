@@ -14,6 +14,7 @@ The exact markup for every screen is in `mockups/*.dc.html`: HTML with inline st
 | `Ringing.dc.html` | Full-screen alarm | `alarm/RingingActivity.kt` |
 | `Widgets.dc.html` | Glance widgets | `widget/ReveilleWidget.kt` |
 | `Update*.dc.html` | In-app updates from GitHub (Settings section, Today card, release sheet, states) | see `updates.md` |
+| `Ring*.dc.html` | Ringing themes (Midnight, Policy colour, Horizon, Paper) and the theme picker | see `ringing-themes.md` |
 
 Mockups are 390×844 CSS px. Treat 1 CSS px as 1 dp (and as 1 sp for text).
 
