@@ -165,4 +165,31 @@
     <string name="policy_error_rule_without_days">Every alarm time needs at least one weekday.</string>
     <string name="policy_error_end_before_start">The end date is before the start date.</string>
     <string name="policy_error_pause_reversed">A pause ends before it starts.</string>
+    <!-- One-off editor -->
+    <string name="oneoff_new">One-off alarm</string>
+    <string name="oneoff_edit">Edit alarm</string>
+    <string name="oneoff_deleted_recreate">This alarm no longer exists. Saving creates a new one.</string>
+    <string name="oneoff_in_past">This time is in the past.</string>
+    <string name="oneoff_save_failed">Could not save the alarm.</string>
+    <string name="oneoff_delete_failed">Could not delete the alarm.</string>
+    <string name="oneoff_delete">Delete alarm</string>
+    <string name="oneoff_delete_title">Delete alarm?</string>
+    <string name="oneoff_delete_text">It will not ring. If it is already snoozed, the snooze still rings.</string>
+    <string name="oneoff_date">Date</string>
+    <string name="oneoff_label_optional">Label (optional)</string>
+    <!-- %1$s is a date ("Fri 6 Nov", or "Wed 6 Jan 2027" in another year); drawn upper case -->
+    <string name="oneoff_on_date">On %1$s</string>
+    <!-- Modes: the one-off replaces the day's recurring alarms, or rings alongside them -->
+    <string name="oneoff_mode_replace">Replace the day</string>
+    <string name="oneoff_mode_additive">Ring in addition</string>
+    <string name="oneoff_replaced_by_other">Another alarm on this day already replaces its recurring alarms, so they won\'t ring.</string>
+    <!-- Primary button. %1$s date ("Fri 6 Nov"), %2$s time ("09:30") -->
+    <string name="oneoff_set_for">Set for %1$s, %2$s</string>
+    <!-- Content descriptions of the hour and minute boxes. %1$s is the two-digit value -->
+    <string name="oneoff_hour">Hour, %1$s</string>
+    <string name="oneoff_minute">Minute, %1$s</string>
+    <string name="oneoff_pick_date">Pick another date</string>
+    <!-- What happens to a recurring alarm on the chosen day -->
+    <string name="oneoff_wont_ring">won\'t ring</string>
+    <string name="oneoff_also_rings">also rings</string>
 </resources>
