@@ -25,6 +25,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlarmManager
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.concurrent.CompletableFuture
 
 /** Drives the real service (and the app's real container) through Robolectric's ServiceController. */
 @Config(sdk = [31, 33, 35])
@@ -66,7 +67,23 @@ class RingingServiceTest {
         }
     }
 
-    private fun outcome(armed: Armed) = runBlocking { app.container.scheduler.outcome(armed) }
+    /**
+     * Runs [block] off the main thread while keeping the main looper running, instead of `runBlocking` on it. The service
+     * writes DataStore from `Dispatchers.Main`, and DataStore runs an `edit` transform in the caller's context while
+     * holding its lock: blocking the main thread on a read in that window deadlocks (it hung CI on slower runners).
+     */
+    private fun <T> read(block: suspend () -> T): T {
+        val result = CompletableFuture.supplyAsync { runBlocking { block() } }
+        val deadline = System.currentTimeMillis() + 10_000
+        while (!result.isDone) {
+            check(System.currentTimeMillis() < deadline) { "timed out" }
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(1)
+        }
+        return result.get()
+    }
+
+    private fun outcome(armed: Armed) = read { app.container.scheduler.outcome(armed) }
 
     private fun stopped() = shadowOf(controller.get()).isStoppedBySelf
 
@@ -74,7 +91,7 @@ class RingingServiceTest {
     fun ringsGoesForegroundAndGuardsTheOccurrence() {
         ring(armed)
         assertNotNull(shadowOf(controller.get()).lastForegroundNotification)
-        awaitUntil { RingingService.ringing.value != null && runBlocking { app.container.schedulerState.guard() } != null }
+        awaitUntil { RingingService.ringing.value != null && read { app.container.schedulerState.guard() } != null }
         assertEquals(armed.key, RingingService.ringing.value?.armed?.key)
         assertEquals(FireOutcome.FIRED, outcome(armed))
     }
@@ -82,15 +99,15 @@ class RingingServiceTest {
     @Test
     fun snoozeIsPersistedBeforeTheServiceStops() {
         ring(armed)
-        awaitUntil { RingingService.ringing.value != null && runBlocking { app.container.schedulerState.guard() } != null }
+        awaitUntil { RingingService.ringing.value != null && read { app.container.schedulerState.guard() } != null }
         action(RingingService.ACTION_SNOOZE)
         awaitUntil { RingingService.ringing.value == null }
         // By the time ringing stopped, everything was already persisted.
         assertEquals(FireOutcome.SNOOZED, outcome(armed))
-        val snooze = runBlocking { app.container.schedulerState.snooze() }
+        val snooze = read { app.container.schedulerState.snooze() }
         assertNotNull(snooze)
-        assertEquals(snooze?.key, runBlocking { app.container.schedulerState.armed() }?.key)
-        assertNull(runBlocking { app.container.schedulerState.guard() })
+        assertEquals(snooze?.key, read { app.container.schedulerState.armed() }?.key)
+        assertNull(read { app.container.schedulerState.guard() })
         assertTrue(stopped())
     }
 
@@ -124,10 +141,10 @@ class RingingServiceTest {
     @Test
     fun newerAlarmSupersedesTheRingingOne() {
         ring(armed)
-        awaitUntil { RingingService.ringing.value != null && runBlocking { app.container.schedulerState.guard() } != null }
+        awaitUntil { RingingService.ringing.value != null && read { app.container.schedulerState.guard() } != null }
         val newer = Armed("O:2", armed.at.plusSeconds(60), "Gym")
         ring(newer)
-        awaitUntil { RingingService.ringing.value?.armed?.key == newer.key && runBlocking { app.container.schedulerState.guard() }?.key == newer.key }
+        awaitUntil { RingingService.ringing.value?.armed?.key == newer.key && read { app.container.schedulerState.guard() }?.key == newer.key }
         assertEquals(FireOutcome.SUPERSEDED, outcome(armed))
         assertEquals(FireOutcome.FIRED, outcome(newer))
     }
@@ -140,7 +157,7 @@ class RingingServiceTest {
 
     @Test
     fun backupOfAClaimedButUnprotectedOccurrenceRings() {
-        runBlocking { app.container.scheduler.claim(armed) } // the first delivery died before arming the guard
+        read { app.container.scheduler.claim(armed) } // the first delivery died before arming the guard
         ring(armed, backup = true)
         awaitUntil { RingingService.ringing.value != null }
         assertEquals(armed.key, RingingService.ringing.value?.armed?.key)
@@ -172,7 +189,7 @@ class RingingServiceTest {
         awaitUntil { stopped() }
         assertNull(RingingService.ringing.value)
         assertEquals(FireOutcome.FIRED, outcome(armed))
-        assertEquals(armed.key, runBlocking { app.container.schedulerState.guard() }?.key)
+        assertEquals(armed.key, read { app.container.schedulerState.guard() }?.key)
         val notifications = shadowOf(app.getSystemService(NotificationManager::class.java)).allNotifications
         assertTrue(notifications.any { it.channelId == Notifier.CHANNEL_ALARM_FALLBACK })
     }
