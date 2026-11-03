@@ -79,6 +79,13 @@ Map these onto a Material 3 `darkColorScheme` where it fits (`primary = Accent`,
 | Caption | 12–13 sp / 400 | secondary lines |
 | Overline | 12 sp / 600 / +0.12em / UPPERCASE / `Muted` | section labels ("Alarm times", "Recent alarms", "Sound") |
 
+### 12-hour clock
+Reveille follows the phone's 12/24-hour setting (`DateFormat.is24HourFormat`); there is no in-app switch. `TimeFormats.timeParts` splits a time into digits and period.
+- **Large times** (Today hero, ringing clock, widgets) draw the digits in their display style (Display L, Display XL, the widget size) with no leading zero ("7:30"), then a 4 dp gap and the period ("AM" / "PM", or the locale's own) in **Title S**, on the same baseline. In Compose this is `ui/components/TimeDisplay`. The period is measured first, so it is never dropped on a narrow screen. Glance can't align baselines, so the widget bottom-aligns digits and a 16 sp Medium period instead.
+- **Rows and chips** (timeline, rule list, backup chip, messages) use the single formatted string ("7:30 AM") in their normal style. Fixed time columns become minimum widths on a 12-hour phone so "12:55 PM" stays on one line and the columns still line up: timeline 62 → 92 dp, rule list 66 → 104 dp.
+- In 24-hour mode nothing changes: "07:30", no period.
+- `Main.dc.html` shows the 12-hour variant with its `clock` prop set to `12h`.
+
 ### Shape and spacing
 - Radii: hero card 28, cards 20–24, inputs and tiles 16, chips 8, day toggles 12, pills and buttons fully rounded (height/2), sheet top corners 32, FAB 18.
 - Screen horizontal padding is 16 for cards and 20 for headers. The gap between cards is 10–12, and section gaps are 22.
@@ -133,7 +140,7 @@ No emoji. The `✓` / `✗` text glyphs in ReliabilityScreen are replaced by ico
 3. **"Next 14 days"** header (15 sp/600) with the alarm count on the right in `Muted`.
 4. **Timeline** is grouped by date. Each group is a row with a 1 dp `SurfaceHigh` top divider and 12 dp vertical padding.
    - Left column (44 dp wide, centred): 11 sp uppercase weekday in `Muted` above a 20 sp day number.
-   - Right column: one row per occurrence (min 40 dp). Each row has the time (20 sp, 62 dp wide), the policy colour square, the label, an optional note in 12 sp `Muted` ("every 2 wk", "one-off", "skipped"), and trailing text buttons in `Muted`: "Skip" / "Unskip", plus "Edit" before "Skip" on one-off rows.
+   - Right column: one row per occurrence (min 40 dp). Each row has the time (20 sp, 62 dp wide; at least 92 dp on a 12-hour phone), the policy colour square, the label, an optional note in 12 sp `Muted` ("every 2 wk", "one-off", "skipped"), and trailing text buttons in `Muted`: "Skip" / "Unskip", plus "Edit" before "Skip" on one-off rows.
    - Skipped rows use 45 % alpha with the time struck through.
    - A one-off row's colour is `Accent`.
 5. **FAB**: extended, 56 dp, radius 18, `Accent` fill, "+ One-off alarm". It sits 16 dp above the nav bar.

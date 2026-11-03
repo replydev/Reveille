@@ -58,9 +58,9 @@ import com.replydev.reveille.container
 import com.replydev.reveille.engine.Armed
 import com.replydev.reveille.ui.components.Pill
 import com.replydev.reveille.ui.components.ReveilleIcon
+import com.replydev.reveille.ui.components.TimeDisplay
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.text.rememberLabels
-import com.replydev.reveille.ui.theme.lineBox
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import java.time.LocalDateTime
@@ -179,12 +179,12 @@ private fun RingingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(labels.formats.headerDate(now.toLocalDate()).uppercase(labels.formats.locale), style = type.ringOverline, color = colors.onAccent)
-            Text(
-                labels.formats.time(now.toLocalTime()),
-                Modifier.padding(top = 18.dp).lineBox(type.displayXl, 1f),
-                style = type.displayXl,
+            TimeDisplay(
+                labels.formats.timeParts(now.toLocalTime()),
+                type.displayXl,
+                type.titleS,
+                Modifier.padding(top = 18.dp),
                 color = colors.onAccent,
-                maxLines = 1,
             )
             Row(
                 Modifier.padding(top = 18.dp).height(36.dp).background(colors.onAccent.copy(alpha = 0.10f), RoundedCornerShape(50)).padding(horizontal = 16.dp),

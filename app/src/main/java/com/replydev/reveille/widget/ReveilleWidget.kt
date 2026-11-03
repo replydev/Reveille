@@ -124,13 +124,17 @@ private fun Card(onClick: Action, radius: Dp = 28.dp, border: Boolean = false, c
     }
 }
 
+/** The big time; on a 12-hour phone "AM" / "PM" follows it. Glance can't align baselines, so both sit on the bottom. */
 @Composable
 private fun Time(armed: Armed, size: TextUnit, tint: Color) {
-    Text(
-        Labels.of(LocalContext.current).formats.time(armed.at.atZone(ZoneId.systemDefault()).toLocalTime()),
-        style = TextStyle(color = color(tint), fontSize = size, fontFamily = LightSans),
-        maxLines = 1,
-    )
+    val parts = Labels.of(LocalContext.current).formats.timeParts(armed.at.atZone(ZoneId.systemDefault()).toLocalTime())
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(parts.digits, style = TextStyle(color = color(tint), fontSize = size, fontFamily = LightSans), maxLines = 1)
+        parts.period?.let {
+            Spacer(GlanceModifier.width(4.dp))
+            Text(it, style = TextStyle(color = color(tint), fontSize = 16.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+        }
+    }
 }
 
 private fun subtitle(context: Context, armed: Armed, now: Instant): String {

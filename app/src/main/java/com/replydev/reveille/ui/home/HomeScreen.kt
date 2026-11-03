@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -57,13 +58,13 @@ import com.replydev.reveille.ui.components.StatusPill
 import com.replydev.reveille.ui.components.TabHeader
 import com.replydev.reveille.ui.components.TabScaffold
 import com.replydev.reveille.ui.components.TextAction
+import com.replydev.reveille.ui.components.TimeDisplay
 import com.replydev.reveille.ui.components.UiMessage
 import com.replydev.reveille.ui.components.rememberScreenSession
 import com.replydev.reveille.ui.components.topDivider
 import com.replydev.reveille.ui.theme.Motion
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.theme.animatedItem
-import com.replydev.reveille.ui.theme.lineBox
 import com.replydev.reveille.ui.theme.sourceColor
 import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.sourceKeyColor
@@ -322,7 +323,7 @@ private fun NextUpCard(
                 Text(stringResource(R.string.today_none_scheduled), style = type.headline)
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(labels.formats.time(at.atZone(zone).toLocalTime()), Modifier.lineBox(type.displayL, 0.9f).alignByBaseline(), style = type.displayL)
+                    TimeDisplay(labels.formats.timeParts(at.atZone(zone).toLocalTime()), type.displayL, type.titleS, Modifier.alignByBaseline(), lineBox = 0.9f)
                     Column(Modifier.alignByBaseline(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(labels.dayPart(at, now, zone), style = type.titleS.copy(fontWeight = FontWeight.Medium))
                         Text(labels.relative(at, now), style = type.body, color = colors.muted)
@@ -418,8 +419,11 @@ private fun OccurrenceRow(
     Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             labels.formats.time(occurrence.at.toLocalTime()),
-            faded.width(62.dp),
+            // "12:55 PM" doesn't fit the 24-hour column; a wider minimum keeps the labels aligned across rows.
+            faded.widthIn(min = if (labels.formats.is24Hour) 62.dp else 92.dp),
             style = type.timeRow.copy(textDecoration = if (entry.skipped) TextDecoration.LineThrough else null),
+            maxLines = 1,
+            softWrap = false,
         )
         Spacer(Modifier.width(12.dp))
         Row(faded.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -38,7 +38,10 @@ button{font:inherit;cursor:pointer}
       </span>
     </div>
     <div style="display: flex; align-items: baseline; gap: 12px">
-      <span style="font-size: 84px; font-weight: 300; line-height: 0.9; letter-spacing: -0.04em">07:55</span>
+      <span style="display: flex; align-items: baseline; gap: 4px">
+        <span style="font-size: 84px; font-weight: 300; line-height: 0.9; letter-spacing: -0.04em">{{hero.digits}}</span>
+        <span style="font-size: 17px; font-weight: 600; display: {{hero.periodDisplay}}">{{hero.period}}</span>
+      </span>
       <span style="display: flex; flex-direction: column; gap: 2px">
         <span style="font-size: 17px; font-weight: 500">Tomorrow</span>
         <span style="font-size: 14px; color: #A1A9B5">in 9 h 12 min</span>
@@ -48,7 +51,7 @@ button{font:inherit;cursor:pointer}
       <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; background: #1D2129; font-size: 13px">
         <span style="width: 8px; height: 8px; border-radius: 2px; background: #8AB4FF"></span>Work
       </span>
-      <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 8px; background: #1D2129; font-size: 13px; color: #A1A9B5; font-family: 'Geist Mono', monospace">backup 07:57</span>
+      <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 8px; background: #1D2129; font-size: 13px; color: #A1A9B5; font-family: 'Geist Mono', monospace">backup {{backup}}</span>
     </div>
     <div style="display: flex; gap: 10px; padding-top: 4px">
       <button style="flex: 1; height: 48px; border-radius: 24px; border: 1px solid #2A2F38; background: transparent; color: #F3F4F6; font-size: 15px; font-weight: 500">Skip this one</button>
@@ -71,7 +74,7 @@ button{font:inherit;cursor:pointer}
         <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0">
           <sc-for list="{{day.items}}" as="it" hint-placeholder-count="1">
             <div style="display: flex; align-items: center; gap: 12px; min-height: 40px; opacity: {{it.opacity}}">
-              <span style="font-size: 20px; font-weight: 400; width: 62px; text-decoration: {{it.strike}}">{{it.time}}</span>
+              <span style="font-size: 20px; font-weight: 400; min-width: {{timeWidth}}; white-space: nowrap; text-decoration: {{it.strike}}">{{it.time}}</span>
               <span style="flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px">
                 <span style="width: 8px; height: 8px; border-radius: 2px; background: {{it.color}}; flex: none"></span>
                 <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.label}}</span>
@@ -106,16 +109,29 @@ button{font:inherit;cursor:pointer}
   </nav>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#FFB547","options":["#FFB547","#8AB4FF","#7EE0C3","#F2A0C8"]},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#FFB547","options":["#FFB547","#8AB4FF","#7EE0C3","#F2A0C8"]},"clock":{"editor":"select","default":"24h","options":["24h","12h"]},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   renderVals() {
     const work = '#8AB4FF', gym = '#7EE0C3', one = this.props.accent ?? '#FFB547';
+    // The phone's clock setting: 12-hour puts "AM" / "PM" after the hero digits (Title S, 4 px gap, same baseline);
+    // rows and chips show the single formatted string ("7:55 AM").
+    const h12 = this.props.clock === '12h';
+    const parts = (hhmm) => {
+      if (!h12) return { digits: hhmm, period: '' };
+      const [h, m] = hhmm.split(':').map(Number);
+      return { digits: `${h % 12 || 12}:${String(m).padStart(2, '0')}`, period: h < 12 ? 'AM' : 'PM' };
+    };
+    const fmt = (hhmm) => { const p = parts(hhmm); return p.period ? `${p.digits} ${p.period}` : p.digits; };
+    const hero = parts('07:55');
     const row = (time, label, color, note, action, skipped) => ({
-      time, label, color, note: note || '', action,
+      time: fmt(time), label, color, note: note || '', action,
       opacity: skipped ? 0.45 : 1, strike: skipped ? 'line-through' : 'none'
     });
     return {
       accent: this.props.accent ?? '#FFB547',
+      hero: { ...hero, periodDisplay: hero.period ? 'inline' : 'none' },
+      backup: fmt('07:57'),
+      timeWidth: h12 ? '92px' : '62px',
       days: [
         { dow: 'Tue', num: '3', items: [row('07:55', 'Work', work, '', 'Skip')] },
         { dow: 'Wed', num: '4', items: [row('07:55', 'Work', work, '', 'Skip')] },

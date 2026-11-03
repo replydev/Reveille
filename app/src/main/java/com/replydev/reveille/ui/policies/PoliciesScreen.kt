@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -174,7 +175,14 @@ private fun PolicyCard(
 @Composable
 private fun RuleRow(rule: RuleEntity, color: Color, labels: Labels) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(labels.formats.time(rule.time), Modifier.width(66.dp), style = ReveilleTheme.type.timeRule)
+        // "12:55 PM" doesn't fit the 24-hour column; a wider minimum keeps the day cells aligned across rows.
+        Text(
+            labels.formats.time(rule.time),
+            Modifier.widthIn(min = if (labels.formats.is24Hour) 66.dp else 104.dp),
+            style = ReveilleTheme.type.timeRule,
+            maxLines = 1,
+            softWrap = false,
+        )
         Spacer(Modifier.width(12.dp))
         MiniDayCells(rule.days, color)
         Spacer(Modifier.weight(1f).width(12.dp))

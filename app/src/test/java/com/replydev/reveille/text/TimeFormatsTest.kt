@@ -38,6 +38,28 @@ class TimeFormatsTest {
     }
 
     @Test
+    fun `large time parts split digits and period in every locale`() {
+        for (locale in listOf(Locale.US, Locale.ITALIAN, Locale.GERMAN)) {
+            val h12 = TimeFormats(locale, is24Hour = false)
+            val morning = h12.timeParts(LocalTime.of(7, 30))
+            assertEquals("7:30", morning.digits)
+            val am = morning.period
+            val pm = h12.timeParts(LocalTime.of(19, 30)).period
+            assertTrue("$locale period: $am", !am.isNullOrBlank() && am.none { it.isDigit() })
+            assertTrue("$locale period: $pm", !pm.isNullOrBlank() && pm != am)
+            assertEquals("12:00", h12.timeParts(LocalTime.MIDNIGHT).digits)
+            assertEquals(am, h12.timeParts(LocalTime.MIDNIGHT).period)
+            assertEquals("12:55", h12.timeParts(LocalTime.of(12, 55)).digits)
+            assertEquals(pm, h12.timeParts(LocalTime.of(12, 55)).period)
+
+            val h24 = TimeFormats(locale, is24Hour = true)
+            assertEquals(TimeParts("07:30", null), h24.timeParts(LocalTime.of(7, 30)))
+            assertEquals(TimeParts("19:30", null), h24.timeParts(LocalTime.of(19, 30)))
+        }
+        assertEquals("AM", TimeFormats(Locale.US, is24Hour = false).timeParts(LocalTime.of(7, 30)).period)
+    }
+
+    @Test
     fun `dates follow the locale's order and names`() {
         assertEquals("lunedì 2 novembre", it24.headerDate(date).lowercase())
         assertEquals("Montag, 2. November", de24.headerDate(date))
