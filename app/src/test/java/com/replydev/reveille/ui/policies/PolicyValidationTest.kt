@@ -29,10 +29,10 @@ class PolicyValidationTest {
         )
         assertEquals(
             listOf(
-                "Give the policy a name.",
-                "Every alarm time needs at least one weekday.",
-                "The end date is before the start date.",
-                "A pause ends before it starts.",
+                PolicyError.NO_NAME,
+                PolicyError.RULE_WITHOUT_DAYS,
+                PolicyError.END_BEFORE_START,
+                PolicyError.PAUSE_ENDS_BEFORE_START,
             ),
             errors,
         )
@@ -40,6 +40,6 @@ class PolicyValidationTest {
 
     @Test
     fun requiresAtLeastOneRule() {
-        assertEquals(listOf("Add at least one alarm time."), validatePolicy("Work", null, null, emptyList(), emptyList()))
+        assertEquals(listOf(PolicyError.NO_RULES), validatePolicy("Work", null, null, emptyList(), emptyList()))
     }
 }

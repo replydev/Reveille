@@ -41,6 +41,9 @@
     <string name="common_back">Back</string>
     <string name="common_edit">Edit</string>
     <string name="common_undo">Undo</string>
+    <string name="common_save">Save</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_remove">Remove</string>
 
     <!-- Today -->
     <string name="today_title">Today</string>
@@ -99,4 +102,67 @@
         <item quantity="one">every %d wk</item>
         <item quantity="other">every %d wk</item>
     </plurals>
+    <string name="policy_title">Policies</string>
+    <string name="policy_intro">Named groups of recurring alarms. Turn a whole routine on or off in one tap.</string>
+    <string name="policy_empty">No policies yet. A policy groups recurring alarms, for example \"Work\".</string>
+    <string name="policy_new">New policy</string>
+    <string name="policy_edit">Edit policy</string>
+    <string name="policy_update_failed">Could not update the policy.</string>
+    <string name="policy_active">Active</string>
+    <!-- %1$s day and time of the next alarm ("Tue 07:55") -->
+    <string name="policy_active_next">Active · next %1$s</string>
+    <!-- Why a policy does not ring today. %1$s is a date ("3 Oct", or "6 Jan 2027" in another year) -->
+    <string name="policy_status_off">Off</string>
+    <string name="policy_status_ended">Ended %1$s</string>
+    <string name="policy_status_starts">Starts %1$s</string>
+    <string name="policy_status_paused">Paused, resumes %1$s</string>
+    <string name="policy_status_paused_until_end">Paused until it ends on %1$s</string>
+    <!-- Editor -->
+    <string name="policy_deleted_recreate">This policy was deleted. Saving creates a new one.</string>
+    <string name="policy_delete">Delete policy</string>
+    <string name="policy_delete_title">Delete policy?</string>
+    <string name="policy_delete_text">Its upcoming alarms will not ring. An alarm that is already snoozed still rings.</string>
+    <string name="policy_save_failed">Could not save the policy.</string>
+    <string name="policy_delete_failed">Could not delete the policy.</string>
+    <string name="policy_name">Name</string>
+    <string name="policy_enabled">Enabled</string>
+    <string name="policy_active_from">Active from</string>
+    <string name="policy_active_until">Active until</string>
+    <string name="policy_clear_active_from">Clear active from</string>
+    <string name="policy_clear_active_until">Clear active until</string>
+    <!-- An unset start or end date -->
+    <string name="policy_always">Always</string>
+    <string name="policy_alarm_times">Alarm times</string>
+    <string name="policy_add_alarm_time">+ Alarm time</string>
+    <string name="policy_add_pause">+ Pause</string>
+    <!-- %1$s is when the policy rings next ("Tomorrow, 07:55") -->
+    <string name="policy_next">Next: %1$s</string>
+    <!-- %1$s day ("Tomorrow", "Thu 5 Nov"), %2$s time -->
+    <string name="policy_next_text">%1$s, %2$s</string>
+    <string name="policy_change_time">Change time</string>
+    <string name="policy_remove_alarm_time">Remove alarm time</string>
+    <string name="policy_repeat_every">Repeat every</string>
+    <plurals name="policy_weeks">
+        <item quantity="one">%d week</item>
+        <item quantity="other">%d weeks</item>
+    </plurals>
+    <string name="policy_fewer_weeks">Fewer weeks</string>
+    <string name="policy_more_weeks">More weeks</string>
+    <string name="policy_including_week_of">Including the week of</string>
+    <string name="policy_label_optional">Label (optional)</string>
+    <!-- Followed by the pause's start and end dates: "Paused 23 Dec → 6 Jan 2027" -->
+    <string name="policy_paused">Paused</string>
+    <string name="policy_change_pause_start">Change pause start</string>
+    <string name="policy_change_pause_end">Change pause end</string>
+    <string name="policy_warning_off">This policy is off: none of its alarms will ring.</string>
+    <plurals name="policy_warning_no_alarms">
+        <item quantity="one">This policy has no alarms in the next %d day.</item>
+        <item quantity="other">This policy has no alarms in the next %d days.</item>
+    </plurals>
+    <!-- Why a policy cannot be saved -->
+    <string name="policy_error_no_name">Give the policy a name.</string>
+    <string name="policy_error_no_rules">Add at least one alarm time.</string>
+    <string name="policy_error_rule_without_days">Every alarm time needs at least one weekday.</string>
+    <string name="policy_error_end_before_start">The end date is before the start date.</string>
+    <string name="policy_error_pause_reversed">A pause ends before it starts.</string>
 </resources>

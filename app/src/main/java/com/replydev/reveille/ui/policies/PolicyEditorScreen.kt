@@ -38,12 +38,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.replydev.reveille.R
@@ -54,7 +55,7 @@ import com.replydev.reveille.data.PolicyWithChildren
 import com.replydev.reveille.data.RuleEntity
 import com.replydev.reveille.data.toModel
 import com.replydev.reveille.engine.ScheduleSnapshot
-import com.replydev.reveille.engine.TimeText
+import com.replydev.reveille.text.Labels
 import com.replydev.reveille.ui.components.ConfirmDialog
 import com.replydev.reveille.ui.components.DayToggleRow
 import com.replydev.reveille.ui.components.EditorTopBar
@@ -80,6 +81,7 @@ import com.replydev.reveille.ui.components.topDivider
 import com.replydev.reveille.ui.theme.Motion
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.theme.animatedItem
+import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.lineBox
 import java.time.DayOfWeek
 import java.time.Instant
@@ -106,6 +108,8 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
     val snackbar = remember { SnackbarHostState() }
     val session = rememberScreenSession(snackbar)
     LeaveWhenSaved(session, onDone)
+    val labels = rememberLabels()
+    val res = labels.res
 
     // The draft survives rotation, theme changes and process death; it is loaded from the database only once.
     var loaded by rememberSaveable { mutableStateOf(false) }
@@ -125,7 +129,7 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
             rules.add(newRule())
             if (id != 0L) {
                 session.editId = 0L
-                session.message(UiMessage("This policy was deleted. Saving creates a new one."))
+                session.message(UiMessage(res.getString(R.string.policy_deleted_recreate)))
             }
         } else {
             name = existing.policy.name
@@ -146,7 +150,7 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
     val errors = validatePolicy(name, startDate, endDate, ruleList, pauseList)
     val draftPolicy = PolicyEntity(id = editId, name = name.trim(), enabled = enabled, startDate = startDate, endDate = endDate)
     val zone = ZoneId.systemDefault()
-    val warning = if (loaded && errors.isEmpty()) upcomingWarning(draftPolicy, ruleList, pauseList, Instant.now(), zone) else null
+    val warning = if (loaded && errors.isEmpty()) upcomingWarning(res, draftPolicy, ruleList, pauseList, Instant.now(), zone) else null
     val next = if (loaded && errors.isEmpty() && warning == null) {
         nextPolicyAlarm(PolicyWithChildren(draftPolicy, ruleList, pauseList).toModel(), snapshot ?: ScheduleSnapshot(), Instant.now(), zone)
     } else {
@@ -158,10 +162,10 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
         containerColor = ReveilleTheme.colors.bg,
         contentWindowInsets = WindowInsets(0),
         topBar = {
-            EditorTopBar(if (editId == 0L) "New policy" else "Edit policy", onBack = onDone) {
+            EditorTopBar(stringResource(if (editId == 0L) R.string.policy_new else R.string.policy_edit), onBack = onDone) {
                 if (editId != 0L) {
                     IconCircleButton(
-                        R.drawable.ic_delete, "Delete policy", { confirmDelete = true },
+                        R.drawable.ic_delete, stringResource(R.string.policy_delete), { confirmDelete = true },
                         size = 48.dp, iconSize = 20.dp, container = Color.Transparent, enabled = loaded && !session.busy,
                     )
                 }
@@ -171,12 +175,12 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
             SaveBar(
                 errors = errors,
                 warning = warning,
-                next = next?.let { nextText(it.at, today) },
+                next = next?.let { nextText(labels, it.at, today) },
                 enabled = loaded && !session.busy && errors.isEmpty(),
                 onSave = {
                     val toSave = ruleList.map { it.copy(label = it.label?.trim()?.ifEmpty { null }) }
                     session.write(
-                        "Could not save the policy.",
+                        res.getString(R.string.policy_save_failed),
                         action = { repository.savePolicy(draftPolicy, toSave, pauseList) },
                         onSuccess = { savedId ->
                             // Set before anything else: if the screen stays open, saving again updates this policy.
@@ -191,15 +195,15 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
     ) { padding ->
         if (confirmDelete) {
             ConfirmDialog(
-                title = "Delete policy?",
-                text = "Its upcoming alarms will not ring. An alarm that is already snoozed still rings.",
-                confirmLabel = "Delete",
+                title = stringResource(R.string.policy_delete_title),
+                text = stringResource(R.string.policy_delete_text),
+                confirmLabel = stringResource(R.string.common_delete),
                 onDismiss = { confirmDelete = false },
                 onConfirm = {
                     confirmDelete = false
                     val target = editId
                     session.write(
-                        "Could not delete the policy.",
+                        res.getString(R.string.policy_delete_failed),
                         action = { repository.deletePolicy(target) },
                         onSuccess = { session.saved = true },
                     )
@@ -217,7 +221,7 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
         ) {
             item(key = "name") {
                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    LabeledField("Name", name, { name = it }, Modifier.weight(1f))
+                    LabeledField(stringResource(R.string.policy_name), name, { name = it }, Modifier.weight(1f))
                     Column(
                         Modifier
                             .width(84.dp)
@@ -227,21 +231,28 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
                     ) {
-                        Text("Enabled", style = ReveilleTheme.type.small, color = ReveilleTheme.colors.muted)
+                        Text(stringResource(R.string.policy_enabled), style = ReveilleTheme.type.small, color = ReveilleTheme.colors.muted)
                         ReveilleSwitch(enabled, { enabled = it }, small = true)
                     }
                 }
             }
             item(key = "dates") {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    DateTile("Active from", startDate, { startDate = it }, Modifier.weight(1f))
-                    DateTile("Active until", endDate, { endDate = it }, Modifier.weight(1f))
+                    DateTile(
+                        stringResource(R.string.policy_active_from), stringResource(R.string.policy_clear_active_from), labels,
+                        startDate, { startDate = it }, Modifier.weight(1f),
+                    )
+                    DateTile(
+                        stringResource(R.string.policy_active_until), stringResource(R.string.policy_clear_active_until), labels,
+                        endDate, { endDate = it }, Modifier.weight(1f),
+                    )
                 }
             }
-            item(key = "rules-title") { Overline("Alarm times", Modifier.padding(start = 4.dp, top = 10.dp)) }
+            item(key = "rules-title") { Overline(stringResource(R.string.policy_alarm_times), Modifier.padding(start = 4.dp, top = 10.dp)) }
             itemsIndexed(rules, key = { _, draft -> "rule-${draft.key}" }) { index, draft ->
                 RuleCard(
                     draft.rule,
+                    labels,
                     onChange = { rules[index] = draft.copy(rule = it) },
                     onRemove = { rules.removeAt(index) },
                     modifier = Modifier.animatedItem(this),
@@ -249,8 +260,8 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
             }
             item(key = "add") {
                 Row(Modifier.animatedItem(this), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    AddButton("+ Alarm time", Modifier.weight(1f)) { rules.add(newRule()) }
-                    AddButton("+ Pause", Modifier.weight(1f)) {
+                    AddButton(stringResource(R.string.policy_add_alarm_time), Modifier.weight(1f)) { rules.add(newRule()) }
+                    AddButton(stringResource(R.string.policy_add_pause), Modifier.weight(1f)) {
                         val start = LocalDate.now()
                         pauses.add(PauseDraft(newDraftKey(), PauseEntity(policyId = editId, fromDate = start, toDate = start.plusDays(7))))
                     }
@@ -260,6 +271,7 @@ fun PolicyEditorScreen(onDone: () -> Unit) {
                 PauseRow(
                     draft.pause,
                     today,
+                    labels,
                     onChange = { pauses[index] = draft.copy(pause = it) },
                     onRemove = { pauses.removeAt(index) },
                     modifier = Modifier.animatedItem(this),
@@ -276,7 +288,7 @@ private fun AddButton(text: String, modifier: Modifier, onClick: () -> Unit) {
 
 /** The sticky bar: "Next: …", or the warning in the accent and the errors in danger, beside Save. */
 @Composable
-private fun SaveBar(errors: List<String>, warning: String?, next: String?, enabled: Boolean, onSave: () -> Unit) {
+private fun SaveBar(errors: List<PolicyError>, warning: String?, next: String?, enabled: Boolean, onSave: () -> Unit) {
     val colors = ReveilleTheme.colors
     val type = ReveilleTheme.type
     Row(
@@ -290,13 +302,15 @@ private fun SaveBar(errors: List<String>, warning: String?, next: String?, enabl
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Column(Modifier.weight(1f).animateContentSize(Motion.size), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            errors.forEach { Text(it, style = type.caption, color = colors.dangerText) }
+            errors.forEach { Text(stringResource(it.message), style = type.caption, color = colors.dangerText) }
             warning?.let { Text(it, style = type.caption, color = colors.accent) }
             if (next != null) {
+                val line = stringResource(R.string.policy_next, next)
+                val at = line.indexOf(next)
                 Text(
                     buildAnnotatedString {
-                        append("Next: ")
-                        withStyle(SpanStyle(color = colors.onBg)) { append(next) }
+                        append(line)
+                        if (at >= 0) addStyle(SpanStyle(color = colors.onBg), at, at + next.length)
                     },
                     style = type.caption,
                     color = colors.muted,
@@ -304,7 +318,7 @@ private fun SaveBar(errors: List<String>, warning: String?, next: String?, enabl
             }
         }
         PillButton(
-            "Save", onSave,
+            stringResource(R.string.common_save), onSave,
             height = 52.dp,
             enabled = enabled,
             textStyle = type.button,
@@ -315,7 +329,7 @@ private fun SaveBar(errors: List<String>, warning: String?, next: String?, enabl
 
 /** "Active from" / "Active until": "Always" when unset; tap to pick, × to clear. */
 @Composable
-private fun DateTile(label: String, date: LocalDate?, onChange: (LocalDate?) -> Unit, modifier: Modifier = Modifier) {
+private fun DateTile(label: String, clearDescription: String, labels: Labels, date: LocalDate?, onChange: (LocalDate?) -> Unit, modifier: Modifier = Modifier) {
     val colors = ReveilleTheme.colors
     var open by rememberSaveable { mutableStateOf(false) }
     Surface(
@@ -329,10 +343,10 @@ private fun DateTile(label: String, date: LocalDate?, onChange: (LocalDate?) -> 
         Row(Modifier.padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(label, style = ReveilleTheme.type.small, color = colors.muted)
-                Text(date?.let(TimeText::date) ?: "Always", style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.Medium), maxLines = 1)
+                Text(date?.let(labels.formats::fullDate) ?: stringResource(R.string.policy_always), style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.Medium), maxLines = 1)
             }
             if (date != null) {
-                IconCircleButton(R.drawable.ic_close, "Clear ${label.lowercase()}", { onChange(null) }, size = 32.dp, iconSize = 14.dp, container = Color.Transparent)
+                IconCircleButton(R.drawable.ic_close, clearDescription, { onChange(null) }, size = 32.dp, iconSize = 14.dp, container = Color.Transparent)
             }
         }
     }
@@ -345,42 +359,42 @@ private fun DateTile(label: String, date: LocalDate?, onChange: (LocalDate?) -> 
 }
 
 @Composable
-private fun RuleCard(rule: RuleEntity, onChange: (RuleEntity) -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
+private fun RuleCard(rule: RuleEntity, labels: Labels, onChange: (RuleEntity) -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ReveilleTheme.colors
     val type = ReveilleTheme.type
     var pickTime by rememberSaveable { mutableStateOf(false) }
     ReveilleCard(modifier.fillMaxWidth(), radius = 20.dp, border = colors.accentLine, spacing = 14.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                TimeText.time(rule.time),
-                Modifier.lineBox(type.displayS, 1f).clickable(role = Role.Button, onClickLabel = "Change time") { pickTime = true },
+                labels.formats.time(rule.time),
+                Modifier.lineBox(type.displayS, 1f).clickable(role = Role.Button, onClickLabel = stringResource(R.string.policy_change_time)) { pickTime = true },
                 style = type.displayS,
             )
             Spacer(Modifier.weight(1f))
-            IconCircleButton(R.drawable.ic_close, "Remove alarm time", onRemove)
+            IconCircleButton(R.drawable.ic_close, stringResource(R.string.policy_remove_alarm_time), onRemove)
         }
         DayToggleRow(rule.days, { onChange(rule.copy(days = it)) })
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Repeat every", Modifier.weight(1f), style = type.body, color = colors.muted)
+            Text(stringResource(R.string.policy_repeat_every), Modifier.weight(1f), style = type.body, color = colors.muted)
             PillStepper(
-                value = if (rule.intervalWeeks == 1) "1 week" else "${rule.intervalWeeks} weeks",
+                value = pluralStringResource(R.plurals.policy_weeks, rule.intervalWeeks, rule.intervalWeeks),
                 onMinus = { onChange(rule.copy(intervalWeeks = (rule.intervalWeeks - 1).coerceAtLeast(1))) },
                 onPlus = { onChange(rule.copy(intervalWeeks = (rule.intervalWeeks + 1).coerceAtMost(MAX_INTERVAL_WEEKS))) },
-                minusDescription = "Fewer weeks",
-                plusDescription = "More weeks",
+                minusDescription = stringResource(R.string.policy_fewer_weeks),
+                plusDescription = stringResource(R.string.policy_more_weeks),
             )
         }
         AnimatedVisibility(rule.intervalWeeks > 1, enter = Motion.expand, exit = Motion.collapse) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Including the week of", Modifier.weight(1f), style = type.body, color = colors.muted)
-                DatePill(rule.anchorDate) { onChange(rule.copy(anchorDate = it)) }
+                Text(stringResource(R.string.policy_including_week_of), Modifier.weight(1f), style = type.body, color = colors.muted)
+                DatePill(rule.anchorDate, labels) { onChange(rule.copy(anchorDate = it)) }
             }
         }
         IconField(
             value = rule.label.orEmpty(),
             // ifEmpty, not ifBlank: a space typed between words must not vanish. Trimmed on save.
             onValueChange = { onChange(rule.copy(label = it.ifEmpty { null })) },
-            placeholder = "Label (optional)",
+            placeholder = stringResource(R.string.policy_label_optional),
             icon = R.drawable.ic_label,
         )
     }
@@ -394,9 +408,9 @@ private fun RuleCard(rule: RuleEntity, onChange: (RuleEntity) -> Unit, onRemove:
 
 /** A date in a [PillStyle.Secondary] pill that opens the date picker. */
 @Composable
-private fun DatePill(date: LocalDate, onChange: (LocalDate) -> Unit) {
+private fun DatePill(date: LocalDate, labels: Labels, onChange: (LocalDate) -> Unit) {
     var open by rememberSaveable { mutableStateOf(false) }
-    PillButton(TimeText.date(date), { open = true }, style = PillStyle.Secondary, height = 40.dp, textStyle = ReveilleTheme.type.body.copy(fontWeight = FontWeight.Medium))
+    PillButton(labels.formats.fullDate(date), { open = true }, style = PillStyle.Secondary, height = 40.dp, textStyle = ReveilleTheme.type.body.copy(fontWeight = FontWeight.Medium))
     if (open) {
         PickDateDialog(date, onDismiss = { open = false }) {
             open = false
@@ -406,7 +420,7 @@ private fun DatePill(date: LocalDate, onChange: (LocalDate) -> Unit) {
 }
 
 @Composable
-private fun PauseRow(pause: PauseEntity, today: LocalDate, onChange: (PauseEntity) -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
+private fun PauseRow(pause: PauseEntity, today: LocalDate, labels: Labels, onChange: (PauseEntity) -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ReveilleTheme.colors
     var editing by rememberSaveable { mutableStateOf<Boolean?>(null) } // true: from, false: to
     Row(
@@ -416,12 +430,12 @@ private fun PauseRow(pause: PauseEntity, today: LocalDate, onChange: (PauseEntit
     ) {
         ReveilleIcon(R.drawable.ic_calendar, null, tint = colors.muted, size = 16.dp)
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Text("Paused ", style = ReveilleTheme.type.body)
-            PauseDate(shortDate(pause.fromDate, today), "Pause start") { editing = true }
+            Text(stringResource(R.string.policy_paused) + " ", style = ReveilleTheme.type.body)
+            PauseDate(shortDate(labels, pause.fromDate, today), stringResource(R.string.policy_change_pause_start)) { editing = true }
             Text(" → ", style = ReveilleTheme.type.body, color = colors.muted)
-            PauseDate(shortDate(pause.toDate, today), "Pause end") { editing = false }
+            PauseDate(shortDate(labels, pause.toDate, today), stringResource(R.string.policy_change_pause_end)) { editing = false }
         }
-        TextAction("Remove", onRemove)
+        TextAction(stringResource(R.string.common_remove), onRemove)
     }
     editing?.let { from ->
         PickDateDialog(if (from) pause.fromDate else pause.toDate, onDismiss = { editing = null }) {
@@ -433,10 +447,10 @@ private fun PauseRow(pause: PauseEntity, today: LocalDate, onChange: (PauseEntit
 
 /** A tappable date inside the pause row; underlined so it reads as editable. */
 @Composable
-private fun PauseDate(text: String, label: String, onClick: () -> Unit) {
+private fun PauseDate(text: String, clickLabel: String, onClick: () -> Unit) {
     Text(
         text,
-        Modifier.clickable(role = Role.Button, onClickLabel = "Change ${label.lowercase()}", onClick = onClick).padding(vertical = 8.dp),
+        Modifier.clickable(role = Role.Button, onClickLabel = clickLabel, onClick = onClick).padding(vertical = 8.dp),
         style = ReveilleTheme.type.body.copy(textDecoration = TextDecoration.Underline),
     )
 }
