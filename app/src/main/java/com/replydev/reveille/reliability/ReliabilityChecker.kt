@@ -10,15 +10,17 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.annotation.StringRes
 import androidx.core.app.NotificationManagerCompat
+import com.replydev.reveille.R
 import com.replydev.reveille.alarm.Notifier
 import com.replydev.reveille.data.SettingsStore
 import kotlinx.coroutines.flow.first
 
 data class ReliabilityCheck(
     val id: String,
-    val title: String,
-    val detail: String,
+    @StringRes val title: Int,
+    @StringRes val detail: Int,
     val ok: Boolean,
     val manual: Boolean,
     val fix: Intent?,
@@ -46,8 +48,8 @@ class ReliabilityChecker(private val context: Context, private val settings: Set
         return buildList {
             add(
                 ReliabilityCheck(
-                    "notifications", "Notifications allowed",
-                    "The ringing alarm and missed-alarm warnings are notifications.",
+                    "notifications", R.string.health_check_notifications_title,
+                    R.string.health_check_notifications_detail,
                     NotificationManagerCompat.from(context).areNotificationsEnabled(), false,
                     Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
                 ),
@@ -55,8 +57,8 @@ class ReliabilityChecker(private val context: Context, private val settings: Set
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 add(
                     ReliabilityCheck(
-                        "full_screen", "Full-screen alarms allowed",
-                        "Lets the alarm screen appear over the lock screen.",
+                        "full_screen", R.string.health_check_full_screen_title,
+                        R.string.health_check_full_screen_detail,
                         notifications.canUseFullScreenIntent(), false,
                         Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, packageUri),
                     ),
@@ -64,17 +66,16 @@ class ReliabilityChecker(private val context: Context, private val settings: Set
             }
             add(
                 ReliabilityCheck(
-                    "alarm_channel", "Alarm notifications at high importance",
-                    "If lowered, the alarm screen will not pop up.",
+                    "alarm_channel", R.string.health_check_alarm_channel_title,
+                    R.string.health_check_alarm_channel_detail,
                     (alarmChannel?.importance ?: NotificationManager.IMPORTANCE_NONE) >= NotificationManager.IMPORTANCE_HIGH, false,
                     channelSettings(Notifier.CHANNEL_ALARM),
                 ),
             )
             add(
                 ReliabilityCheck(
-                    "fallback_channel", "Fallback alarms at high importance with sound",
-                    "The fallback alarm is the last resort when the normal alarm cannot start. It rings through this " +
-                        "notification channel, so it must stay at high importance and keep its sound.",
+                    "fallback_channel", R.string.health_check_fallback_channel_title,
+                    R.string.health_check_fallback_channel_detail,
                     fallbackChannel != null &&
                         fallbackChannel.importance >= NotificationManager.IMPORTANCE_HIGH &&
                         fallbackChannel.sound != null,
@@ -84,24 +85,24 @@ class ReliabilityChecker(private val context: Context, private val settings: Set
             )
             add(
                 ReliabilityCheck(
-                    "exact_alarms", "Exact alarms allowed",
-                    "Required to ring at the exact minute.",
+                    "exact_alarms", R.string.health_check_exact_alarms_title,
+                    R.string.health_check_exact_alarms_detail,
                     alarms.canScheduleExactAlarms(), false,
                     Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, packageUri),
                 ),
             )
             add(
                 ReliabilityCheck(
-                    "battery_optimization", "Battery optimization off",
-                    "Battery-optimized apps can be delayed or stopped in the background.",
+                    "battery_optimization", R.string.health_check_battery_optimization_title,
+                    R.string.health_check_battery_optimization_detail,
                     power.isIgnoringBatteryOptimizations(packageName), false,
                     Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, packageUri),
                 ),
             )
             add(
                 ReliabilityCheck(
-                    "alarm_volume", "Alarm volume not muted",
-                    "Alarms play on the alarm volume, which is separate from the ringer.",
+                    "alarm_volume", R.string.health_check_alarm_volume_title,
+                    R.string.health_check_alarm_volume_detail,
                     audio.getStreamVolume(AudioManager.STREAM_ALARM) > 0, false,
                     Intent(Settings.ACTION_SOUND_SETTINGS),
                 ),
@@ -115,39 +116,40 @@ class ReliabilityChecker(private val context: Context, private val settings: Set
             .putExtra(Settings.EXTRA_CHANNEL_ID, channelId)
 
     private fun manualChecks(confirmed: Set<String>): List<ReliabilityCheck> {
-        fun manual(id: String, title: String, detail: String, fix: Intent?) = ReliabilityCheck(id, title, detail, id in confirmed, true, fix)
+        fun manual(id: String, @StringRes title: Int, @StringRes detail: Int, fix: Intent?) =
+            ReliabilityCheck(id, title, detail, id in confirmed, true, fix)
         if (!isXiaomi()) {
             return listOf(
                 manual(
-                    "oem_battery", "Manufacturer battery settings",
-                    "Some phones stop apps despite Android's own settings. Open the app's battery settings, choose Unrestricted, then tick Done.",
+                    "oem_battery", R.string.health_check_oem_battery_title,
+                    R.string.health_check_oem_battery_detail,
                     appDetailsIntent(context),
                 ),
             )
         }
         return listOf(
             manual(
-                "miui_autostart", "Autostart on",
-                "Without Autostart, HyperOS does not tell Reveille that the phone restarted, so alarms are lost after a reboot.",
+                "miui_autostart", R.string.health_check_miui_autostart_title,
+                R.string.health_check_miui_autostart_detail,
                 Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")),
             ),
             manual(
-                "miui_battery", "Battery saver: No restrictions",
-                "In the app's battery saver setting, choose \"No restrictions\".",
+                "miui_battery", R.string.health_check_miui_battery_title,
+                R.string.health_check_miui_battery_detail,
                 Intent().setComponent(ComponentName("com.miui.powerkeeper", "com.miui.powerkeeper.ui.HiddenAppsConfigActivity"))
                     .putExtra("package_name", packageName)
                     .putExtra("package_label", "Reveille"),
             ),
             manual(
-                "miui_permissions", "Lock screen and pop-up permissions",
-                "Under Other permissions, allow \"Show on Lock screen\" and \"Display pop-up windows while running in the background\".",
+                "miui_permissions", R.string.health_check_miui_permissions_title,
+                R.string.health_check_miui_permissions_detail,
                 Intent("miui.intent.action.APP_PERM_EDITOR")
                     .setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
                     .putExtra("extra_pkgname", packageName),
             ),
             manual(
-                "miui_recents", "Locked in Recents",
-                "Open the recent apps view, long-press Reveille and tap the lock icon.",
+                "miui_recents", R.string.health_check_miui_recents_title,
+                R.string.health_check_miui_recents_detail,
                 null,
             ),
         )

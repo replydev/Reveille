@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.replydev.reveille.R
 import com.replydev.reveille.alarm.Notifier
 import com.replydev.reveille.data.SettingsStore
 import kotlinx.coroutines.runBlocking
@@ -51,6 +52,29 @@ class ReliabilityCheckerTest {
         ShadowBuild.setManufacturer("Google")
         ShadowBuild.setBrand("google")
         assertEquals(listOf("oem_battery"), checker.checks().filter { it.manual }.map { it.id })
+    }
+
+    @Test
+    fun checkTextComesFromResourcesNamedAfterTheId() = runBlocking {
+        ShadowBuild.setManufacturer("Google")
+        ShadowBuild.setBrand("google")
+        val oem = checker.checks().single { it.id == "oem_battery" }
+        assertEquals(R.string.health_check_oem_battery_title, oem.title)
+        assertEquals(R.string.health_check_oem_battery_detail, oem.detail)
+        for (check in checker.checks()) {
+            assertEquals("health_check_${check.id}_title", context.resources.getResourceEntryName(check.title))
+            assertEquals("health_check_${check.id}_detail", context.resources.getResourceEntryName(check.detail))
+        }
+    }
+
+    @Test
+    fun hyperOsCheckTextComesFromResourcesNamedAfterTheId() = runBlocking {
+        ShadowBuild.setManufacturer("Xiaomi")
+        ShadowBuild.setBrand("xiaomi")
+        for (check in checker.checks()) {
+            assertEquals("health_check_${check.id}_title", context.resources.getResourceEntryName(check.title))
+            assertEquals("health_check_${check.id}_detail", context.resources.getResourceEntryName(check.detail))
+        }
     }
 
     @Test

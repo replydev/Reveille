@@ -192,4 +192,64 @@
     <!-- What happens to a recurring alarm on the chosen day -->
     <string name="oneoff_wont_ring">won\'t ring</string>
     <string name="oneoff_also_rings">also rings</string>
+
+    <!-- Health -->
+    <string name="health_title">Health</string>
+    <string name="health_summary">%1$d of %2$d checks pass</string>
+    <string name="health_all_good">All good</string>
+    <string name="health_may_not_ring">Alarms may not ring</string>
+    <!-- Muted note on a passing check: HyperOS-only checks, and manual checks the user confirmed -->
+    <string name="health_note_hyperos">HyperOS</string>
+    <string name="health_note_confirmed">Confirmed</string>
+    <string name="health_open_settings">Open settings</string>
+    <string name="health_mark_done">Mark as done</string>
+    <string name="health_mark_not_done">Mark as not done</string>
+    <string name="health_unconfirm_title">Mark as not done?</string>
+    <string name="health_unconfirm_text">\"%1$s\" will be listed as needing attention again.</string>
+    <string name="health_save_failed">Could not save.</string>
+    <string name="health_open_failed">Could not open the settings screen. Open it from the phone\'s Settings app.</string>
+    <string name="health_test_title">Ring a test alarm</string>
+    <string name="health_test_detail">In 2 minutes. Lock the phone and wait.</string>
+    <string name="health_test_start">Start</string>
+    <string name="health_test_failed">Could not set the test alarm.</string>
+    <string name="health_test_label">Test alarm</string>
+    <string name="health_test_set">Test alarm set for %1$s. Lock your phone now.</string>
+    <string name="health_test_after_another">Test alarm saved for %1$s; it is set once the alarm at %2$s has rung.</string>
+    <string name="health_test_not_confirmed">Test alarm saved for %1$s, but the system did not confirm it. Fix the items above.</string>
+    <string name="health_force_stop">If Reveille is force-stopped, Android deletes all its alarms, and restarting the phone does not bring them back. They are set again the next time you open Reveille (tapping its widget works too), and you are warned about any alarm that was missed.</string>
+    <string name="health_recent_alarms">Recent alarms</string>
+    <string name="health_log_empty">Nothing yet.</string>
+    <!-- Outcome of a logged alarm -->
+    <string name="health_outcome_fired">rang, not answered yet</string>
+    <string name="health_outcome_dismissed">dismissed</string>
+    <string name="health_outcome_snoozed">snoozed</string>
+    <string name="health_outcome_auto_snoozed">auto snoozed</string>
+    <string name="health_outcome_skipped">skipped</string>
+    <string name="health_outcome_superseded">superseded</string>
+    <string name="health_outcome_missed">missed</string>
+    <!-- Reliability checks -->
+    <string name="health_check_notifications_title">Notifications allowed</string>
+    <string name="health_check_notifications_detail">The ringing alarm and missed-alarm warnings are notifications.</string>
+    <string name="health_check_full_screen_title">Full-screen alarms allowed</string>
+    <string name="health_check_full_screen_detail">Lets the alarm screen appear over the lock screen.</string>
+    <string name="health_check_alarm_channel_title">Alarm notifications at high importance</string>
+    <string name="health_check_alarm_channel_detail">If lowered, the alarm screen will not pop up.</string>
+    <string name="health_check_fallback_channel_title">Fallback alarms at high importance with sound</string>
+    <string name="health_check_fallback_channel_detail">The fallback alarm is the last resort when the normal alarm cannot start. It rings through this notification channel, so it must stay at high importance and keep its sound.</string>
+    <string name="health_check_exact_alarms_title">Exact alarms allowed</string>
+    <string name="health_check_exact_alarms_detail">Required to ring at the exact minute.</string>
+    <string name="health_check_battery_optimization_title">Battery optimization off</string>
+    <string name="health_check_battery_optimization_detail">Battery-optimized apps can be delayed or stopped in the background.</string>
+    <string name="health_check_alarm_volume_title">Alarm volume not muted</string>
+    <string name="health_check_alarm_volume_detail">Alarms play on the alarm volume, which is separate from the ringer.</string>
+    <string name="health_check_oem_battery_title">Manufacturer battery settings</string>
+    <string name="health_check_oem_battery_detail">Some phones stop apps despite Android\'s own settings. Open the app\'s battery settings, choose Unrestricted, then tick Done.</string>
+    <string name="health_check_miui_autostart_title">Autostart on</string>
+    <string name="health_check_miui_autostart_detail">Without Autostart, HyperOS does not tell Reveille that the phone restarted, so alarms are lost after a reboot.</string>
+    <string name="health_check_miui_battery_title">Battery saver: No restrictions</string>
+    <string name="health_check_miui_battery_detail">In the app\'s battery saver setting, choose \"No restrictions\".</string>
+    <string name="health_check_miui_permissions_title">Lock screen and pop-up permissions</string>
+    <string name="health_check_miui_permissions_detail">Under Other permissions, allow \"Show on Lock screen\" and \"Display pop-up windows while running in the background\".</string>
+    <string name="health_check_miui_recents_title">Locked in Recents</string>
+    <string name="health_check_miui_recents_detail">Open the recent apps view, long-press Reveille and tap the lock icon.</string>
 </resources>

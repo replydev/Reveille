@@ -2,6 +2,7 @@ package com.replydev.reveille.ui.reliability
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -16,7 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -35,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,9 +52,9 @@ import com.replydev.reveille.data.FireOutcome
 import com.replydev.reveille.data.OneOffEntity
 import com.replydev.reveille.engine.OneOffMode
 import com.replydev.reveille.engine.Source
-import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.reliability.ReliabilityCheck
 import com.replydev.reveille.reliability.appDetailsIntent
+import com.replydev.reveille.text.Labels
 import com.replydev.reveille.ui.components.ConfirmDialog
 import com.replydev.reveille.ui.components.Overline
 import com.replydev.reveille.ui.components.PillButton
@@ -66,6 +68,7 @@ import com.replydev.reveille.ui.components.rememberScreenSession
 import com.replydev.reveille.ui.components.rememberToday
 import com.replydev.reveille.ui.theme.Motion
 import com.replydev.reveille.ui.theme.ReveilleTheme
+import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.animatedItem
 import java.time.Instant
 import java.time.LocalDateTime
@@ -79,6 +82,8 @@ private const val TAG = "Reveille"
 fun ReliabilityScreen() {
     val context = LocalContext.current
     val container = context.container
+    val labels = rememberLabels()
+    val res = labels.res
     val snackbar = remember { SnackbarHostState() }
     val session = rememberScreenSession(snackbar)
     var checks by remember { mutableStateOf<List<ReliabilityCheck>>(emptyList()) }
@@ -99,7 +104,7 @@ fun ReliabilityScreen() {
         }
     }
     val setConfirmed: (ReliabilityCheck, Boolean) -> Unit = { check, done ->
-        session.write("Could not save.", guarded = false, action = { container.settings.setConfirmed(check.id, done) })
+        session.write(res.getString(R.string.health_save_failed), guarded = false, action = { container.settings.setConfirmed(check.id, done) })
     }
     val failing = checks.filter { !it.ok }
     val passing = checks.filter { it.ok }
@@ -110,9 +115,9 @@ fun ReliabilityScreen() {
             unconfirm = null
         } else {
             ConfirmDialog(
-                title = "Mark as not done?",
-                text = "\"${check.title}\" will be listed as needing attention again.",
-                confirmLabel = "Mark as not done",
+                title = stringResource(R.string.health_unconfirm_title),
+                text = stringResource(R.string.health_unconfirm_text, stringResource(check.title)),
+                confirmLabel = stringResource(R.string.health_mark_not_done),
                 onDismiss = { unconfirm = null },
                 onConfirm = {
                     unconfirm = null
@@ -129,8 +134,8 @@ fun ReliabilityScreen() {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item(key = "header") {
-                TabHeader("Health", bottom = 4.dp) {
-                    if (checks.isNotEmpty()) SummaryBar(passing.size, checks.size, Modifier.padding(top = 14.dp))
+                TabHeader(stringResource(R.string.health_title), bottom = 4.dp) {
+                    if (checks.isNotEmpty()) SummaryBar(res, passing.size, checks.size, Modifier.padding(top = 14.dp))
                 }
             }
             items(failing, key = { "failing-${it.id}" }) { check ->
@@ -138,7 +143,7 @@ fun ReliabilityScreen() {
                     check = check,
                     onFix = {
                         if (!openFix(context, check.fix)) {
-                            session.message(UiMessage("Could not open the settings screen. Open it from the phone's Settings app."))
+                            session.message(UiMessage(res.getString(R.string.health_open_failed)))
                         }
                     },
                     onConfirm = { setConfirmed(check, true) },
@@ -147,22 +152,22 @@ fun ReliabilityScreen() {
             }
             if (passing.isNotEmpty()) {
                 item(key = "passing") {
-                    PassingCard(passing, onUnconfirm = { unconfirm = it.id }, Modifier.animatedItem(this).padding(horizontal = 16.dp))
+                    PassingCard(res, passing, onUnconfirm = { unconfirm = it.id }, Modifier.animatedItem(this).padding(horizontal = 16.dp))
                 }
             }
             item(key = "test") {
                 ReveilleCard(Modifier.padding(horizontal = 16.dp).fillMaxWidth(), padding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("Ring a test alarm", style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.SemiBold))
-                            Text("In 2 minutes. Lock the phone and wait.", style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.muted)
+                            Text(stringResource(R.string.health_test_title), style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.SemiBold))
+                            Text(stringResource(R.string.health_test_detail), style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.muted)
                         }
                         PillButton(
-                            "Start",
+                            stringResource(R.string.health_test_start),
                             onClick = {
                                 session.write(
-                                    "Could not set the test alarm.",
-                                    action = { scheduleTestAlarm(container) },
+                                    res.getString(R.string.health_test_failed),
+                                    action = { scheduleTestAlarm(container, labels) },
                                     onSuccess = { session.message(UiMessage(it)) },
                                 )
                             },
@@ -175,24 +180,22 @@ fun ReliabilityScreen() {
             }
             item(key = "force-stop") {
                 Text(
-                    "If Reveille is force-stopped, Android deletes all its alarms, and restarting the phone does not bring them " +
-                        "back. They are set again the next time you open Reveille (tapping its widget works too), and you are warned " +
-                        "about any alarm that was missed.",
+                    stringResource(R.string.health_force_stop),
                     Modifier.padding(horizontal = 20.dp),
                     style = ReveilleTheme.type.caption,
                     color = ReveilleTheme.colors.muted,
                 )
             }
-            item(key = "log-title") { Overline("Recent alarms", Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp)) }
+            item(key = "log-title") { Overline(stringResource(R.string.health_recent_alarms), Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp)) }
             if (log.isEmpty()) {
                 item(key = "log-empty") {
-                    Text("Nothing yet.", Modifier.animatedItem(this).padding(horizontal = 20.dp), style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.muted)
+                    Text(stringResource(R.string.health_log_empty), Modifier.animatedItem(this).padding(horizontal = 20.dp), style = ReveilleTheme.type.caption, color = ReveilleTheme.colors.muted)
                 }
             }
             if (log.isNotEmpty()) {
                 item(key = "log") {
                     Column(Modifier.animatedItem(this).animateContentSize(Motion.size).padding(horizontal = 16.dp)) {
-                        log.forEach { LogRow(it, logTime(it.scheduledAt, today, ZoneId.systemDefault())) }
+                        log.forEach { LogRow(it, logTime(labels, it.scheduledAt, today, ZoneId.systemDefault()), outcomeText(res, it.outcome)) }
                     }
                 }
             }
@@ -202,9 +205,9 @@ fun ReliabilityScreen() {
 
 /** "X of Y checks pass", the verdict, and one segment per check. */
 @Composable
-private fun SummaryBar(passing: Int, total: Int, modifier: Modifier = Modifier) {
+private fun SummaryBar(res: Resources, passing: Int, total: Int, modifier: Modifier = Modifier) {
     val colors = ReveilleTheme.colors
-    val summary = healthSummary(passing, total)
+    val summary = healthSummary(res, passing, total)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text(summary.text, Modifier.weight(1f), style = ReveilleTheme.type.titleS.copy(fontWeight = FontWeight.Medium))
@@ -227,15 +230,15 @@ private fun FailingCard(check: ReliabilityCheck, onFix: () -> Unit, onConfirm: (
                 ReveilleIcon(R.drawable.ic_warning, null, tint = colors.dangerText, size = 18.dp)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(check.title, style = ReveilleTheme.type.cardTitle)
-                Text(check.detail, style = ReveilleTheme.type.paragraphSmall, color = colors.dangerOnContainerMuted)
+                Text(stringResource(check.title), style = ReveilleTheme.type.cardTitle)
+                Text(stringResource(check.detail), style = ReveilleTheme.type.paragraphSmall, color = colors.dangerOnContainerMuted)
             }
         }
         if (check.fix != null || check.manual) {
             Row(Modifier.padding(start = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (check.fix != null) {
                     PillButton(
-                        "Open settings", onFix,
+                        stringResource(R.string.health_open_settings), onFix,
                         style = PillStyle.Danger,
                         height = 40.dp,
                         textStyle = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold),
@@ -253,7 +256,7 @@ private fun FailingCard(check: ReliabilityCheck, onFix: () -> Unit, onConfirm: (
                             modifier = Modifier.padding(horizontal = 8.dp),
                             colors = CheckboxDefaults.colors(uncheckedColor = colors.dangerText, checkedColor = colors.dangerText, checkmarkColor = colors.onDanger),
                         )
-                        Text("Mark as done", style = ReveilleTheme.type.body, color = colors.onBg)
+                        Text(stringResource(R.string.health_mark_done), style = ReveilleTheme.type.body, color = colors.onBg)
                     }
                 }
             }
@@ -263,40 +266,42 @@ private fun FailingCard(check: ReliabilityCheck, onFix: () -> Unit, onConfirm: (
 
 /** Every passing check in one card; tapping a confirmed manual check offers to un-confirm it. */
 @Composable
-private fun PassingCard(checks: List<ReliabilityCheck>, onUnconfirm: (ReliabilityCheck) -> Unit, modifier: Modifier = Modifier) {
+private fun PassingCard(res: Resources, checks: List<ReliabilityCheck>, onUnconfirm: (ReliabilityCheck) -> Unit, modifier: Modifier = Modifier) {
     val colors = ReveilleTheme.colors
+    val unconfirmLabel = stringResource(R.string.health_mark_not_done)
     ReveilleCard(modifier.fillMaxWidth(), padding = PaddingValues(vertical = 4.dp)) {
         checks.forEach { check ->
             Row(
                 Modifier
                     .fillMaxWidth()
                     .heightIn(min = 44.dp)
-                    .then(if (check.manual) Modifier.clickable(onClickLabel = "Mark as not done") { onUnconfirm(check) } else Modifier)
+                    .then(if (check.manual) Modifier.clickable(onClickLabel = unconfirmLabel) { onUnconfirm(check) } else Modifier)
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 ReveilleIcon(R.drawable.ic_check, null, tint = colors.success, size = 18.dp)
-                Text(check.title, Modifier.weight(1f), style = ReveilleTheme.type.body)
-                passingNote(check.id, check.manual)?.let { Text(it, style = ReveilleTheme.type.small, color = colors.muted) }
+                Text(stringResource(check.title), Modifier.weight(1f), style = ReveilleTheme.type.body)
+                passingNote(res, check.id, check.manual)?.let { Text(it, style = ReveilleTheme.type.small, color = colors.muted) }
             }
         }
     }
 }
 
 @Composable
-private fun LogRow(entry: FireLogEntity, time: String, modifier: Modifier = Modifier) {
+private fun LogRow(entry: FireLogEntity, time: String, outcome: String, modifier: Modifier = Modifier) {
     val colors = ReveilleTheme.colors
     Row(
         modifier.fillMaxWidth().heightIn(min = 36.dp).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Wide enough for "Fri 30 Oct 08:55", so every label starts in the same column.
-        Text(time, Modifier.width(128.dp), style = ReveilleTheme.type.mono, color = colors.muted, maxLines = 1)
+        // Wide enough for "Fri, 30 Oct 08:55" in most locales, so every label starts in the same column; a longer
+        // date pushes its label along rather than being cut off.
+        Text(time, Modifier.widthIn(min = 128.dp), style = ReveilleTheme.type.mono, color = colors.muted, maxLines = 1)
         Text(entry.label, Modifier.weight(1f), style = ReveilleTheme.type.caption, maxLines = 1)
         Text(
-            outcomeText(entry.outcome),
+            outcome,
             style = ReveilleTheme.type.caption,
             color = if (entry.outcome == FireOutcome.MISSED) colors.dangerText else colors.muted,
         )
@@ -307,21 +312,16 @@ private fun LogRow(entry: FireLogEntity, time: String, modifier: Modifier = Modi
  * Saves an additive one-off 1–2 minutes ahead (on a whole minute) and says whether the system actually armed it,
  * so a refused exact alarm is not presented as a working test.
  */
-private suspend fun scheduleTestAlarm(container: AppContainer): String {
+private suspend fun scheduleTestAlarm(container: AppContainer, labels: Labels): String {
     val zone = ZoneId.systemDefault()
     val at = LocalDateTime.now().plusMinutes(2).truncatedTo(ChronoUnit.MINUTES)
     val id = container.repository.saveOneOff(
-        OneOffEntity(date = at.toLocalDate(), time = at.toLocalTime(), label = "Test alarm", mode = OneOffMode.ADDITIVE),
+        OneOffEntity(date = at.toLocalDate(), time = at.toLocalTime(), label = labels.res.getString(R.string.health_test_label), mode = OneOffMode.ADDITIVE),
     )
     val armed = container.schedulerState.armed()
-    val time = TimeText.time(at.toLocalTime())
-    return when (testAlarmResult(armed, Source.OneOffAlarm(id).key, at.atZone(zone).toInstant(), Instant.now())) {
-        TestAlarmResult.SET -> "Test alarm set for $time. Lock your phone now."
-        TestAlarmResult.AFTER_ANOTHER ->
-            "Test alarm saved for $time; it is set once the alarm at ${TimeText.time(armed!!.at.atZone(zone).toLocalTime())} has rung."
-        TestAlarmResult.NOT_CONFIRMED ->
-            "Test alarm saved for $time, but the system did not confirm it. Fix the items above."
-    }
+    val result = testAlarmResult(armed, Source.OneOffAlarm(id).key, at.atZone(zone).toInstant(), Instant.now())
+    val earlier = armed?.let { labels.formats.time(it.at.atZone(zone).toLocalTime()) }
+    return testAlarmMessage(labels.res, result, labels.formats.time(at.toLocalTime()), earlier)
 }
 
 /**
