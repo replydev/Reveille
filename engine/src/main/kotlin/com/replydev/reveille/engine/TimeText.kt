@@ -4,11 +4,7 @@ import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
 
 /** Which day an instant or date falls on, relative to today. The app turns it into words. */
 sealed interface DayLabel {
@@ -35,10 +31,6 @@ sealed interface DaySet {
 }
 
 object TimeText {
-    private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
-    private val weekdayFormat = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH)
-    private val shortDateFormat = DateTimeFormatter.ofPattern("EEE d MMM", Locale.ENGLISH)
-    private val fullDateFormat = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
     private val workWeek = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
 
     fun dayHeader(date: LocalDate, today: LocalDate): DayLabel = when (date) {
@@ -72,36 +64,5 @@ object TimeText {
         days.size == 7 -> DaySet.EveryDay
         days == workWeek -> DaySet.Weekdays
         else -> DaySet.Custom(DayOfWeek.entries.filter { it in days })
-    }
-
-    // English string API, kept until the app renders the values above (removed in the i18n cleanup).
-
-    fun time(value: LocalTime): String = value.format(timeFormat)
-
-    fun date(value: LocalDate): String = value.format(fullDateFormat)
-
-    fun dayHeaderText(date: LocalDate, today: LocalDate): String = englishDay(dayHeader(date, today))
-
-    fun dayAndTime(at: Instant, now: Instant, zone: ZoneId): String =
-        "${englishDay(dayOf(at, now, zone))} ${time(at.atZone(zone).toLocalTime())}"
-
-    fun relative(at: Instant, now: Instant): String = when (val r = relativeOf(at, now)) {
-        Relative.Now -> "now"
-        is Relative.Minutes -> "in ${r.count} min"
-        is Relative.Hours -> "in ${r.count} h"
-        is Relative.Days -> "in ${r.count} d"
-    }
-
-    fun days(days: Set<DayOfWeek>): String = when (val set = daySetOf(days)) {
-        DaySet.EveryDay -> "Every day"
-        DaySet.Weekdays -> "Mon–Fri"
-        is DaySet.Custom -> set.days.joinToString(" ") { it.getDisplayName(TextStyle.SHORT, Locale.ENGLISH) }
-    }
-
-    private fun englishDay(label: DayLabel): String = when (label) {
-        DayLabel.Today -> "Today"
-        DayLabel.Tomorrow -> "Tomorrow"
-        is DayLabel.Weekday -> label.date.format(weekdayFormat)
-        is DayLabel.Date -> label.date.format(shortDateFormat)
     }
 }

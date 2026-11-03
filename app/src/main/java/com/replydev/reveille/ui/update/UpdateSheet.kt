@@ -126,7 +126,7 @@ fun UpdateSheet(onClose: () -> Unit) {
             DaybreakTile(56.dp, radius = 16.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Overline(stringResource(R.string.update_sheet_overline), color = colors.accent)
-                Text("v${release.versionName}", style = type.headline.copy(fontWeight = FontWeight.SemiBold))
+                Text(stringResource(R.string.update_version, release.versionName), style = type.headline.copy(fontWeight = FontWeight.SemiBold))
                 Text(text.sheetSubtitle(release, updates.installedVersionName, zone), style = type.caption, color = colors.muted)
             }
             IconCircleButton(R.drawable.ic_close, stringResource(R.string.common_close), onClose)

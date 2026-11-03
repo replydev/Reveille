@@ -146,7 +146,7 @@ fun UpdatesSection(prefs: UpdatePrefs, onView: () -> Unit, onMessage: (String) -
                 else -> StatusRow(
                     tile = { IconTile(R.drawable.ic_check, colors.surfaceHigh, colors.success) },
                     title = stringResource(R.string.update_up_to_date_title),
-                    subtitle = "v${updates.installedVersionName}",
+                    subtitle = stringResource(R.string.update_version, updates.installedVersionName),
                 )
             }
             SettingSwitch(
@@ -232,7 +232,7 @@ fun AboutRow(versionName: String) {
             DaybreakTile(40.dp, radius = 12.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(stringResource(R.string.app_name), style = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.SemiBold))
-                Text("v$versionName", style = ReveilleTheme.type.mono, color = colors.muted)
+                Text(stringResource(R.string.update_version, versionName), style = ReveilleTheme.type.mono, color = colors.muted)
             }
             Text(stringResource(R.string.settings_release_notes), style = ReveilleTheme.type.caption, color = colors.muted)
         }

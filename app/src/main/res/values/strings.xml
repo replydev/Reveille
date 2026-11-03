@@ -272,11 +272,15 @@
     <string name="settings_auto_snooze">Auto-snooze after ringing for</string>
     <string name="settings_auto_snooze_decrease">Decrease auto-snooze after ringing for</string>
     <string name="settings_auto_snooze_increase">Increase auto-snooze after ringing for</string>
-    <string name="settings_minutes">%1$d min</string>
+    <plurals name="settings_minutes">
+        <item quantity="one">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
     <string name="settings_about">About</string>
     <string name="settings_release_notes">Release notes</string>
     <!-- Updates: Settings section -->
     <string name="update_section">Updates</string>
+    <string name="update_version">v%1$s</string>
     <string name="update_available_title">v%1$s is available</string>
     <string name="update_available_subtitle">You have v%1$s · released %2$s</string>
     <string name="update_view">View</string>

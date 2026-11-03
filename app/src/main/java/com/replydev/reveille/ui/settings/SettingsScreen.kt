@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -143,7 +144,7 @@ fun SettingsScreen(onOpenUpdate: () -> Unit) {
                         label = R.string.settings_snooze_length,
                         minusDescription = R.string.settings_snooze_length_decrease,
                         plusDescription = R.string.settings_snooze_length_increase,
-                        value = stringResource(R.string.settings_minutes, current.snoozeMinutes),
+                        value = pluralStringResource(R.plurals.settings_minutes, current.snoozeMinutes, current.snoozeMinutes),
                         onMinus = { update { it.copy(snoozeMinutes = (it.snoozeMinutes - 1).coerceAtLeast(1)) } },
                         onPlus = { update { it.copy(snoozeMinutes = (it.snoozeMinutes + 1).coerceAtMost(MAX_SNOOZE_MINUTES)) } },
                         divider = false,
@@ -152,7 +153,7 @@ fun SettingsScreen(onOpenUpdate: () -> Unit) {
                         label = R.string.settings_auto_snooze,
                         minusDescription = R.string.settings_auto_snooze_decrease,
                         plusDescription = R.string.settings_auto_snooze_increase,
-                        value = stringResource(R.string.settings_minutes, current.maxRingMinutes),
+                        value = pluralStringResource(R.plurals.settings_minutes, current.maxRingMinutes, current.maxRingMinutes),
                         onMinus = { update { it.copy(maxRingMinutes = (it.maxRingMinutes - 1).coerceAtLeast(1)) } },
                         onPlus = { update { it.copy(maxRingMinutes = (it.maxRingMinutes + 1).coerceAtMost(RingDecisions.MAX_RING_MINUTES)) } },
                     )
