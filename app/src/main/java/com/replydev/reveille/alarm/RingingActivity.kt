@@ -3,7 +3,6 @@ package com.replydev.reveille.alarm
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -11,112 +10,173 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.replydev.reveille.R
 import com.replydev.reveille.container
+import com.replydev.reveille.data.RingSettings
 import com.replydev.reveille.engine.Armed
-import com.replydev.reveille.ui.components.Pill
-import com.replydev.reveille.ui.components.ReveilleIcon
-import com.replydev.reveille.ui.components.TimeDisplay
-import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.text.rememberLabels
+import com.replydev.reveille.ui.theme.ReveilleTheme
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import java.time.LocalDateTime
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.withContext
+import java.time.Duration
+import java.time.Instant
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import android.graphics.Color as AndroidColor
 
 /**
  * Full-screen alarm UI. Normal mode mirrors [RingingService.ringing] (Snooze/Dismiss go to the service). Fallback mode
  * ([fallbackIntent]) is opened by the fallback alarm notification when the service could not ring: it shows the
  * alarm and a Dismiss that acknowledges the fallback. Both work before the first unlock (directBootAware).
+ *
+ * The look comes from the [RingTheme] in the device-protected settings. It is cosmetic and never waited on: until the
+ * settings are read (or if they can't be) the screen is Dawn.
  */
 class RingingActivity : ComponentActivity() {
     private var fallback by mutableStateOf<Armed?>(null)
+    private var windowTheme: RingTheme? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)
         setTurnScreenOn(true)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        // Full bleed on the accent, with dark system-bar icons.
-        enableEdgeToEdge(SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT), SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT))
+        applyWindowTheme(RingTheme.DAWN)
         fallback = fallbackArmed(intent)
-        // Device-protected DataStore, so it reads before the first unlock too. Only labels depend on it: without it the
-        // buttons still work and simply read "Snooze".
-        val ringSettings = container.settings.settings.catch { Log.w("Reveille", "Cannot read settings for the ringing screen", it) }
+        val (initialSettings, ringSettings) = ringSettings()
         setContent {
             ReveilleTheme {
                 BackHandler { /* the alarm must be dismissed or snoozed explicitly */ }
-                val settings by ringSettings.collectAsStateWithLifecycle(initialValue = null)
+                val settings by ringSettings.collectAsStateWithLifecycle(initialValue = initialSettings)
                 val ringing by RingingService.ringing.collectAsStateWithLifecycle()
                 val current = ringing
                 val fallbackAlarm = fallback
                 when {
                     // The service took over (e.g. the ring guard succeeded): show the real ringing screen.
-                    current != null -> RingingScreen(
+                    current != null -> Ring(
+                        armed = current.armed,
+                        settings = settings,
                         title = current.title(this@RingingActivity),
-                        snoozeMinutes = settings?.snoozeMinutes?.coerceAtLeast(1),
-                        autoSnoozeMinutes = settings?.let { RingDecisions.ringMinutes(it.maxRingMinutes) },
-                        onSnooze = { RingingService.send(this@RingingActivity, RingingService.ACTION_SNOOZE) },
-                        onDismiss = { RingingService.send(this@RingingActivity, RingingService.ACTION_DISMISS) },
+                        since = current.since,
+                        backupOf = current.armed.at.takeUnless { current.backup },
+                        actions = RingActions(
+                            onDismiss = { act(RingingService.ACTION_DISMISS) },
+                            onSnooze = { act(RingingService.ACTION_SNOOZE) },
+                        ),
                     )
-                    fallbackAlarm != null -> RingingScreen(
+                    fallbackAlarm != null -> Ring(
+                        armed = fallbackAlarm,
+                        settings = settings,
                         title = stringResource(
                             R.string.ringing_fallback_title,
                             fallbackAlarm.label,
                             rememberLabels().formats.time(fallbackAlarm.at.atZone(ZoneId.systemDefault()).toLocalTime()),
                         ),
-                        snoozeMinutes = null,
-                        autoSnoozeMinutes = null,
-                        onSnooze = null,
-                        onDismiss = { dismissFallback(fallbackAlarm) },
+                        since = fallbackAlarm.at,
+                        backupOf = null,
+                        actions = RingActions(onDismiss = { dismissFallback(fallbackAlarm) }, onSnooze = null),
                     )
                     else -> LaunchedEffect(Unit) { finish() }
                 }
             }
         }
+    }
+
+    /**
+     * The last settings this process read (so the first frame already has the theme) and the live ones. Device-protected
+     * DataStore, so it reads before the first unlock too. Any failure leaves the defaults: Dawn and plain "Snooze".
+     */
+    private fun ringSettings(): Pair<RingSettings?, Flow<RingSettings>> = try {
+        val store = container.settings
+        store.lastRead to store.settings.catch { Log.w(TAG, "Cannot read settings for the ringing screen", it) }
+    } catch (e: Exception) {
+        Log.w(TAG, "Cannot open settings for the ringing screen", e)
+        null to emptyFlow()
+    }
+
+    @Composable
+    private fun Ring(armed: Armed, settings: RingSettings?, title: String, since: Instant, backupOf: Instant?, actions: RingActions) {
+        val theme = settings?.let { resolveTheme(armed, it.ringTheme, it.policyRingThemes) } ?: RingTheme.DAWN
+        SideEffect { applyWindowTheme(theme) }
+        val now by produceState(ZonedDateTime.now()) {
+            while (true) {
+                value = ZonedDateTime.now()
+                delay(1_000)
+            }
+        }
+        val policyId = remember(armed) { ringPolicyId(armed) }
+        // Only Policy colour shows the policy's name, days and next alarm. Read off the main thread; until then (or if
+        // the read fails) the screen shows the alarm's own label.
+        val lookup by produceState<PolicyLookup?>(null, armed, theme) {
+            if (theme == RingTheme.POLICY_COLOUR && policyId != null) value = lookUpPolicy(armed)
+        }
+        RingingContent(
+            theme,
+            RingState(
+                now = now,
+                title = title,
+                policyId = policyId,
+                policy = lookup?.info,
+                policyGone = lookup?.let { it.info == null } ?: false,
+                backupOf = backupOf,
+                snoozeMinutes = settings?.snoozeMinutes?.coerceAtLeast(1),
+                autoSnoozeMinutes = settings?.let { RingDecisions.ringMinutes(it.maxRingMinutes) },
+                ringingFor = Duration.between(since, now.toInstant()),
+            ),
+            actions,
+        )
+    }
+
+    private suspend fun lookUpPolicy(armed: Armed): PolicyLookup? = try {
+        withContext(Dispatchers.IO) {
+            PolicyLookup(policyRingInfo(container.repository.snapshot(), armed, Instant.now(), ZoneId.systemDefault()))
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w(TAG, "Cannot read the policy for the ringing screen", e)
+        null
+    }
+
+    /** Sends Snooze or Dismiss to the service, giving the user their brightness back first. */
+    private fun act(action: String) {
+        applyBrightness(null)
+        RingingService.send(this, action)
+    }
+
+    /** System-bar icons that read on the theme's background, and Midnight's dim window. Only touches this window. */
+    private fun applyWindowTheme(theme: RingTheme) {
+        if (theme == windowTheme) return
+        windowTheme = theme
+        runCatching {
+            val bars = if (theme.darkBackground) SystemBarStyle.dark(AndroidColor.TRANSPARENT) else SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
+            enableEdgeToEdge(bars, bars)
+        }.onFailure { Log.w(TAG, "Cannot style the system bars", it) }
+        applyBrightness(theme.screenBrightness)
+    }
+
+    /** [brightness] for this window, or the user's own with null. */
+    private fun applyBrightness(brightness: Float?) {
+        runCatching {
+            window.attributes = window.attributes.apply {
+                screenBrightness = brightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            }
+        }.onFailure { Log.w(TAG, "Cannot set the screen brightness", it) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -126,6 +186,7 @@ class RingingActivity : ComponentActivity() {
     }
 
     private fun dismissFallback(armed: Armed) {
+        applyBrightness(null)
         sendBroadcast(
             Intent(this, AlarmReceiver::class.java)
                 .setAction(AlarmReceiver.ACTION_FALLBACK_DISMISS)
@@ -134,7 +195,11 @@ class RingingActivity : ComponentActivity() {
         finish()
     }
 
+    /** The policy read for Policy colour; [info] is null when the policy no longer exists. */
+    private class PolicyLookup(val info: PolicyRingInfo?)
+
     companion object {
+        private const val TAG = "Reveille"
         private const val EXTRA_FALLBACK = "fallback_armed"
 
         private fun fallbackArmed(intent: Intent?): Armed? = intent?.getStringExtra(EXTRA_FALLBACK)?.let(Armed::decode)
@@ -143,107 +208,5 @@ class RingingActivity : ComponentActivity() {
             Intent(context, RingingActivity::class.java)
                 .putExtra(EXTRA_FALLBACK, armed.encode())
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION)
-    }
-}
-
-@Composable
-private fun RingingScreen(
-    title: String,
-    snoozeMinutes: Int?,
-    autoSnoozeMinutes: Int?,
-    onSnooze: (() -> Unit)?,
-    onDismiss: () -> Unit,
-) {
-    var now by remember { mutableStateOf(LocalDateTime.now()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            now = LocalDateTime.now()
-            delay(1_000)
-        }
-    }
-    val labels = rememberLabels()
-    val colors = ReveilleTheme.colors
-    val type = ReveilleTheme.type
-    val insets = WindowInsets.systemBars.asPaddingValues()
-    Box(Modifier.fillMaxSize().background(colors.accent)) {
-        RingCircles(Modifier.fillMaxSize())
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(
-                    start = 24.dp,
-                    end = 24.dp,
-                    top = maxOf(96.dp, insets.calculateTopPadding() + 8.dp),
-                    bottom = maxOf(40.dp, insets.calculateBottomPadding() + 16.dp),
-                ),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(labels.formats.headerDate(now.toLocalDate()).uppercase(labels.formats.locale), style = type.ringOverline, color = colors.onAccent)
-            TimeDisplay(
-                labels.formats.timeParts(now.toLocalTime()),
-                type.displayXl,
-                type.titleS,
-                Modifier.padding(top = 18.dp),
-                color = colors.onAccent,
-            )
-            Row(
-                Modifier.padding(top = 18.dp).height(36.dp).background(colors.onAccent.copy(alpha = 0.10f), RoundedCornerShape(50)).padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ReveilleIcon(R.drawable.ic_bell, null, tint = colors.onAccent, size = 18.dp)
-                Text(title, style = type.input.copy(fontWeight = FontWeight.Medium), color = colors.onAccent, maxLines = 2, textAlign = TextAlign.Center)
-            }
-            Spacer(Modifier.weight(1f))
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Pill(onClick = onDismiss, modifier = Modifier.fillMaxWidth(), container = colors.onAccent, content = colors.accent, height = 76.dp) {
-                    Text(stringResource(R.string.ringing_dismiss), style = type.ringButton)
-                }
-                if (onSnooze != null) {
-                    Pill(
-                        onClick = onSnooze,
-                        modifier = Modifier.fillMaxWidth(),
-                        container = Color.Transparent,
-                        content = colors.onAccent,
-                        border = BorderStroke(2.dp, colors.onAccent),
-                        height = 76.dp,
-                    ) {
-                        Text(snoozeMinutes?.let { pluralStringResource(R.plurals.ringing_snooze_minutes, it, it) } ?: stringResource(R.string.ringing_snooze), style = type.ringButton)
-                    }
-                    autoSnoozeMinutes?.let {
-                        Text(
-                            pluralStringResource(R.plurals.ringing_auto_snooze, it, it),
-                            Modifier.padding(top = 6.dp).alpha(0.8f),
-                            style = type.caption,
-                            color = colors.onAccent,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * The three concentric circles behind the lower half (520/360/200 dp, centred where the mockup puts them). They
- * breathe slowly unless the system turned animations off.
- */
-@Composable
-private fun RingCircles(modifier: Modifier = Modifier) {
-    val onAccent = ReveilleTheme.colors.onAccent
-    val resolver = LocalContext.current.contentResolver
-    val animate = remember { Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f }
-    val pulse = if (animate) {
-        val transition = rememberInfiniteTransition(label = "ring pulse")
-        transition.animateFloat(1f, 1.06f, infiniteRepeatable(tween(2_400, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "scale").value
-    } else {
-        1f
-    }
-    Canvas(modifier) {
-        val center = Offset(size.width / 2, size.height * (560f / 844f))
-        val stroke = Stroke(1.dp.toPx())
-        drawCircle(onAccent.copy(alpha = 0.10f), radius = 260.dp.toPx() * pulse, center = center, style = stroke)
-        drawCircle(onAccent.copy(alpha = 0.14f), radius = 180.dp.toPx() * (1f + (pulse - 1f) * 1.5f), center = center, style = stroke)
-        drawCircle(onAccent.copy(alpha = 0.06f), radius = 100.dp.toPx() * (1f + (pulse - 1f) * 2f), center = center)
     }
 }

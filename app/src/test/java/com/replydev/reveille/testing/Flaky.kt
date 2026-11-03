@@ -54,3 +54,10 @@ class FailingNotifier(context: Context) : Notifier(context) {
         super.showSchedulingFailed()
     }
 }
+
+/** Preferences store whose every read throws (an unreadable settings file). */
+class UnreadableDataStore : DataStore<Preferences> {
+    override val data: kotlinx.coroutines.flow.Flow<Preferences> = kotlinx.coroutines.flow.flow { throw IOException("unreadable") }
+
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences = throw IOException("unreadable")
+}

@@ -24,7 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /** Manual dependency wiring. Everything that alarm delivery touches lives in device-protected storage. */
-class AppContainer(context: Context) {
+open class AppContainer(context: Context) {
     private val app = context.applicationContext
     private val deviceStorage = app.createDeviceProtectedStorageContext()
 
@@ -41,7 +41,8 @@ class AppContainer(context: Context) {
     }
 
     val schedulerState: SchedulerState by lazy { SchedulerState(preferences) }
-    val settings: SettingsStore by lazy { SettingsStore(preferences) }
+    /** Open so tests can make the ringing screen's settings read fail. */
+    open val settings: SettingsStore by lazy { SettingsStore(preferences) }
     val notifier: Notifier by lazy { Notifier(app) }
     val reliability: ReliabilityChecker by lazy { ReliabilityChecker(app, settings) }
 

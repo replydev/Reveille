@@ -367,6 +367,31 @@
         <item quantity="many">Répétition automatique après %d min de sonnerie</item>
         <item quantity="other">Répétition automatique après %d min de sonnerie</item>
     </plurals>
+    <!-- Midnight theme: %1$s is the time of the backup alarm -->
+    <string name="ringing_backup_at">Le secours sonne à %1$s</string>
+    <!-- Midnight theme footnote; %d is the number of minutes before the alarm snoozes itself -->
+    <plurals name="ringing_midnight_footnote">
+        <item quantity="one">Écran atténué · répétition automatique après %d min</item>
+        <item quantity="many">Écran atténué · répétition automatique après %d min</item>
+        <item quantity="other">Écran atténué · répétition automatique après %d min</item>
+    </plurals>
+    <!-- Policy colour theme: %1$s is the day and time of the policy's next alarm ("Tomorrow 07:55") -->
+    <string name="ringing_next">Prochaine : %1$s</string>
+    <!-- Under "Snooze" in the Policy colour theme; %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_length">
+        <item quantity="one">%d min</item>
+        <item quantity="many">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
+    <!-- Paper theme: info cell titles -->
+    <string name="ringing_paper_alarm">Alarme</string>
+    <string name="ringing_paper_ringing_for">Sonne depuis</string>
+    <!-- Paper theme, on the Snooze button; %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_plus">
+        <item quantity="one">+%d min</item>
+        <item quantity="many">+%d min</item>
+        <item quantity="other">+%d min</item>
+    </plurals>
     <string name="widget_subtitle">%1$s · %2$s</string>
     <string name="widget_tap_to_fix">Touchez pour corriger</string>
     <string name="widget_no_alarms">Aucune alarme réglée</string>

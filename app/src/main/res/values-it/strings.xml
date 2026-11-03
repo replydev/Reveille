@@ -367,6 +367,31 @@
         <item quantity="many">Si posticipa da sola dopo %d min</item>
         <item quantity="other">Si posticipa da sola dopo %d min</item>
     </plurals>
+    <!-- Midnight theme: %1$s is the time of the backup alarm -->
+    <string name="ringing_backup_at">La riserva suona alle %1$s</string>
+    <!-- Midnight theme footnote; %d is the number of minutes before the alarm snoozes itself -->
+    <plurals name="ringing_midnight_footnote">
+        <item quantity="one">Schermo attenuato · si posticipa da sola dopo %d min</item>
+        <item quantity="many">Schermo attenuato · si posticipa da sola dopo %d min</item>
+        <item quantity="other">Schermo attenuato · si posticipa da sola dopo %d min</item>
+    </plurals>
+    <!-- Policy colour theme: %1$s is the day and time of the policy's next alarm ("Tomorrow 07:55") -->
+    <string name="ringing_next">Prossima: %1$s</string>
+    <!-- Under "Snooze" in the Policy colour theme; %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_length">
+        <item quantity="one">%d min</item>
+        <item quantity="many">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
+    <!-- Paper theme: info cell titles -->
+    <string name="ringing_paper_alarm">Sveglia</string>
+    <string name="ringing_paper_ringing_for">Suona da</string>
+    <!-- Paper theme, on the Snooze button; %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_plus">
+        <item quantity="one">+%d min</item>
+        <item quantity="many">+%d min</item>
+        <item quantity="other">+%d min</item>
+    </plurals>
     <string name="widget_subtitle">%1$s · %2$s</string>
     <string name="widget_tap_to_fix">Tocca per risolvere</string>
     <string name="widget_no_alarms">Nessuna sveglia impostata</string>

@@ -44,6 +44,9 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinDuration
 
 data class Ringing(val armed: Armed, val backup: Boolean) {
+    /** When this delivery started ringing (Paper shows how long it has rung). Not part of equality. */
+    val since: Instant = Instant.now()
+
     fun title(context: Context): String = if (backup) context.getString(R.string.ringing_backup_title, armed.label) else armed.label
 }
 

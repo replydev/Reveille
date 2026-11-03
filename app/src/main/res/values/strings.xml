@@ -407,6 +407,28 @@
         <item quantity="one">Auto-snoozes after %d min of ringing</item>
         <item quantity="other">Auto-snoozes after %d min of ringing</item>
     </plurals>
+    <!-- Midnight theme: %1$s is the time of the backup alarm -->
+    <string name="ringing_backup_at">Backup rings at %1$s</string>
+    <!-- Midnight theme footnote; %d is the number of minutes before the alarm snoozes itself -->
+    <plurals name="ringing_midnight_footnote">
+        <item quantity="one">Screen stays dim · auto-snoozes after %d min</item>
+        <item quantity="other">Screen stays dim · auto-snoozes after %d min</item>
+    </plurals>
+    <!-- Policy colour theme: %1$s is the day and time of the policy's next alarm ("Tomorrow 07:55") -->
+    <string name="ringing_next">Next: %1$s</string>
+    <!-- Under "Snooze" in the Policy colour theme; %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_length">
+        <item quantity="one">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
+    <!-- Paper theme: info cell titles -->
+    <string name="ringing_paper_alarm">Alarm</string>
+    <string name="ringing_paper_ringing_for">Ringing for</string>
+    <!-- Paper theme, on the Snooze button; %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_plus">
+        <item quantity="one">+%d min</item>
+        <item quantity="other">+%d min</item>
+    </plurals>
 
     <!-- Widget -->
     <!-- %1$s is the day ("Today", "Tomorrow", a weekday…), %2$s the alarm label -->

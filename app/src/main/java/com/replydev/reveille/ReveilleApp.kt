@@ -2,11 +2,12 @@ package com.replydev.reveille
 
 import android.app.Application
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.work.Configuration
 
 class ReveilleApp : Application(), Configuration.Provider {
     lateinit var container: AppContainer
-        private set
+        @VisibleForTesting internal set
 
     override fun onCreate() {
         super.onCreate()
