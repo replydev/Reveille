@@ -43,6 +43,7 @@ import com.replydev.reveille.ui.oneoff.OneOffEditorScreen
 import com.replydev.reveille.ui.policies.PoliciesScreen
 import com.replydev.reveille.ui.policies.PolicyEditorScreen
 import com.replydev.reveille.ui.reliability.ReliabilityScreen
+import com.replydev.reveille.ui.settings.RingThemeScreen
 import com.replydev.reveille.ui.settings.SettingsScreen
 import com.replydev.reveille.ui.theme.Motion
 import com.replydev.reveille.ui.theme.ReveilleTheme
@@ -53,6 +54,7 @@ object Routes {
     const val POLICY = "policy/{id}"
     const val ONE_OFF = "oneoff/{id}"
     const val UPDATE = "update"
+    const val RINGING_THEME = "settings/ringing-theme"
     val SETTINGS = Tab.Settings.route
     val RELIABILITY = Tab.Health.route
 
@@ -121,7 +123,8 @@ fun ReveilleNavHost(launchTarget: String? = null, onLaunched: () -> Unit = {}) {
             ) { entry ->
                 NavBottomSheet(onDismissed = { nav.leave(entry) }, topGap = 96.dp) { close -> UpdateSheet(onClose = close) }
             }
-            composable(Routes.SETTINGS) { SettingsScreen(onOpenUpdate = { nav.openUpdate() }) }
+            composable(Routes.SETTINGS) { SettingsScreen(onOpenUpdate = { nav.openUpdate() }, onOpenRingTheme = { nav.navigate(Routes.RINGING_THEME) }) }
+            composable(Routes.RINGING_THEME) { entry -> RingThemeScreen(onBack = { nav.leave(entry) }) }
             composable(Routes.RELIABILITY) { ReliabilityScreen() }
         }
         AnimatedVisibility(

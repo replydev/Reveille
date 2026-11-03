@@ -44,11 +44,14 @@ import android.graphics.Color as AndroidColor
  * ([fallbackIntent]) is opened by the fallback alarm notification when the service could not ring: it shows the
  * alarm and a Dismiss that acknowledges the fallback. Both work before the first unlock (directBootAware).
  *
+ * Preview mode ([previewIntent]) shows a theme with sample data for the picker; it rings nothing and records nothing.
+ *
  * The look comes from the [RingTheme] in the device-protected settings. It is cosmetic and never waited on: until the
  * settings are read (or if they can't be) the screen is Dawn.
  */
 class RingingActivity : ComponentActivity() {
     private var fallback by mutableStateOf<Armed?>(null)
+    private var preview by mutableStateOf<RingTheme?>(null)
     private var windowTheme: RingTheme? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,6 +61,7 @@ class RingingActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         applyWindowTheme(RingTheme.DAWN)
         fallback = fallbackArmed(intent)
+        preview = previewTheme(intent)
         val (initialSettings, ringSettings) = ringSettings()
         setContent {
             ReveilleTheme {
@@ -66,6 +70,7 @@ class RingingActivity : ComponentActivity() {
                 val ringing by RingingService.ringing.collectAsStateWithLifecycle()
                 val current = ringing
                 val fallbackAlarm = fallback
+                val previewTheme = preview
                 when {
                     // The service took over (e.g. the ring guard succeeded): show the real ringing screen.
                     current != null -> Ring(
@@ -91,6 +96,7 @@ class RingingActivity : ComponentActivity() {
                         backupOf = null,
                         actions = RingActions(onDismiss = { dismissFallback(fallbackAlarm) }, onSnooze = null),
                     )
+                    previewTheme != null -> Preview(previewTheme)
                     else -> LaunchedEffect(Unit) { finish() }
                 }
             }
@@ -142,6 +148,26 @@ class RingingActivity : ComponentActivity() {
         )
     }
 
+    /**
+     * Preview mode: [theme] with sample data. Nothing behind it rings: no service, no wake lock, no fire log. Dismiss
+     * and Snooze just close it.
+     */
+    @Composable
+    private fun Preview(theme: RingTheme) {
+        SideEffect { applyWindowTheme(theme) }
+        val now by produceState(ZonedDateTime.now()) {
+            while (true) {
+                value = ZonedDateTime.now()
+                delay(1_000)
+            }
+        }
+        val close = {
+            applyBrightness(null)
+            finish()
+        }
+        RingingContent(theme, sampleRingState(stringResource(R.string.ring_theme_sample_label), now), RingActions(onDismiss = close, onSnooze = close))
+    }
+
     private suspend fun lookUpPolicy(armed: Armed): PolicyLookup? = try {
         withContext(Dispatchers.IO) {
             PolicyLookup(policyRingInfo(container.repository.snapshot(), armed, Instant.now(), ZoneId.systemDefault()))
@@ -183,6 +209,7 @@ class RingingActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         fallback = fallbackArmed(intent)
+        preview = previewTheme(intent)
     }
 
     private fun dismissFallback(armed: Armed) {
@@ -201,8 +228,15 @@ class RingingActivity : ComponentActivity() {
     companion object {
         private const val TAG = "Reveille"
         private const val EXTRA_FALLBACK = "fallback_armed"
+        private const val EXTRA_PREVIEW = "preview_theme"
 
         private fun fallbackArmed(intent: Intent?): Armed? = intent?.getStringExtra(EXTRA_FALLBACK)?.let(Armed::decode)
+
+        private fun previewTheme(intent: Intent?): RingTheme? = intent?.getStringExtra(EXTRA_PREVIEW)?.let(RingTheme::fromName)
+
+        /** Opens the ringing screen in preview mode: [theme] with sample data, no sound, nothing recorded. */
+        fun previewIntent(context: Context, theme: RingTheme): Intent =
+            Intent(context, RingingActivity::class.java).putExtra(EXTRA_PREVIEW, theme.name)
 
         fun fallbackIntent(context: Context, armed: Armed): Intent =
             Intent(context, RingingActivity::class.java)

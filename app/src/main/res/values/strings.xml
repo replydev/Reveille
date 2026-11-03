@@ -436,4 +436,25 @@
     <string name="widget_tap_to_fix">Tap to fix</string>
     <string name="widget_no_alarms">No alarms set</string>
     <string name="widget_new_one_off">New one-off alarm</string>
+    <!-- Ringing theme picker (Settings › Ringing theme) -->
+    <string name="settings_ringing_theme">Ringing theme</string>
+    <string name="ring_theme_dawn">Dawn</string>
+    <string name="ring_theme_midnight">Midnight</string>
+    <string name="ring_theme_policy_colour">Policy colour</string>
+    <string name="ring_theme_horizon">Horizon</string>
+    <string name="ring_theme_paper">Paper</string>
+    <string name="ring_theme_dawn_hint">Default · amber</string>
+    <string name="ring_theme_midnight_hint">Dim, for dark rooms</string>
+    <string name="ring_theme_policy_colour_hint">Tells routines apart</string>
+    <string name="ring_theme_horizon_hint">Sunrise in bands</string>
+    <string name="ring_theme_paper_hint">Light and bold</string>
+    <string name="ring_theme_group">Theme</string>
+    <string name="ring_theme_preview">Preview</string>
+    <string name="ring_theme_test">Test with sound</string>
+    <string name="ring_theme_per_policy">Per policy</string>
+    <string name="ring_theme_one_offs_default">One-offs use the default</string>
+    <string name="ring_theme_default">Default</string>
+    <!-- The sample alarm label in theme thumbnails and the preview -->
+    <string name="ring_theme_sample_label">Work</string>
+    <string name="ring_theme_save_failed">Could not save the theme</string>
 </resources>

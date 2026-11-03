@@ -14,7 +14,13 @@ import com.replydev.reveille.data.SettingsStore
 import com.replydev.reveille.engine.Armed
 import com.replydev.reveille.testing.UnreadableDataStore
 import kotlinx.coroutines.runBlocking
+import androidx.compose.ui.test.performClick
+import kotlinx.coroutines.flow.first
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowPowerManager
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -88,6 +94,26 @@ class RingingActivityTest {
             scenario.onActivity { org.junit.Assert.assertEquals(0.15f, it.window.attributes.screenBrightness, 0f) }
         }
     }
+
+    private fun assertPreviewTouchesNothing(press: String) {
+        runBlocking { app.container.settings.update { it.copy(ringTheme = RingTheme.MIDNIGHT) } }
+        ActivityScenario.launch<RingingActivity>(RingingActivity.previewIntent(app, RingTheme.PAPER)).use { scenario ->
+            // The theme comes from the intent, not from the settings.
+            compose.waitUntil(5_000) { compose.onAllNodesWithTagExists(ringThemeTag(RingTheme.PAPER)) }
+            compose.onNodeWithText("Dismiss").assertIsDisplayed()
+            lateinit var activity: RingingActivity
+            scenario.onActivity { activity = it }
+            compose.onNodeWithText(press, substring = true).performClick()
+            compose.waitUntil(5_000) { activity.isFinishing }
+        }
+        assertNull(shadowOf(app).nextStartedService)
+        assertNull(ShadowPowerManager.getLatestWakeLock())
+        assertEquals(emptyList<Any>(), runBlocking { app.container.database.fireLogDao().observeRecent(10).first() })
+    }
+
+    @Test fun previewDismissJustCloses() = assertPreviewTouchesNothing("Dismiss")
+
+    @Test fun previewSnoozeJustCloses() = assertPreviewTouchesNothing("Snooze")
 }
 
 private fun androidx.compose.ui.test.junit4.ComposeTestRule.onAllNodesWithTagExists(tag: String): Boolean =

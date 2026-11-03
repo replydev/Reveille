@@ -71,6 +71,7 @@ import com.replydev.reveille.ui.components.TimeDisplay
 import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.theme.policyColor
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
@@ -488,3 +489,21 @@ private fun PaperButtonRow(label: String, detail: @Composable () -> Unit) {
         detail()
     }
 }
+
+/**
+ * The sample alarm shown by the picker's thumbnails and by preview mode: [label] ("Work") in the first policy colour,
+ * Mon–Wed, next tomorrow, a 9 min snooze, a 5 min auto-snooze, rung for 0:42 (the mockups' renderVals()).
+ */
+fun sampleRingState(label: String, now: ZonedDateTime): RingState = RingState(
+    now = now,
+    title = label,
+    policyId = SAMPLE_POLICY_ID,
+    policy = PolicyRingInfo(label, setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY), now.plusDays(1).toInstant()),
+    backupOf = now.toInstant(),
+    snoozeMinutes = 9,
+    autoSnoozeMinutes = 5,
+    ringingFor = Duration.ofSeconds(42),
+)
+
+/** Any id in the first policy-colour slot (#8AB4FF, as in RingPolicy.dc.html). */
+private const val SAMPLE_POLICY_ID = 0L

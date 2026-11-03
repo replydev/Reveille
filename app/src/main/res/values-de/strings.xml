@@ -377,4 +377,25 @@
     <string name="widget_tap_to_fix">Zum Beheben tippen</string>
     <string name="widget_no_alarms">Kein Wecker gestellt</string>
     <string name="widget_new_one_off">Neuer einmaliger Wecker</string>
+    <!-- Ringing theme picker (Settings › Ringing theme) -->
+    <string name="settings_ringing_theme">Weckerdesign</string>
+    <string name="ring_theme_dawn">Morgenrot</string>
+    <string name="ring_theme_midnight">Mitternacht</string>
+    <string name="ring_theme_policy_colour">Farbe des Zeitplans</string>
+    <string name="ring_theme_horizon">Horizont</string>
+    <string name="ring_theme_paper">Papier</string>
+    <string name="ring_theme_dawn_hint">Standard · Bernstein</string>
+    <string name="ring_theme_midnight_hint">Gedimmt, für dunkle Räume</string>
+    <string name="ring_theme_policy_colour_hint">Unterscheidet Routinen</string>
+    <string name="ring_theme_horizon_hint">Sonnenaufgang in Streifen</string>
+    <string name="ring_theme_paper_hint">Hell und kräftig</string>
+    <string name="ring_theme_group">Design</string>
+    <string name="ring_theme_preview">Vorschau</string>
+    <string name="ring_theme_test">Mit Ton testen</string>
+    <string name="ring_theme_per_policy">Pro Zeitplan</string>
+    <string name="ring_theme_one_offs_default">Einzelwecker nutzen den Standard</string>
+    <string name="ring_theme_default">Standard</string>
+    <!-- The sample alarm label in theme thumbnails and the preview -->
+    <string name="ring_theme_sample_label">Arbeit</string>
+    <string name="ring_theme_save_failed">Design konnte nicht gespeichert werden</string>
 </resources>
