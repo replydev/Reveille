@@ -5,11 +5,13 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -24,12 +26,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.replydev.reveille.R
@@ -348,15 +353,20 @@ private fun NextUpCard(
             }
             val target = hero.target
             if (skippable != null || target != null) {
-                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Equal heights when one label wraps onto two lines.
+                Row(Modifier.padding(top = 4.dp).height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (skippable != null) {
-                        PillButton(stringResource(R.string.today_skip_this_one), { onSkip(skippable) }, Modifier.weight(1f), style = PillStyle.Outlined, enabled = skipEnabled)
+                        PillButton(
+                            stringResource(R.string.today_skip_this_one), { onSkip(skippable) }, Modifier.weight(1f).fillMaxHeight(),
+                            style = PillStyle.Outlined,
+                            enabled = skipEnabled,
+                        )
                     }
                     if (target != null) {
                         PillButton(
                             stringResource(if (target is HeroTarget.OneOff) R.string.common_edit else R.string.today_open_policy),
                             { onOpen(target) },
-                            Modifier.weight(1f),
+                            Modifier.weight(1f).fillMaxHeight(),
                             style = PillStyle.Secondary,
                         )
                     }
@@ -416,26 +426,90 @@ private fun OccurrenceRow(
     val occurrence = entry.occurrence
     val oneOff = occurrence.sources.filterIsInstance<Source.OneOffAlarm>().firstOrNull()
     val faded = Modifier.alpha(if (entry.skipped) 0.45f else 1f)
-    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            labels.formats.time(occurrence.at.toLocalTime()),
-            // "12:55 PM" doesn't fit the 24-hour column; a wider minimum keeps the labels aligned across rows.
-            faded.widthIn(min = if (labels.formats.is24Hour) 62.dp else 92.dp),
-            style = type.timeRow.copy(textDecoration = if (entry.skipped) TextDecoration.LineThrough else null),
-            maxLines = 1,
-            softWrap = false,
-        )
-        Spacer(Modifier.width(12.dp))
-        Row(faded.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PolicyDot(sourceColor(occurrence.sources))
-            Text(occurrence.label, Modifier.weight(1f, fill = false), style = type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            occurrenceNote(labels.res, occurrence.sources, entry.skipped, intervals::get)?.let {
-                Text(it, style = type.small, color = colors.muted, maxLines = 1)
+    // "12:55 PM" doesn't fit the 24-hour column; a wider minimum keeps the labels aligned across rows.
+    val timeWidth = if (labels.formats.is24Hour) 62.dp else 92.dp
+    ActionRow(
+        // The time, the dot and a few characters of the label.
+        minContent = timeWidth + 12.dp + 16.dp + 64.dp,
+        content = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    labels.formats.time(occurrence.at.toLocalTime()),
+                    faded.widthIn(min = timeWidth),
+                    style = type.timeRow.copy(textDecoration = if (entry.skipped) TextDecoration.LineThrough else null),
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                Spacer(Modifier.width(12.dp))
+                Row(faded.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PolicyDot(sourceColor(occurrence.sources))
+                    LabelAndNote(occurrence.label, occurrenceNote(labels.res, occurrence.sources, entry.skipped, intervals::get), Modifier.weight(1f))
+                }
+            }
+        },
+        actions = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // A one-off keeps both actions: Edit opens it, Skip deletes it with Undo.
+                if (oneOff != null) TextAction(stringResource(R.string.common_edit), { onEditOneOff(oneOff.oneOffId) })
+                TextAction(stringResource(if (entry.skipped) R.string.today_unskip else R.string.today_skip), onToggleSkip, enabled = enabled)
+            }
+        },
+    )
+}
+
+/**
+ * [content] and [actions] on one line, at least 40 dp tall. When the actions would leave [content] less than
+ * [minContent] (long translations on a narrow phone), they move to a second line, aligned to the end.
+ */
+@Composable
+private fun ActionRow(minContent: Dp, content: @Composable () -> Unit, actions: @Composable () -> Unit) {
+    Layout(contents = listOf(content, actions), modifier = Modifier.fillMaxWidth()) { (contentSlot, actionsSlot), constraints ->
+        val width = constraints.maxWidth
+        val minHeight = 40.dp.roundToPx()
+        val actionsPlaceable = actionsSlot.single().measure(Constraints(maxWidth = width))
+        val oneLine = width - actionsPlaceable.width >= minContent.roundToPx()
+        val contentWidth = if (oneLine) width - actionsPlaceable.width else width
+        val contentPlaceable = contentSlot.single().measure(Constraints.fixedWidth(contentWidth))
+        val lineHeight = maxOf(minHeight, contentPlaceable.height, if (oneLine) actionsPlaceable.height else 0)
+        val height = if (oneLine) lineHeight else lineHeight + actionsPlaceable.height
+        layout(width, height) {
+            contentPlaceable.place(0, (lineHeight - contentPlaceable.height) / 2)
+            if (oneLine) {
+                actionsPlaceable.place(width - actionsPlaceable.width, (lineHeight - actionsPlaceable.height) / 2)
+            } else {
+                actionsPlaceable.place(width - actionsPlaceable.width, lineHeight)
             }
         }
-        // A one-off keeps both actions: Edit opens it, Skip deletes it with Undo.
-        if (oneOff != null) TextAction(stringResource(R.string.common_edit), { onEditOneOff(oneOff.oneOffId) })
-        TextAction(stringResource(if (entry.skipped) R.string.today_unskip else R.string.today_skip), onToggleSkip, enabled = enabled)
+    }
+}
+
+/**
+ * The occurrence label and its muted [note] on one line. When both don't fit, the label keeps its full width up to
+ * half the line (so a long note can't squeeze it to "…") and both are ellipsized.
+ */
+@Composable
+private fun LabelAndNote(label: String, note: String?, modifier: Modifier = Modifier) {
+    val colors = ReveilleTheme.colors
+    val type = ReveilleTheme.type
+    Layout(
+        content = {
+            Text(label, style = type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (note != null) Text(note, style = type.small, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        modifier = modifier,
+    ) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val gap = 8.dp.roundToPx()
+        val labelWant = measurables[0].maxIntrinsicWidth(Constraints.Infinity)
+        val noteWant = measurables.getOrNull(1)?.let { it.maxIntrinsicWidth(Constraints.Infinity) + gap } ?: 0
+        val labelWidth = if (labelWant + noteWant <= width) labelWant else maxOf(width - noteWant, minOf(labelWant, width / 2))
+        val labelPlaceable = measurables[0].measure(Constraints(maxWidth = labelWidth.coerceIn(0, width)))
+        val notePlaceable = measurables.getOrNull(1)?.measure(Constraints(maxWidth = (width - labelPlaceable.width - gap).coerceAtLeast(0)))
+        val height = maxOf(labelPlaceable.height, notePlaceable?.height ?: 0)
+        layout(width, height) {
+            labelPlaceable.place(0, (height - labelPlaceable.height) / 2)
+            notePlaceable?.place(labelPlaceable.width + gap, (height - notePlaceable.height) / 2)
+        }
     }
 }
 

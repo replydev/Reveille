@@ -117,7 +117,7 @@ fun SettingsScreen(onOpenUpdate: () -> Unit) {
                                     session.message(UiMessage(noSoundPicker))
                                 }
                             }
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
@@ -188,7 +188,7 @@ private fun SwitchRow(label: String, hint: String, checked: Boolean, onChange: (
             .topDivider(ReveilleTheme.colors.outline)
             .heightIn(min = 60.dp)
             .toggleable(checked, role = Role.Switch, onValueChange = onChange)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -215,7 +215,7 @@ private fun StepperRow(
             .fillMaxWidth()
             .then(if (divider) Modifier.topDivider(ReveilleTheme.colors.outline) else Modifier)
             .heightIn(min = 68.dp)
-            .padding(start = 16.dp, end = 12.dp),
+            .padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

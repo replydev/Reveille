@@ -86,6 +86,17 @@ Reveille follows the phone's 12/24-hour setting (`DateFormat.is24HourFormat`); t
 - In 24-hour mode nothing changes: "07:30", no period.
 - `Main.dc.html` shows the 12-hour variant with its `clock` prop set to `12h`.
 
+### Long text
+German and French labels run up to ~40% longer than English. Every screen is checked in `de` and `fr` at 411 dp and 360 dp wide (`wm density 480` on a 1080 px phone).
+- **Never truncate alarm-critical text** (times, dates, warnings, check titles and details). It wraps.
+- **One-line labels** that only name something (policy and alarm labels in rows and chips, the occurrence note, log labels) use `maxLines = 1` with an ellipsis. In a timeline row the label keeps its own width up to half the line before its note is cut, so it never collapses to "…".
+- **Buttons** (`PillButton`, segmented control) wrap onto a second line, centred, and grow taller; their height is a minimum, never below its token (44–48 dp). Side-by-side buttons (Today hero) stretch to the same height.
+- **Rows that wrap** (settings switches and steppers, passing checks) keep 6–8 dp of vertical padding inside their minimum height, so wrapped text doesn't touch the dividers.
+- **Action rows**: a timeline row's text actions move to a second line, aligned to the end, when they would leave the label less than ~64 dp. The Health "Mark as done" checkbox moves under "Open settings", and the Health verdict moves under the "X of Y checks pass" count, rather than breaking words.
+- **Number and unit stay together**: relative times use a non-breaking space ("dans 42 h", "in 42 Std.").
+- **Bottom bar** labels keep `type.small`; "Einstellungen" and "Paramètres" fit at 360 dp.
+- Shortening a translation is a valid fix if it keeps the meaning; prefer it to a smaller type step.
+
 ### Shape and spacing
 - Radii: hero card 28, cards 20–24, inputs and tiles 16, chips 8, day toggles 12, pills and buttons fully rounded (height/2), sheet top corners 32, FAB 18.
 - Screen horizontal padding is 16 for cards and 20 for headers. The gap between cards is 10–12, and section gaps are 22.

@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -209,8 +211,9 @@ private fun SummaryBar(res: Resources, passing: Int, total: Int, modifier: Modif
     val colors = ReveilleTheme.colors
     val summary = healthSummary(res, passing, total)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(summary.text, Modifier.weight(1f), style = ReveilleTheme.type.titleS.copy(fontWeight = FontWeight.Medium))
+        // The verdict moves under the count when both don't fit on one line, so neither breaks mid-word.
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, itemVerticalAlignment = Alignment.Bottom) {
+            Text(summary.text, Modifier.padding(end = 12.dp), style = ReveilleTheme.type.titleS.copy(fontWeight = FontWeight.Medium))
             Text(summary.verdict, style = ReveilleTheme.type.caption, color = if (summary.allGood) colors.success else colors.dangerText)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -235,7 +238,13 @@ private fun FailingCard(check: ReliabilityCheck, onFix: () -> Unit, onConfirm: (
             }
         }
         if (check.fix != null || check.manual) {
-            Row(Modifier.padding(start = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // "Mark as done" moves under the button when both don't fit on one line.
+            FlowRow(
+                Modifier.padding(start = 44.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 if (check.fix != null) {
                     PillButton(
                         stringResource(R.string.health_open_settings), onFix,
@@ -276,7 +285,7 @@ private fun PassingCard(res: Resources, checks: List<ReliabilityCheck>, onUnconf
                     .fillMaxWidth()
                     .heightIn(min = 44.dp)
                     .then(if (check.manual) Modifier.clickable(onClickLabel = unconfirmLabel) { onUnconfirm(check) } else Modifier)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -299,7 +308,7 @@ private fun LogRow(entry: FireLogEntity, time: String, outcome: String, modifier
         // Wide enough for "Fri, 30 Oct 08:55" in most locales, so every label starts in the same column; a longer
         // date pushes its label along rather than being cut off.
         Text(time, Modifier.widthIn(min = 128.dp), style = ReveilleTheme.type.mono, color = colors.muted, maxLines = 1)
-        Text(entry.label, Modifier.weight(1f), style = ReveilleTheme.type.caption, maxLines = 1)
+        Text(entry.label, Modifier.weight(1f), style = ReveilleTheme.type.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
             outcome,
             style = ReveilleTheme.type.caption,

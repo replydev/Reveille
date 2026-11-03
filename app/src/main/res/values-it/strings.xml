@@ -6,19 +6,19 @@
     <string name="time_yesterday">Ieri</string>
     <string name="time_now">ora</string>
     <plurals name="time_in_minutes">
-        <item quantity="one">tra %d min</item>
-        <item quantity="many">tra %d min</item>
-        <item quantity="other">tra %d min</item>
+        <item quantity="one">tra %d\u00A0min</item>
+        <item quantity="many">tra %d\u00A0min</item>
+        <item quantity="other">tra %d\u00A0min</item>
     </plurals>
     <plurals name="time_in_hours">
-        <item quantity="one">tra %d h</item>
-        <item quantity="many">tra %d h</item>
-        <item quantity="other">tra %d h</item>
+        <item quantity="one">tra %d\u00A0h</item>
+        <item quantity="many">tra %d\u00A0h</item>
+        <item quantity="other">tra %d\u00A0h</item>
     </plurals>
     <plurals name="time_in_days">
-        <item quantity="one">tra %d g</item>
-        <item quantity="many">tra %d g</item>
-        <item quantity="other">tra %d g</item>
+        <item quantity="one">tra %d\u00A0g</item>
+        <item quantity="many">tra %d\u00A0g</item>
+        <item quantity="other">tra %d\u00A0g</item>
     </plurals>
     <string name="time_every_day">Ogni giorno</string>
     <string name="time_weekdays">lun–ven</string>

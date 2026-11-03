@@ -19,7 +19,7 @@ class TranslationsTest {
     fun italian() {
         assertEquals("Oggi", context.getString(R.string.nav_today))
         assertEquals("Sveglia", context.getString(R.string.oneoff_default_label))
-        assertEquals("tra 1 min", Labels.of(context).relative(Relative.Minutes(1)))
+        assertEquals("tra 1\u00A0min", Labels.of(context).relative(Relative.Minutes(1)))
         assertEquals("Domani", Labels.of(context).day(DayLabel.Tomorrow))
     }
 

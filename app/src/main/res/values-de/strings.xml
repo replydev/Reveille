@@ -6,16 +6,16 @@
     <string name="time_yesterday">Gestern</string>
     <string name="time_now">jetzt</string>
     <plurals name="time_in_minutes">
-        <item quantity="one">in %d Min.</item>
-        <item quantity="other">in %d Min.</item>
+        <item quantity="one">in %d\u00A0Min.</item>
+        <item quantity="other">in %d\u00A0Min.</item>
     </plurals>
     <plurals name="time_in_hours">
-        <item quantity="one">in %d Std.</item>
-        <item quantity="other">in %d Std.</item>
+        <item quantity="one">in %d\u00A0Std.</item>
+        <item quantity="other">in %d\u00A0Std.</item>
     </plurals>
     <plurals name="time_in_days">
-        <item quantity="one">in %d Tag</item>
-        <item quantity="other">in %d Tagen</item>
+        <item quantity="one">in %d\u00A0Tag</item>
+        <item quantity="other">in %d\u00A0Tagen</item>
     </plurals>
     <string name="time_every_day">Jeden Tag</string>
     <string name="time_weekdays">Mo–Fr</string>

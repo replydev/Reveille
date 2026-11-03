@@ -79,7 +79,7 @@ fun UpdateNotice(release: Release, onView: () -> Unit, onDismiss: () -> Unit, mo
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconTile(R.drawable.ic_download, colors.accentContainer, colors.accent, size = 36)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(stringResource(R.string.update_ready, release.versionName), style = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold), maxLines = 1)
+                Text(stringResource(R.string.update_ready, release.versionName), style = ReveilleTheme.type.body.copy(fontWeight = FontWeight.SemiBold))
                 if (headline != null) {
                     Text(headline, style = ReveilleTheme.type.caption, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -164,7 +164,7 @@ fun UpdatesSection(prefs: UpdatePrefs, onView: () -> Unit, onMessage: (String) -
                 write { updates.store.setNotify(value) }
             }
             Row(
-                Modifier.fillMaxWidth().topDivider(colors.outline).heightIn(min = 60.dp).padding(start = 16.dp, end = 12.dp),
+                Modifier.fillMaxWidth().topDivider(colors.outline).heightIn(min = 60.dp).padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -282,7 +282,7 @@ private fun SettingSwitch(label: String, hint: String, checked: Boolean, enabled
             .topDivider(ReveilleTheme.colors.outline)
             .heightIn(min = 64.dp)
             .toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {

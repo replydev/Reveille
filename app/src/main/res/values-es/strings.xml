@@ -6,19 +6,19 @@
     <string name="time_yesterday">Ayer</string>
     <string name="time_now">ahora</string>
     <plurals name="time_in_minutes">
-        <item quantity="one">en %d min</item>
-        <item quantity="many">en %d min</item>
-        <item quantity="other">en %d min</item>
+        <item quantity="one">en %d\u00A0min</item>
+        <item quantity="many">en %d\u00A0min</item>
+        <item quantity="other">en %d\u00A0min</item>
     </plurals>
     <plurals name="time_in_hours">
-        <item quantity="one">en %d h</item>
-        <item quantity="many">en %d h</item>
-        <item quantity="other">en %d h</item>
+        <item quantity="one">en %d\u00A0h</item>
+        <item quantity="many">en %d\u00A0h</item>
+        <item quantity="other">en %d\u00A0h</item>
     </plurals>
     <plurals name="time_in_days">
-        <item quantity="one">en %d d</item>
-        <item quantity="many">en %d d</item>
-        <item quantity="other">en %d d</item>
+        <item quantity="one">en %d\u00A0d</item>
+        <item quantity="many">en %d\u00A0d</item>
+        <item quantity="other">en %d\u00A0d</item>
     </plurals>
     <string name="time_every_day">Todos los días</string>
     <string name="time_weekdays">lun–vie</string>
