@@ -49,7 +49,9 @@ class AppContainer(context: Context) {
     val updates: Updates by lazy { Updates(app, appScope, schedulerState) }
 
     val repository: ScheduleRepository by lazy {
-        ScheduleRepository(database.scheduleDao()) { scheduler.rearm("schedule changed") }
+        ScheduleRepository(database.scheduleDao(), defaultOneOffLabel = { app.getString(R.string.oneoff_default_label) }) {
+            scheduler.rearm("schedule changed")
+        }
     }
 
     val scheduler: AlarmScheduler by lazy {

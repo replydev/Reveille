@@ -48,6 +48,8 @@ data class ScheduleSnapshot(
     val policies: List<Policy> = emptyList(),
     val oneOffs: List<OneOff> = emptyList(),
     val skips: List<Skip> = emptyList(),
+    /** Shown for one-offs without a label; the app passes it in the user's language. */
+    val defaultOneOffLabel: String = "Alarm",
 )
 
 /** What produced an occurrence. [key] is stable and stored in skips, logs and armed state. */

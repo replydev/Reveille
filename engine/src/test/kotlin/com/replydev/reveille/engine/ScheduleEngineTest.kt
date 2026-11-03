@@ -97,7 +97,7 @@ class ScheduleEngineTest {
         val oneOff = OneOff(5, LocalDate.parse("2026-11-05"), LocalTime.parse("09:30"), null, OneOffMode.ADDITIVE)
         val result = upcoming(ScheduleSnapshot(listOf(work), listOf(oneOff)), at("2026-11-05", "00:00"), limit = 2)
         assertEquals(listOf("2026-11-05T08:55", "2026-11-05T09:30"), result.times())
-        assertEquals(ScheduleEngine.DEFAULT_ONE_OFF_LABEL, result[1].label)
+        assertEquals("Alarm", result[1].label)
     }
 
     @Test
@@ -216,5 +216,12 @@ class ScheduleEngineTest {
     fun `between with an empty range returns nothing`() {
         val result = ScheduleEngine.between(ScheduleSnapshot(listOf(work)), at("2026-11-02", "08:00"), at("2026-11-02", "07:00"), zone)
         assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `unlabeled one-offs use the snapshot's default label`() {
+        val oneOff = OneOff(1, LocalDate.parse("2026-11-05"), LocalTime.parse("07:00"), null, OneOffMode.ADDITIVE)
+        val snapshot = ScheduleSnapshot(oneOffs = listOf(oneOff), defaultOneOffLabel = "Sveglia")
+        assertEquals("Sveglia", upcoming(snapshot, at("2026-11-05", "00:00"), limit = 1).single().label)
     }
 }

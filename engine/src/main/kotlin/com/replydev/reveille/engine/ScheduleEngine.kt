@@ -14,7 +14,6 @@ data class DayAlarm(val time: LocalTime, val label: String, val source: Source)
 
 object ScheduleEngine {
     const val DEFAULT_HORIZON_DAYS = 400
-    const val DEFAULT_ONE_OFF_LABEL = "Alarm"
 
     /**
      * The first [limit] occurrences strictly after [from], in instant order, looking at most [horizonDays] days
@@ -75,7 +74,7 @@ object ScheduleEngine {
         val policyAlarms = if (isDayReplaced(snapshot, day)) emptyList() else policyAlarmsOn(snapshot, day)
         val oneOffAlarms = snapshot.oneOffs
             .filter { it.date == day }
-            .map { DayAlarm(it.time, it.label ?: DEFAULT_ONE_OFF_LABEL, Source.OneOffAlarm(it.id)) }
+            .map { DayAlarm(it.time, it.label ?: snapshot.defaultOneOffLabel, Source.OneOffAlarm(it.id)) }
         return (policyAlarms + oneOffAlarms).map { ResolvedAlarm(resolve(day, it.time, zone), it) }
     }
 
