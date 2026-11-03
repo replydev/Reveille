@@ -321,7 +321,7 @@ private fun LogRow(entry: FireLogEntity, time: String, outcome: String, modifier
  * Saves an additive one-off 1–2 minutes ahead (on a whole minute) and says whether the system actually armed it,
  * so a refused exact alarm is not presented as a working test.
  */
-private suspend fun scheduleTestAlarm(container: AppContainer, labels: Labels): String {
+internal suspend fun scheduleTestAlarm(container: AppContainer, labels: Labels): String {
     val zone = ZoneId.systemDefault()
     val at = LocalDateTime.now().plusMinutes(2).truncatedTo(ChronoUnit.MINUTES)
     val id = container.repository.saveOneOff(

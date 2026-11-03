@@ -59,6 +59,7 @@ The UI follows `docs/design/README.md` (tokens, components, per-screen spec) and
 - Navigation: a bottom bar with Today / Policies / Health / Settings. The editors are pushed screens (policy) or a bottom sheet (one-off) without the bar.
 - Cards are flat (1 dp outline, no elevation). Touch targets are ≥ 44 dp. Text meets 4.5:1 contrast; `Faint` is never used for body text.
 - In-app updates: `docs/design/updates.md` and `mockups/Update*.dc.html`.
+- Ringing themes and picker: `docs/design/ringing-themes.md` and `mockups/Ring*.dc.html`. Themes change looks only; the ringing screen falls back to Dawn and never waits on the setting.
 - When a screen changes, update its mockup and the spec if the design itself changed, not just the code.
 
 ## Invariants (don't break these)
@@ -72,6 +73,7 @@ The UI follows `docs/design/README.md` (tokens, components, per-screen spec) and
 - **Engine purity**: `:engine` stays free of Android dependencies.
 - **Text never breaks the alarm path**: time formatting must never throw (`TimeFormats` falls back per pattern), and notifier calls during a re-arm are guarded, so a failing notification can't abort it.
 - **Updates never endanger an alarm**: nothing in `alarm/`, `engine/` or `data/` depends on `update/`; installs are refused while ringing and guarded within 30 min of the next alarm; `MY_PACKAGE_REPLACED` must re-arm (tested). An APK is installed only if its SHA-256 matches the release's `.sha256` asset and its signing certificate, package name and higher versionCode match the installed app.
+- **Ringing themes are cosmetic**: they never change sound, volume, vibration, snooze or auto-snooze, and `RingingActivity` renders Dawn if the theme can't be read. The theme setting lives in device-protected storage.
 
 ## Testing
 

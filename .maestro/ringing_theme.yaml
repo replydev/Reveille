@@ -1,0 +1,61 @@
+# Pick a ringing theme, override it for one policy, then preview it and close the preview.
+appId: com.replydev.reveille
+name: Ringing theme
+---
+- runFlow: subflows/launch_clean.yaml
+# A policy for the "Per policy" section.
+- tapOn: "Policies"
+- tapOn: "New policy"
+- tapOn: "Name"
+- inputText: "Gym"
+- hideKeyboard
+- runFlow:
+    when:
+      notVisible: "Remove alarm time"
+    commands:
+      - tapOn: "\\+ Alarm time"
+- tapOn: "Save"
+- assertVisible: "Gym"
+# 1. Settings › Ringing theme.
+- tapOn: "Settings"
+- assertVisible: "Dawn"
+- tapOn: "Ringing theme"
+- assertVisible: "Per policy"
+- assertVisible:
+    checked: true
+    containsDescendants:
+      - text: "Dawn"
+# 2. Select Midnight: the check moves.
+- tapOn: "Midnight"
+- assertVisible:
+    checked: true
+    containsDescendants:
+      - text: "Midnight"
+- assertNotVisible:
+    checked: true
+    containsDescendants:
+      - text: "Dawn"
+# 3. Back: the Settings row reads Midnight.
+- tapOn: "Back"
+- assertVisible: "Ringing theme"
+- assertVisible: "Midnight"
+# 4. Per policy: override Gym with Paper.
+- tapOn: "Ringing theme"
+- scrollUntilVisible:
+    element: "Gym"
+- assertVisible:
+    text: "Default"
+    rightOf: "Gym"
+- tapOn: "Gym"
+- tapOn:
+    text: "Paper"
+    below: "Default"
+- assertVisible:
+    text: "Paper"
+    rightOf: "Gym"
+# 5. Preview opens; Dismiss closes it.
+- tapOn: "Preview"
+- assertVisible: "Dismiss"
+- assertVisible: "Snooze 9 min"
+- tapOn: "Dismiss"
+- assertVisible: "Per policy"

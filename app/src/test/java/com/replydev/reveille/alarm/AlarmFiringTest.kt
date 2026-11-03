@@ -243,6 +243,16 @@ class AlarmFiringTest {
     }
 
     @Test
+    fun snoozeKeepsTheSourcesOfTheAlarmItSnoozes() = runBlocking {
+        val policyAlarm = Armed("P:1:2:2026-11-02", now, "Work", listOf("P:1:2:2026-11-02", "O:5"))
+        firing.decideDelivery(policyAlarm, guard = false, backup = false)
+        ringing = policyAlarm
+        firing.onRingStarted(policyAlarm)
+        assertTrue(firing.snooze(policyAlarm, auto = false))
+        assertEquals(policyAlarm.sourceKeys, state.snooze()!!.sourceKeys)
+    }
+
+    @Test
     fun autoSnoozeGivesUpAsMissedAfterThreeInARow() = runBlocking {
         state.setAutoSnoozeCount(RingDecisions.MAX_AUTO_SNOOZES)
         val snooze = Armed.snooze(now, "Dentist")

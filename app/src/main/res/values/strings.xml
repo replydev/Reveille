@@ -407,6 +407,28 @@
         <item quantity="one">Auto-snoozes after %d min of ringing</item>
         <item quantity="other">Auto-snoozes after %d min of ringing</item>
     </plurals>
+    <!-- Midnight theme: %1$s is the time of the backup alarm -->
+    <string name="ringing_backup_at">Backup rings at %1$s</string>
+    <!-- Midnight theme footnote; %d is the number of minutes before the alarm snoozes itself -->
+    <plurals name="ringing_midnight_footnote">
+        <item quantity="one">Screen stays dim · auto-snoozes after %d min</item>
+        <item quantity="other">Screen stays dim · auto-snoozes after %d min</item>
+    </plurals>
+    <!-- Policy colour theme: %1$s is the day and time of the policy's next alarm ("Tomorrow 07:55") -->
+    <string name="ringing_next">Next: %1$s</string>
+    <!-- Under "Snooze" in the Policy colour theme; %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_length">
+        <item quantity="one">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
+    <!-- Paper theme: info cell titles -->
+    <string name="ringing_paper_alarm">Alarm</string>
+    <string name="ringing_paper_ringing_for">Ringing for</string>
+    <!-- Paper theme, on the Snooze button; %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_plus">
+        <item quantity="one">+%d min</item>
+        <item quantity="other">+%d min</item>
+    </plurals>
 
     <!-- Widget -->
     <!-- %1$s is the day ("Today", "Tomorrow", a weekday…), %2$s the alarm label -->
@@ -414,4 +436,25 @@
     <string name="widget_tap_to_fix">Tap to fix</string>
     <string name="widget_no_alarms">No alarms set</string>
     <string name="widget_new_one_off">New one-off alarm</string>
+    <!-- Ringing theme picker (Settings › Ringing theme) -->
+    <string name="settings_ringing_theme">Ringing theme</string>
+    <string name="ring_theme_dawn">Dawn</string>
+    <string name="ring_theme_midnight">Midnight</string>
+    <string name="ring_theme_policy_colour">Policy colour</string>
+    <string name="ring_theme_horizon">Horizon</string>
+    <string name="ring_theme_paper">Paper</string>
+    <string name="ring_theme_dawn_hint">Default · amber</string>
+    <string name="ring_theme_midnight_hint">Dim, for dark rooms</string>
+    <string name="ring_theme_policy_colour_hint">Tells routines apart</string>
+    <string name="ring_theme_horizon_hint">Sunrise in bands</string>
+    <string name="ring_theme_paper_hint">Light and bold</string>
+    <string name="ring_theme_group">Theme</string>
+    <string name="ring_theme_preview">Preview</string>
+    <string name="ring_theme_test">Test with sound</string>
+    <string name="ring_theme_per_policy">Per policy</string>
+    <string name="ring_theme_one_offs_default">One-offs use the default</string>
+    <string name="ring_theme_default">Default</string>
+    <!-- The sample alarm label in theme thumbnails and the preview -->
+    <string name="ring_theme_sample_label">Work</string>
+    <string name="ring_theme_save_failed">Could not save the theme</string>
 </resources>

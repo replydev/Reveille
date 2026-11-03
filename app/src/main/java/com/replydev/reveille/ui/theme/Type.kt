@@ -21,10 +21,12 @@ import kotlin.math.roundToInt
 
 /** Bundled, not downloadable: the ringing screen must render in Direct Boot with no network. */
 val Geist = FontFamily(
+    Font(R.font.geist_extralight, FontWeight.ExtraLight),
     Font(R.font.geist_light, FontWeight.Light),
     Font(R.font.geist_regular, FontWeight.Normal),
     Font(R.font.geist_medium, FontWeight.Medium),
     Font(R.font.geist_semibold, FontWeight.SemiBold),
+    Font(R.font.geist_bold, FontWeight.Bold),
 )
 
 /** Only for technical strings: "backup 07:57", log timestamps, the version. */

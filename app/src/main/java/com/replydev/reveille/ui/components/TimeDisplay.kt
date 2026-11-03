@@ -3,6 +3,7 @@ package com.replydev.reveille.ui.components
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -15,7 +16,8 @@ import com.replydev.reveille.ui.theme.lineBox
 /**
  * A large time: the digits in [style] and, on a 12-hour phone, the period ("AM") after them in [periodStyle], 4 dp
  * apart and on the same baseline. The digits sit in a CSS line box [lineBox] × their font size tall (see [lineBox]).
- * The period is measured first, so a narrow screen clips the digits rather than dropping "AM" / "PM".
+ * The period is measured first, so a narrow screen clips the digits rather than dropping "AM" / "PM"; with [autoSize]
+ * the digits shrink to fit instead.
  */
 @Composable
 fun TimeDisplay(
@@ -25,6 +27,7 @@ fun TimeDisplay(
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
     lineBox: Float = 1f,
+    autoSize: TextAutoSize? = null,
 ) {
     Row(modifier) {
         Text(
@@ -34,6 +37,7 @@ fun TimeDisplay(
             color = color,
             maxLines = 1,
             softWrap = false,
+            autoSize = autoSize,
         )
         parts.period?.let {
             Spacer(Modifier.width(4.dp))

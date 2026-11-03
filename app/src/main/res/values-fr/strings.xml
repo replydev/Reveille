@@ -367,8 +367,54 @@
         <item quantity="many">Répétition automatique après %d min de sonnerie</item>
         <item quantity="other">Répétition automatique après %d min de sonnerie</item>
     </plurals>
+    <!-- Midnight theme: %1$s is the time of the backup alarm -->
+    <string name="ringing_backup_at">Le secours sonne à %1$s</string>
+    <!-- Midnight theme footnote; %d is the number of minutes before the alarm snoozes itself -->
+    <plurals name="ringing_midnight_footnote">
+        <item quantity="one">Écran atténué · répétition automatique après %d min</item>
+        <item quantity="many">Écran atténué · répétition automatique après %d min</item>
+        <item quantity="other">Écran atténué · répétition automatique après %d min</item>
+    </plurals>
+    <!-- Policy colour theme: %1$s is the day and time of the policy's next alarm ("Tomorrow 07:55") -->
+    <string name="ringing_next">Prochaine : %1$s</string>
+    <!-- Under "Snooze" in the Policy colour theme; %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_length">
+        <item quantity="one">%d min</item>
+        <item quantity="many">%d min</item>
+        <item quantity="other">%d min</item>
+    </plurals>
+    <!-- Paper theme: info cell titles -->
+    <string name="ringing_paper_alarm">Alarme</string>
+    <string name="ringing_paper_ringing_for">Sonne depuis</string>
+    <!-- Paper theme, on the Snooze button; %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_plus">
+        <item quantity="one">+%d min</item>
+        <item quantity="many">+%d min</item>
+        <item quantity="other">+%d min</item>
+    </plurals>
     <string name="widget_subtitle">%1$s · %2$s</string>
     <string name="widget_tap_to_fix">Touchez pour corriger</string>
     <string name="widget_no_alarms">Aucune alarme réglée</string>
     <string name="widget_new_one_off">Nouvelle alarme ponctuelle</string>
+    <!-- Ringing theme picker (Settings › Ringing theme) -->
+    <string name="settings_ringing_theme">Thème de sonnerie</string>
+    <string name="ring_theme_dawn">Aube</string>
+    <string name="ring_theme_midnight">Minuit</string>
+    <string name="ring_theme_policy_colour">Couleur du programme</string>
+    <string name="ring_theme_horizon">Horizon</string>
+    <string name="ring_theme_paper">Papier</string>
+    <string name="ring_theme_dawn_hint">Par défaut · ambre</string>
+    <string name="ring_theme_midnight_hint">Atténué, pour les pièces sombres</string>
+    <string name="ring_theme_policy_colour_hint">Distingue les routines</string>
+    <string name="ring_theme_horizon_hint">Lever de soleil en bandes</string>
+    <string name="ring_theme_paper_hint">Clair et affirmé</string>
+    <string name="ring_theme_group">Thème</string>
+    <string name="ring_theme_preview">Aperçu</string>
+    <string name="ring_theme_test">Tester avec le son</string>
+    <string name="ring_theme_per_policy">Par programme</string>
+    <string name="ring_theme_one_offs_default">Les alarmes ponctuelles utilisent le thème par défaut</string>
+    <string name="ring_theme_default">Par défaut</string>
+    <!-- The sample alarm label in theme thumbnails and the preview -->
+    <string name="ring_theme_sample_label">Travail</string>
+    <string name="ring_theme_save_failed">Impossible d\'enregistrer le thème</string>
 </resources>

@@ -67,7 +67,7 @@ import kotlinx.coroutines.withContext
 private const val MAX_SNOOZE_MINUTES = 30
 
 @Composable
-fun SettingsScreen(onOpenUpdate: () -> Unit) {
+fun SettingsScreen(onOpenUpdate: () -> Unit, onOpenRingTheme: () -> Unit) {
     val context = LocalContext.current
     val container = context.container
     val snackbar = remember { SnackbarHostState() }
@@ -127,6 +127,25 @@ fun SettingsScreen(onOpenUpdate: () -> Unit) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(stringResource(R.string.settings_alarm_sound), style = type.bodyL)
                             Text(ringtoneName, style = type.caption, color = colors.muted)
+                        }
+                        ReveilleIcon(R.drawable.ic_chevron_right, null, tint = colors.muted, size = 18.dp)
+                    }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .topDivider(colors.outline)
+                            .heightIn(min = 64.dp)
+                            .clickable(onClick = onOpenRingTheme)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        Box(Modifier.size(36.dp).background(colors.accentContainer, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                            ReveilleIcon(R.drawable.ic_phone, null, tint = colors.accent, size = 18.dp)
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(stringResource(R.string.settings_ringing_theme), style = type.bodyL)
+                            Text(stringResource(current.ringTheme.nameRes), style = type.caption, color = colors.muted)
                         }
                         ReveilleIcon(R.drawable.ic_chevron_right, null, tint = colors.muted, size = 18.dp)
                     }
