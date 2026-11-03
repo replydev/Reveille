@@ -41,13 +41,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import java.time.DayOfWeek
-import java.util.Locale
-import java.time.format.TextStyle as DayNameStyle
 
-/** M T W T F S S, Monday first like [DayOfWeek.entries]. */
-fun dayLetter(day: DayOfWeek): String = day.getDisplayName(DayNameStyle.NARROW, Locale.ENGLISH)
+/** The day's narrow name in the app language (M T W T F S S in English). */
+@Composable
+fun dayLetter(day: DayOfWeek): String = rememberLabels().formats.weekdayNarrow(day)
 
 /** Material's switch in the palette. The thumb keeps its 24 dp size when off, as in the mockups. */
 @Composable
@@ -112,9 +112,11 @@ private fun StepperButton(symbol: String, description: String, onClick: () -> Un
 @Composable
 fun DayToggleRow(selected: Set<DayOfWeek>, onChange: (Set<DayOfWeek>) -> Unit, modifier: Modifier = Modifier) {
     val colors = ReveilleTheme.colors
+    val labels = rememberLabels()
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         DayOfWeek.entries.forEach { day ->
             val on = day in selected
+            val fullName = labels.formats.weekdayFull(day)
             Box(
                 Modifier
                     .weight(1f)
@@ -122,7 +124,7 @@ fun DayToggleRow(selected: Set<DayOfWeek>, onChange: (Set<DayOfWeek>) -> Unit, m
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (on) colors.accent else colors.surfaceHigh)
                     .toggleable(on, role = Role.Checkbox) { onChange(if (on) selected - day else selected + day) }
-                    .semantics { contentDescription = day.getDisplayName(DayNameStyle.FULL, Locale.ENGLISH) },
+                    .semantics { contentDescription = fullName },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

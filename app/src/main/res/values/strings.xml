@@ -24,4 +24,19 @@
     <!-- %1$s day ("Tomorrow", "Thu"), %2$s time -->
     <string name="time_day_and_time">%1$s %2$s</string>
     <string name="oneoff_default_label">Alarm</string>
+
+    <!-- Bottom bar -->
+    <string name="nav_today">Today</string>
+    <string name="nav_policies">Policies</string>
+    <string name="nav_health">Health</string>
+    <string name="nav_settings">Settings</string>
+    <!-- State of a tab that shows a badge dot -->
+    <string name="nav_update_available">Update available</string>
+    <string name="nav_needs_attention">Needs attention</string>
+
+    <!-- Shared buttons -->
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_close">Close</string>
+    <string name="common_back">Back</string>
 </resources>

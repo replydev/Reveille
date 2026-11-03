@@ -22,6 +22,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.replydev.reveille.R
@@ -89,7 +90,7 @@ fun EditorTopBar(title: String, onBack: () -> Unit, actions: @Composable RowScop
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        IconCircleButton(R.drawable.ic_back, "Back", onBack, size = 48.dp, iconSize = 22.dp, container = Color.Transparent, tint = ReveilleTheme.colors.onBg)
+        IconCircleButton(R.drawable.ic_back, stringResource(R.string.common_back), onBack, size = 48.dp, iconSize = 22.dp, container = Color.Transparent, tint = ReveilleTheme.colors.onBg)
         Text(title, Modifier.weight(1f), style = ReveilleTheme.type.titleM, color = ReveilleTheme.colors.onBg)
         actions()
     }
