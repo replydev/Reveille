@@ -292,12 +292,12 @@ private fun DateStrip(today: LocalDate, selected: LocalDate, onPick: (LocalDate)
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = dates.indexOf(selected).coerceAtLeast(0).let { (it - 2).coerceAtLeast(0) })
     LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(dates, key = { it.toEpochDay() }) { day ->
-            DateTile(day, TimeText.dayHeader(day, today), selected = day == selected) { onPick(day) }
+            DateTile(day, TimeText.dayHeaderText(day, today), selected = day == selected) { onPick(day) }
         }
         item(key = "other") {
             val other = selected.takeIf { it !in dates }
             if (other != null) {
-                DateTile(other, TimeText.dayHeader(other, today), selected = true) { picking = true }
+                DateTile(other, TimeText.dayHeaderText(other, today), selected = true) { picking = true }
             } else {
                 Box(
                     Modifier

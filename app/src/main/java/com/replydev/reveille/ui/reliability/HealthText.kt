@@ -24,7 +24,7 @@ fun passingNote(id: String, manual: Boolean): String? = when {
 /** "Today 07:55", "Fri 30 Oct 08:55": when a logged alarm was due. */
 fun logTime(scheduledAt: Long, today: LocalDate, zone: ZoneId): String {
     val at = Instant.ofEpochMilli(scheduledAt).atZone(zone)
-    return "${TimeText.dayHeader(at.toLocalDate(), today)} ${TimeText.time(at.toLocalTime())}"
+    return "${TimeText.dayHeaderText(at.toLocalDate(), today)} ${TimeText.time(at.toLocalTime())}"
 }
 
 /** FIRED means rung but never dismissed or snoozed; every other value reads fine as its own name. */

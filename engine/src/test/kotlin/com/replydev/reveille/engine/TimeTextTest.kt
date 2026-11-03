@@ -45,9 +45,9 @@ class TimeTextTest {
     @Test
     fun `headers, dates and times`() {
         val today = LocalDate.parse("2026-11-02")
-        assertEquals("Today", TimeText.dayHeader(today, today))
-        assertEquals("Tomorrow", TimeText.dayHeader(today.plusDays(1), today))
-        assertEquals("Thu 5 Nov", TimeText.dayHeader(today.plusDays(3), today))
+        assertEquals("Today", TimeText.dayHeaderText(today, today))
+        assertEquals("Tomorrow", TimeText.dayHeaderText(today.plusDays(1), today))
+        assertEquals("Thu 5 Nov", TimeText.dayHeaderText(today.plusDays(3), today))
         assertEquals("5 Nov 2026", TimeText.date(LocalDate.parse("2026-11-05")))
         assertEquals("07:05", TimeText.time(LocalTime.of(7, 5)))
     }

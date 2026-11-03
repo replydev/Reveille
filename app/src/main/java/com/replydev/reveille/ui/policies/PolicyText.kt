@@ -34,4 +34,4 @@ fun nextPolicyAlarm(policy: Policy, snapshot: ScheduleSnapshot, from: Instant, z
         .firstOrNull { occurrence -> occurrence.sources.any { it is Source.PolicyRule } }
 
 /** "Tomorrow, 07:55" or "Thu 5 Nov, 06:30", for the editor's "Next:". */
-fun nextText(at: ZonedDateTime, today: LocalDate): String = "${TimeText.dayHeader(at.toLocalDate(), today)}, ${TimeText.time(at.toLocalTime())}"
+fun nextText(at: ZonedDateTime, today: LocalDate): String = "${TimeText.dayHeaderText(at.toLocalDate(), today)}, ${TimeText.time(at.toLocalTime())}"
