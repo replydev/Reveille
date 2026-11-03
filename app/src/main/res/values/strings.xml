@@ -39,4 +39,64 @@
     <string name="common_cancel">Cancel</string>
     <string name="common_close">Close</string>
     <string name="common_back">Back</string>
+    <string name="common_edit">Edit</string>
+    <string name="common_undo">Undo</string>
+
+    <!-- Today -->
+    <string name="today_title">Today</string>
+    <string name="today_new_one_off">One-off alarm</string>
+    <plurals name="today_issues">
+        <item quantity="one">%d issue</item>
+        <item quantity="other">%d issues</item>
+    </plurals>
+    <!-- Shown instead of an issue count when the reliability checks could not run -->
+    <string name="today_check_failed">Check failed</string>
+    <!-- %1$s is the time the backup alarm rings -->
+    <string name="today_backup">backup %1$s</string>
+    <plurals name="today_alarm_count">
+        <item quantity="one">%d alarm</item>
+        <item quantity="other">%d alarms</item>
+    </plurals>
+    <plurals name="today_next_days">
+        <item quantity="one">Next %d day</item>
+        <item quantity="other">Next %d days</item>
+    </plurals>
+    <plurals name="today_empty">
+        <item quantity="one">No alarms in the next %d day. Add a policy or a one-off alarm.</item>
+        <item quantity="other">No alarms in the next %d days. Add a policy or a one-off alarm.</item>
+    </plurals>
+    <!-- Muted notes after an alarm label in the timeline -->
+    <string name="today_note_skipped">skipped</string>
+    <string name="today_note_one_off">one-off</string>
+    <string name="today_next_wake_up">Next wake-up</string>
+    <string name="today_ringing_now">Ringing now</string>
+    <string name="today_overdue">Overdue</string>
+    <string name="today_armed">Armed with system</string>
+    <string name="today_none_scheduled">None scheduled</string>
+    <!-- %1$s is the alarm label -->
+    <string name="today_snoozed">Snoozed: %1$s</string>
+    <!-- %1$s is the time the alarm was due -->
+    <string name="today_overdue_warning">Due at %1$s and should ring any moment. If it does not, check Health.</string>
+    <!-- %1$s day and time ("Tomorrow 07:55"), %2$s alarm label -->
+    <string name="today_not_set_earlier">Not set with the system: %1$s %2$s is scheduled earlier. Check Health.</string>
+    <string name="today_not_set">Not set with the system, so it will not ring. Check Health.</string>
+    <string name="today_setting">Setting the alarm…</string>
+    <string name="today_skip_this_one">Skip this one</string>
+    <string name="today_open_policy">Open policy</string>
+    <string name="today_skip">Skip</string>
+    <string name="today_unskip">Unskip</string>
+    <!-- %1$s time, %2$s alarm label -->
+    <string name="today_skipped">Skipped %1$s %2$s</string>
+    <!-- %1$s time, %2$s alarm label, %3$s comma-separated policy names -->
+    <string name="today_skipped_ringing_again">Skipped %1$s %2$s · %3$s alarms that day will ring again</string>
+    <string name="today_skip_failed">Could not skip the alarm.</string>
+    <string name="today_unskip_failed">Could not unskip the alarm.</string>
+    <string name="today_undo_skip_failed">Could not undo the skip.</string>
+
+    <!-- Policies -->
+    <!-- A rule that rings every N weeks -->
+    <plurals name="policy_every_n_weeks">
+        <item quantity="one">every %d wk</item>
+        <item quantity="other">every %d wk</item>
+    </plurals>
 </resources>

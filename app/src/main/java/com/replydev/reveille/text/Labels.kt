@@ -12,7 +12,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /** Turns the engine's time values into words in the current language. The only place that does. */
-class Labels(private val res: Resources, val formats: TimeFormats) {
+class Labels(val res: Resources, val formats: TimeFormats) {
     fun day(label: DayLabel): String = when (label) {
         DayLabel.Today -> res.getString(R.string.time_today)
         DayLabel.Tomorrow -> res.getString(R.string.time_tomorrow)

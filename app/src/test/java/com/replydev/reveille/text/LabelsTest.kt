@@ -12,6 +12,7 @@ import org.junit.runner.RunWith
 import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.TUESDAY
 import java.time.DayOfWeek.WEDNESDAY
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -56,6 +57,14 @@ class LabelsTest {
         assertEquals("Tomorrow 07:55", labels.dayAndTime(at("2026-11-03", "07:55"), now, zone))
         assertEquals("Thu 08:55", labels.dayAndTime(at("2026-11-05", "08:55"), now, zone))
         assertEquals("Wed, 18 Nov 08:00", labels.dayAndTime(at("2026-11-18", "08:00"), now, zone))
+    }
+
+    @Test
+    fun `day part drops the time from the day and time text`() {
+        val now = Instant.parse("2026-11-02T20:00:00Z")
+        assertEquals("Tomorrow", labels.dayPart(Instant.parse("2026-11-03T06:55:00Z"), now, zone))
+        assertEquals("Today", labels.dayPart(Instant.parse("2026-11-02T21:30:00Z"), now, zone))
+        assertEquals("Thu", labels.dayPart(Instant.parse("2026-11-05T06:55:00Z"), now, zone))
     }
 
     @Test

@@ -17,6 +17,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.actionParametersOf
@@ -49,8 +50,8 @@ import com.replydev.reveille.R
 import com.replydev.reveille.container
 import com.replydev.reveille.engine.Armed
 import com.replydev.reveille.engine.TimeText
+import com.replydev.reveille.text.Labels
 import com.replydev.reveille.ui.components.CHECKS_FAILED
-import com.replydev.reveille.ui.home.dayPart
 import com.replydev.reveille.ui.home.issuesLabel
 import com.replydev.reveille.ui.theme.Palette
 import java.time.Instant
@@ -133,9 +134,9 @@ private fun Time(armed: Armed, size: TextUnit, tint: Color) {
     )
 }
 
-private fun subtitle(armed: Armed, now: Instant): String {
+private fun subtitle(context: Context, armed: Armed, now: Instant): String {
     val label = if (armed.isSnooze) "Snoozed: ${armed.label}" else armed.label
-    return "${dayPart(armed.at, now, ZoneId.systemDefault())} · $label"
+    return "${Labels.of(context).dayPart(armed.at, now, ZoneId.systemDefault())} · $label"
 }
 
 @Composable
@@ -143,7 +144,7 @@ private fun Issues(failing: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Image(ImageProvider(R.drawable.ic_warning), contentDescription = null, modifier = GlanceModifier.size(16.dp), colorFilter = ColorFilter.tint(color(Palette.DangerText)))
         Spacer(GlanceModifier.width(6.dp))
-        Text(issuesLabel(failing), style = TextStyle(color = color(Palette.DangerText), fontSize = 13.sp, fontWeight = FontWeight.Medium))
+        Text(issuesLabel(LocalContext.current.resources, failing), style = TextStyle(color = color(Palette.DangerText), fontSize = 13.sp, fontWeight = FontWeight.Medium))
     }
 }
 
@@ -184,7 +185,7 @@ private fun Wide(context: Context, armed: Armed, failing: Int, now: Instant) {
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
                 Column(GlanceModifier.defaultWeight()) {
                     Time(armed, 56.sp, Palette.OnBg)
-                    Text(subtitle(armed, now), style = TextStyle(color = color(Palette.OnBg), fontSize = 15.sp), maxLines = 1)
+                    Text(subtitle(context, armed, now), style = TextStyle(color = color(Palette.OnBg), fontSize = 15.sp), maxLines = 1)
                 }
                 SkipButton(armed)
             }
@@ -200,7 +201,7 @@ private fun SmallArmed(context: Context, armed: Armed, now: Instant) {
             Image(ImageProvider(R.drawable.ic_mark), contentDescription = null, modifier = GlanceModifier.size(22.dp), colorFilter = ColorFilter.tint(color(Palette.OnAccent)))
             Spacer(GlanceModifier.defaultWeight())
             Time(armed, 44.sp, Palette.OnAccent)
-            Text(subtitle(armed, now), style = TextStyle(color = color(Palette.OnAccent), fontSize = 14.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+            Text(subtitle(context, armed, now), style = TextStyle(color = color(Palette.OnAccent), fontSize = 14.sp, fontWeight = FontWeight.Medium), maxLines = 1)
         }
     }
 }
@@ -228,7 +229,7 @@ private fun Compact(context: Context, armed: Armed, failing: Int, now: Instant) 
             Spacer(GlanceModifier.width(12.dp))
             Column(GlanceModifier.defaultWeight()) {
                 if (unhealthy) Issues(failing)
-                Text(subtitle(armed, now), style = TextStyle(color = color(Palette.Muted), fontSize = 14.sp), maxLines = 1)
+                Text(subtitle(context, armed, now), style = TextStyle(color = color(Palette.Muted), fontSize = 14.sp), maxLines = 1)
             }
             SkipButton(armed)
         }
