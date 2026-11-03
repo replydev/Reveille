@@ -1,4 +1,27 @@
 <resources>
     <string name="app_name">Reveille</string>
     <string name="widget_description">Shows your next wake-up</string>
+
+    <!-- Time words shared across screens -->
+    <string name="time_today">Today</string>
+    <string name="time_tomorrow">Tomorrow</string>
+    <string name="time_yesterday">Yesterday</string>
+    <string name="time_now">now</string>
+    <plurals name="time_in_minutes">
+        <item quantity="one">in %d min</item>
+        <item quantity="other">in %d min</item>
+    </plurals>
+    <plurals name="time_in_hours">
+        <item quantity="one">in %d h</item>
+        <item quantity="other">in %d h</item>
+    </plurals>
+    <plurals name="time_in_days">
+        <item quantity="one">in %d d</item>
+        <item quantity="other">in %d d</item>
+    </plurals>
+    <string name="time_every_day">Every day</string>
+    <string name="time_weekdays">Mon–Fri</string>
+    <!-- %1$s day ("Tomorrow", "Thu"), %2$s time -->
+    <string name="time_day_and_time">%1$s %2$s</string>
+    <string name="oneoff_default_label">Alarm</string>
 </resources>
