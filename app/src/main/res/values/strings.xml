@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Reveille</string>
+    <string name="app_name" translatable="false">Reveille</string>
     <string name="widget_description">Shows your next wake-up</string>
 
     <!-- Time words shared across screens -->

@@ -43,6 +43,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    androidResources {
+        generateLocaleConfig = true
+    }
+
+    lint {
+        lintConfig = file("lint.xml")
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true // Settings → About shows VERSION_NAME
