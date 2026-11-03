@@ -18,6 +18,7 @@ import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.data.SchedulerState
 import com.replydev.reveille.engine.Armed
 import com.replydev.reveille.engine.OneOffMode
+import com.replydev.reveille.testing.FailingNotifier
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -363,6 +364,43 @@ class AlarmSchedulerTest {
         assertEquals(FireOutcome.MISSED, scheduler.outcome(armed))
         assertTrue(notifications().any { it.extras.getString("android.title") == "Missed alarm" })
         assertTrue(notifications().none { it.channelId == Notifier.CHANNEL_ALARM_FALLBACK })
+    }
+
+    // ---- A failing notification must never abort a re-arm ----
+
+    private fun failingScheduler() = AlarmScheduler(
+        context, repository, db.fireLogDao(), state, FailingNotifier(context), onArmedChanged = {}, clock = { now },
+        isRinging = { ringing?.isSameOccurrence(it) == true },
+    )
+
+    @Test
+    fun aMissedNotificationThatThrowsDoesNotStopTheNextAlarmBeingArmed() = runBlocking {
+        addOneOff("2026-11-03", "07:00", "Tomorrow")
+        addOneOff("2026-11-02", "06:30", "Early")
+        scheduler = failingScheduler()
+        now = rome("2026-11-02", "07:01")
+        scheduler.rearm("test")
+        assertEquals("Tomorrow", state.armed()?.label)
+        assertEquals(rome("2026-11-03", "07:00").toEpochMilli(), triggers().first())
+        assertEquals(FireOutcome.MISSED, db.fireLogDao().observeRecent(5).first().single { it.label == "Early" }.outcome)
+    }
+
+    @Test
+    fun aMissedGuardOwnerWhoseNotificationThrowsIsStillResolvedAndTheNextAlarmArmed() = runBlocking {
+        addOneOff("2026-11-03", "07:00", "Tomorrow")
+        val armed = Armed("O:a", rome("2026-11-02", "06:00"), "A")
+        now = rome("2026-11-02", "06:01")
+        scheduler.claim(armed)
+        scheduler.armGuard(armed, 0, now.plusSeconds(90))
+        forceStop()
+        scheduler = failingScheduler()
+        now = rome("2026-11-02", "06:31")
+        scheduler.rearm("app opened")
+        assertNull(guardAlarm())
+        assertNull(state.guard())
+        assertEquals(FireOutcome.MISSED, scheduler.outcome(armed))
+        assertEquals("Tomorrow", state.armed()?.label)
+        assertEquals(rome("2026-11-03", "07:00").toEpochMilli(), triggers().first())
     }
 
     @Test

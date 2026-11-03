@@ -1,10 +1,13 @@
 package com.replydev.reveille.testing
 
+import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import com.replydev.reveille.alarm.Notifier
 import com.replydev.reveille.data.FireLogDao
 import com.replydev.reveille.data.FireLogEntity
 import com.replydev.reveille.data.FireOutcome
+import com.replydev.reveille.engine.Armed
 import java.io.IOException
 
 /** Preferences store whose writes fail while [failWrites] is set (e.g. a full disk). Reads keep working. */
@@ -29,5 +32,25 @@ class FlakyFireLogDao(private val delegate: FireLogDao) : FireLogDao by delegate
     override suspend fun setOutcome(key: String, scheduledAt: Long, outcome: FireOutcome) {
         if (failWrites) throw IOException("disk full")
         delegate.setOutcome(key, scheduledAt, outcome)
+    }
+}
+
+/** Notifier whose alerts throw while [failAlerts] is set (e.g. a formatter or the notification service blowing up). */
+class FailingNotifier(context: Context) : Notifier(context) {
+    @Volatile var failAlerts = true
+
+    override fun showMissed(armed: Armed) {
+        if (failAlerts) throw IllegalArgumentException("bad pattern")
+        super.showMissed(armed)
+    }
+
+    override fun cancelFallbackAlarm(armed: Armed) {
+        if (failAlerts) throw IllegalStateException("notification service gone")
+        super.cancelFallbackAlarm(armed)
+    }
+
+    override fun showSchedulingFailed() {
+        if (failAlerts) throw IllegalArgumentException("bad pattern")
+        super.showSchedulingFailed()
     }
 }

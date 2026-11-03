@@ -16,8 +16,9 @@ import com.replydev.reveille.R
 import com.replydev.reveille.engine.Armed
 import com.replydev.reveille.text.TimeFormats
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
-class Notifier(private val context: Context) {
+open class Notifier(private val context: Context) {
     private val manager = context.getSystemService(NotificationManager::class.java)
 
     fun createChannels() {
@@ -116,14 +117,14 @@ class Notifier(private val context: Context) {
         post(id, notification)
     }
 
-    fun cancelFallbackAlarm(armed: Armed) = manager.cancel(fallbackId(armed))
+    open fun cancelFallbackAlarm(armed: Armed) = manager.cancel(fallbackId(armed))
 
-    fun showMissed(armed: Armed) {
+    open fun showMissed(armed: Armed) {
         val text = context.getString(R.string.notif_missed_text, armed.label, localTime(armed))
         post(MISSED_BASE_ID + (armed.at.epochSecond % 10_000).toInt(), alert(context.getString(R.string.notif_missed_title), text))
     }
 
-    fun showSchedulingFailed() = post(
+    open fun showSchedulingFailed() = post(
         SCHEDULING_FAILED_ID,
         alert(context.getString(R.string.notif_scheduling_failed_title), context.getString(R.string.notif_scheduling_failed_text)),
     )
@@ -156,7 +157,16 @@ class Notifier(private val context: Context) {
 
     private fun fallbackId(armed: Armed): Int = FALLBACK_BASE_ID + Math.floorMod("${armed.key}@${armed.at}".hashCode(), 10_000)
 
-    private fun localTime(armed: Armed): String = TimeFormats.of(context).time(armed.at.atZone(ZoneId.systemDefault()).toLocalTime())
+    private fun localTime(armed: Armed): String {
+        val time = armed.at.atZone(ZoneId.systemDefault()).toLocalTime()
+        return try {
+            TimeFormats.of(context).time(time)
+        } catch (e: RuntimeException) {
+            // Belt and braces: an alarm notification must never fail over how its time is spelled.
+            Log.w(TAG, "Localized time failed; using HH:mm", e)
+            time.format(DateTimeFormatter.ofPattern("HH:mm"))
+        }
+    }
 
     companion object {
         const val CHANNEL_ALARM = "alarm"

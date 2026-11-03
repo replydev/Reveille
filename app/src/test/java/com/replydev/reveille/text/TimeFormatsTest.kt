@@ -3,11 +3,14 @@ package com.replydev.reveille.text
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @RunWith(AndroidJUnit4::class)
@@ -66,6 +69,22 @@ class TimeFormatsTest {
                 DayOfWeek.entries.forEach { f.weekdayShort(it); f.weekdayNarrow(it); f.weekdayFull(it) }
                 f.megabytes(1_234_567)
             }
+        }
+    }
+
+    @Test
+    fun `a skeleton pattern java time rejects falls back instead of throwing`() {
+        val bad = "bbbb {"
+        assertThrows(IllegalArgumentException::class.java) { DateTimeFormatter.ofPattern(bad, Locale.US) }
+        for (h24 in listOf(true, false)) {
+            val f = TimeFormats(Locale.US, h24) { _, _ -> bad }
+            assertEquals(if (h24) "07:05" else "7:05 AM", f.time(LocalTime.of(7, 5)).normalizeSpaces())
+            assertTrue(f.timeParts(LocalTime.of(7, 5)).digits.isNotEmpty())
+            assertEquals("Monday 2 November", f.headerDate(date))
+            assertEquals("Mon 2 Nov", f.shortDate(date))
+            assertEquals("Mon 2 Nov 2026", f.shortDate(date, 2025))
+            assertEquals("2 Nov", f.dayMonth(date))
+            assertEquals("2 Nov 2026", f.fullDate(date))
         }
     }
 

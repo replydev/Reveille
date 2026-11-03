@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Re-arms after reboot (including before the first unlock), app update, clock or time zone change, system language
@@ -30,7 +31,8 @@ class SystemEventsReceiver : BroadcastReceiver() {
             } finally {
                 try {
                     WatchdogWorker.schedule(context)
-                    WidgetUpdater.update(context)
+                    // Bounded: a slow Glance update must not hold goAsync until the broadcast ANRs.
+                    withTimeoutOrNull(WIDGET_TIMEOUT_MS) { WidgetUpdater.update(context) }
                 } finally {
                     pending.finish()
                 }
@@ -40,6 +42,7 @@ class SystemEventsReceiver : BroadcastReceiver() {
 
     private companion object {
         const val TAG = "Reveille"
+        const val WIDGET_TIMEOUT_MS = 5_000L
         val ACTIONS = setOf(
             Intent.ACTION_LOCKED_BOOT_COMPLETED,
             Intent.ACTION_BOOT_COMPLETED,

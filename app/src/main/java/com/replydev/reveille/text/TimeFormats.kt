@@ -2,6 +2,7 @@ package com.replydev.reveille.text
 
 import android.content.Context
 import android.text.format.DateFormat
+import android.util.Log
 import java.text.NumberFormat
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -17,20 +18,38 @@ data class TimeParts(val digits: String, val period: String?)
  * Locale-aware formatting for everything Reveille shows about time. Date patterns come from the locale's own
  * skeletons (CLDR), so word order and punctuation are native ("lunedì 2 novembre", "Montag, 2. November").
  */
-class TimeFormats(val locale: Locale, val is24Hour: Boolean) {
-    private fun skeleton(skeleton: String) = DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
+class TimeFormats internal constructor(
+    val locale: Locale,
+    val is24Hour: Boolean,
+    private val patternFor: (Locale, String) -> String,
+) {
+    constructor(locale: Locale, is24Hour: Boolean) : this(locale, is24Hour, { l, s -> DateFormat.getBestDateTimePattern(l, s) })
 
-    private val timeFormat = if (is24Hour) DateTimeFormatter.ofPattern("HH:mm", locale) else skeleton("hmm")
-    private val digitsFormat = if (is24Hour) timeFormat else DateTimeFormatter.ofPattern("h:mm", locale)
-    private val periodFormat = DateTimeFormatter.ofPattern("a", locale)
-    private val headerFormat = skeleton("EEEEdMMMM")
-    private val shortDateFormat = skeleton("EEEdMMM")
-    private val shortDateYearFormat = skeleton("EEEdMMMyyyy")
-    private val dayMonthFormat = skeleton("dMMM")
-    private val fullDateFormat = skeleton("dMMMyyyy")
-    private val sizeFormat = NumberFormat.getNumberInstance(locale).apply {
-        minimumFractionDigits = 1
-        maximumFractionDigits = 1
+    /**
+     * The locale's best pattern for [skeleton], or [fallback] if `java.time` rejects it: ICU may return letters older
+     * runtimes don't know (e.g. day period `B`), and a formatter must never throw on the alarm path.
+     */
+    private fun skeleton(skeleton: String, fallback: String): DateTimeFormatter = try {
+        DateTimeFormatter.ofPattern(patternFor(locale, skeleton), locale)
+    } catch (e: RuntimeException) {
+        Log.w(TAG, "Unusable pattern for $skeleton in $locale; using $fallback", e)
+        DateTimeFormatter.ofPattern(fallback, locale)
+    }
+
+    // Lazy: each formatter is built (and can fall back) on its own, so time() never depends on a date pattern.
+    private val timeFormat by lazy { if (is24Hour) DateTimeFormatter.ofPattern("HH:mm", locale) else skeleton("hmm", "h:mm a") }
+    private val digitsFormat by lazy { if (is24Hour) timeFormat else DateTimeFormatter.ofPattern("h:mm", locale) }
+    private val periodFormat by lazy { DateTimeFormatter.ofPattern("a", locale) }
+    private val headerFormat by lazy { skeleton("EEEEdMMMM", "EEEE d MMMM") }
+    private val shortDateFormat by lazy { skeleton("EEEdMMM", "EEE d MMM") }
+    private val shortDateYearFormat by lazy { skeleton("EEEdMMMyyyy", "EEE d MMM yyyy") }
+    private val dayMonthFormat by lazy { skeleton("dMMM", "d MMM") }
+    private val fullDateFormat by lazy { skeleton("dMMMyyyy", "d MMM yyyy") }
+    private val sizeFormat by lazy {
+        NumberFormat.getNumberInstance(locale).apply {
+            minimumFractionDigits = 1
+            maximumFractionDigits = 1
+        }
     }
 
     fun time(value: LocalTime): String = value.format(timeFormat)
@@ -62,6 +81,8 @@ class TimeFormats(val locale: Locale, val is24Hour: Boolean) {
     fun megabytes(bytes: Long): String = sizeFormat.format(bytes / 1_000_000.0)
 
     companion object {
+        private const val TAG = "Reveille"
+
         fun of(context: Context): TimeFormats =
             TimeFormats(context.resources.configuration.locales[0], DateFormat.is24HourFormat(context))
     }
