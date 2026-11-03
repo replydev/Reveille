@@ -47,6 +47,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -54,17 +56,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.replydev.reveille.R
 import com.replydev.reveille.container
 import com.replydev.reveille.engine.Armed
-import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.ui.components.Pill
 import com.replydev.reveille.ui.components.ReveilleIcon
 import com.replydev.reveille.ui.theme.ReveilleTheme
+import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.lineBox
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import android.graphics.Color as AndroidColor
 
 /**
@@ -96,14 +96,18 @@ class RingingActivity : ComponentActivity() {
                 when {
                     // The service took over (e.g. the ring guard succeeded): show the real ringing screen.
                     current != null -> RingingScreen(
-                        title = current.title,
+                        title = current.title(this@RingingActivity),
                         snoozeMinutes = settings?.snoozeMinutes?.coerceAtLeast(1),
                         autoSnoozeMinutes = settings?.let { RingDecisions.ringMinutes(it.maxRingMinutes) },
                         onSnooze = { RingingService.send(this@RingingActivity, RingingService.ACTION_SNOOZE) },
                         onDismiss = { RingingService.send(this@RingingActivity, RingingService.ACTION_DISMISS) },
                     )
                     fallbackAlarm != null -> RingingScreen(
-                        title = "${fallbackAlarm.label} · ${TimeText.time(fallbackAlarm.at.atZone(ZoneId.systemDefault()).toLocalTime())}",
+                        title = stringResource(
+                            R.string.ringing_fallback_title,
+                            fallbackAlarm.label,
+                            rememberLabels().formats.time(fallbackAlarm.at.atZone(ZoneId.systemDefault()).toLocalTime()),
+                        ),
                         snoozeMinutes = null,
                         autoSnoozeMinutes = null,
                         onSnooze = null,
@@ -142,8 +146,6 @@ class RingingActivity : ComponentActivity() {
     }
 }
 
-private val ringingDate = DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)
-
 @Composable
 private fun RingingScreen(
     title: String,
@@ -159,6 +161,7 @@ private fun RingingScreen(
             delay(1_000)
         }
     }
+    val labels = rememberLabels()
     val colors = ReveilleTheme.colors
     val type = ReveilleTheme.type
     val insets = WindowInsets.systemBars.asPaddingValues()
@@ -175,9 +178,9 @@ private fun RingingScreen(
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(now.format(ringingDate).uppercase(), style = type.ringOverline, color = colors.onAccent)
+            Text(labels.formats.headerDate(now.toLocalDate()).uppercase(labels.formats.locale), style = type.ringOverline, color = colors.onAccent)
             Text(
-                TimeText.time(now.toLocalTime()),
+                labels.formats.time(now.toLocalTime()),
                 Modifier.padding(top = 18.dp).lineBox(type.displayXl, 1f),
                 style = type.displayXl,
                 color = colors.onAccent,
@@ -194,7 +197,7 @@ private fun RingingScreen(
             Spacer(Modifier.weight(1f))
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Pill(onClick = onDismiss, modifier = Modifier.fillMaxWidth(), container = colors.onAccent, content = colors.accent, height = 76.dp) {
-                    Text("Dismiss", style = type.ringButton)
+                    Text(stringResource(R.string.ringing_dismiss), style = type.ringButton)
                 }
                 if (onSnooze != null) {
                     Pill(
@@ -205,11 +208,11 @@ private fun RingingScreen(
                         border = BorderStroke(2.dp, colors.onAccent),
                         height = 76.dp,
                     ) {
-                        Text(snoozeMinutes?.let { "Snooze $it min" } ?: "Snooze", style = type.ringButton)
+                        Text(snoozeMinutes?.let { pluralStringResource(R.plurals.ringing_snooze_minutes, it, it) } ?: stringResource(R.string.ringing_snooze), style = type.ringButton)
                     }
                     autoSnoozeMinutes?.let {
                         Text(
-                            "Auto-snoozes after $it min of ringing",
+                            pluralStringResource(R.plurals.ringing_auto_snooze, it, it),
                             Modifier.padding(top = 6.dp).alpha(0.8f),
                             style = type.caption,
                             color = colors.onAccent,

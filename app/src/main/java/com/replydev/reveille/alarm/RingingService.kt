@@ -44,7 +44,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinDuration
 
 data class Ringing(val armed: Armed, val backup: Boolean) {
-    val title: String get() = if (backup) "${armed.label} (backup)" else armed.label
+    fun title(context: Context): String = if (backup) context.getString(R.string.ringing_backup_title, armed.label) else armed.label
 }
 
 /**
@@ -83,7 +83,7 @@ class RingingService : Service() {
 
     private fun onRing(intent: Intent) {
         // Fail loud: if the extra is somehow unreadable, ring anyway with a generic label.
-        val armed = intent.getStringExtra(EXTRA_ARMED)?.let(Armed::decode) ?: Armed("unknown", Instant.now(), "Alarm")
+        val armed = intent.getStringExtra(EXTRA_ARMED)?.let(Armed::decode) ?: Armed("unknown", Instant.now(), getString(R.string.oneoff_default_label))
         val backup = intent.getBooleanExtra(EXTRA_BACKUP, false)
         val ringing = Ringing(armed, backup)
         val guard = intent.getBooleanExtra(EXTRA_GUARD, false)

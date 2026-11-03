@@ -14,7 +14,7 @@ import androidx.core.net.toUri
 import com.replydev.reveille.MainActivity
 import com.replydev.reveille.R
 import com.replydev.reveille.engine.Armed
-import com.replydev.reveille.engine.TimeText
+import com.replydev.reveille.text.TimeFormats
 import java.time.ZoneId
 
 class Notifier(private val context: Context) {
@@ -25,16 +25,16 @@ class Notifier(private val context: Context) {
         // sound changed to the bundled one. Drop the old one so it does not linger in the system settings.
         manager.deleteNotificationChannel(OLD_CHANNEL_ALARM_FALLBACK)
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ALARM, "Ringing alarms", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Shown while an alarm rings. Keep this at high importance."
+            NotificationChannel(CHANNEL_ALARM, context.getString(R.string.notif_channel_alarm_name), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.notif_channel_alarm_desc)
                 setSound(null, null)
                 enableVibration(false)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             },
         )
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ALARM_FALLBACK, "Fallback alarms", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Rings by itself when the normal alarm cannot start. Keep this at high importance with sound."
+            NotificationChannel(CHANNEL_ALARM_FALLBACK, context.getString(R.string.notif_channel_fallback_name), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = context.getString(R.string.notif_channel_fallback_desc)
                 // The bundled sound, not the user's alarm tone: deterministic, and readable before the first unlock.
                 setSound(
                     "android.resource://${context.packageName}/raw/fallback_alarm".toUri(),
@@ -49,7 +49,7 @@ class Notifier(private val context: Context) {
             },
         )
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ALERTS, "Missed alarms and problems", NotificationManager.IMPORTANCE_HIGH),
+            NotificationChannel(CHANNEL_ALERTS, context.getString(R.string.notif_channel_alerts_name), NotificationManager.IMPORTANCE_HIGH),
         )
     }
 
@@ -62,16 +62,16 @@ class Notifier(private val context: Context) {
         )
         return NotificationCompat.Builder(context, CHANNEL_ALARM)
             .setSmallIcon(R.drawable.ic_alarm)
-            .setContentTitle(ringing.title)
-            .setContentText("Alarm for ${localTime(ringing.armed)}")
+            .setContentTitle(ringing.title(context))
+            .setContentText(context.getString(R.string.notif_alarm_for, localTime(ringing.armed)))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setFullScreenIntent(fullScreen, true)
             .setContentIntent(fullScreen)
-            .addAction(0, "Snooze", RingingService.actionIntent(context, RingingService.ACTION_SNOOZE))
-            .addAction(0, "Dismiss", RingingService.actionIntent(context, RingingService.ACTION_DISMISS))
+            .addAction(0, context.getString(R.string.notif_snooze), RingingService.actionIntent(context, RingingService.ACTION_SNOOZE))
+            .addAction(0, context.getString(R.string.notif_dismiss), RingingService.actionIntent(context, RingingService.ACTION_DISMISS))
             .build()
     }
 
@@ -102,14 +102,14 @@ class Notifier(private val context: Context) {
         val notification = NotificationCompat.Builder(context, CHANNEL_ALARM_FALLBACK)
             .setSmallIcon(R.drawable.ic_alarm)
             .setContentTitle(armed.label)
-            .setContentText("Alarm for ${localTime(armed)} (fallback)")
+            .setContentText(context.getString(R.string.notif_alarm_for_fallback, localTime(armed)))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setFullScreenIntent(open, true)
             .setContentIntent(open)
             .setDeleteIntent(dismiss)
-            .addAction(0, "Dismiss", dismiss)
+            .addAction(0, context.getString(R.string.notif_dismiss), dismiss)
             .setOnlyAlertOnce(true)
             .build()
         notification.flags = notification.flags or Notification.FLAG_INSISTENT
@@ -119,11 +119,14 @@ class Notifier(private val context: Context) {
     fun cancelFallbackAlarm(armed: Armed) = manager.cancel(fallbackId(armed))
 
     fun showMissed(armed: Armed) {
-        val text = "${armed.label} at ${localTime(armed)} did not ring. Open Reveille → Reliability."
-        post(MISSED_BASE_ID + (armed.at.epochSecond % 10_000).toInt(), alert("Missed alarm", text))
+        val text = context.getString(R.string.notif_missed_text, armed.label, localTime(armed))
+        post(MISSED_BASE_ID + (armed.at.epochSecond % 10_000).toInt(), alert(context.getString(R.string.notif_missed_title), text))
     }
 
-    fun showSchedulingFailed(text: String) = post(SCHEDULING_FAILED_ID, alert("Alarms could not be scheduled", text))
+    fun showSchedulingFailed() = post(
+        SCHEDULING_FAILED_ID,
+        alert(context.getString(R.string.notif_scheduling_failed_title), context.getString(R.string.notif_scheduling_failed_text)),
+    )
 
     private fun alert(title: String, text: String): Notification {
         val open = PendingIntent.getActivity(context, REQUEST_OPEN_APP, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
@@ -153,7 +156,7 @@ class Notifier(private val context: Context) {
 
     private fun fallbackId(armed: Armed): Int = FALLBACK_BASE_ID + Math.floorMod("${armed.key}@${armed.at}".hashCode(), 10_000)
 
-    private fun localTime(armed: Armed): String = TimeText.time(armed.at.atZone(ZoneId.systemDefault()).toLocalTime())
+    private fun localTime(armed: Armed): String = TimeFormats.of(context).time(armed.at.atZone(ZoneId.systemDefault()).toLocalTime())
 
     companion object {
         const val CHANNEL_ALARM = "alarm"
@@ -172,7 +175,7 @@ class Notifier(private val context: Context) {
         fun minimalRingingNotification(context: Context): Notification =
             Notification.Builder(context, CHANNEL_ALARM)
                 .setSmallIcon(R.drawable.ic_alarm)
-                .setContentTitle("Alarm")
+                .setContentTitle(context.getString(R.string.oneoff_default_label))
                 .setCategory(Notification.CATEGORY_ALARM)
                 .setOngoing(true)
                 .build()

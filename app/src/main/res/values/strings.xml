@@ -364,4 +364,47 @@
     <string name="update_channel_description">A quiet notification when a new version of Reveille is released.</string>
     <string name="update_notification_title">Reveille v%1$s is available</string>
     <string name="update_notification_text">See what\'s new and install it from Settings.</string>
+
+    <!-- Notifications (alarm path) -->
+    <string name="notif_channel_alarm_name">Ringing alarms</string>
+    <string name="notif_channel_alarm_desc">Shown while an alarm rings. Keep this at high importance.</string>
+    <string name="notif_channel_fallback_name">Fallback alarms</string>
+    <string name="notif_channel_fallback_desc">Rings by itself when the normal alarm cannot start. Keep this at high importance with sound.</string>
+    <string name="notif_channel_alerts_name">Missed alarms and problems</string>
+    <!-- %1$s is the alarm time -->
+    <string name="notif_alarm_for">Alarm for %1$s</string>
+    <!-- %1$s is the alarm time -->
+    <string name="notif_alarm_for_fallback">Alarm for %1$s (fallback)</string>
+    <string name="notif_snooze">Snooze</string>
+    <string name="notif_dismiss">Dismiss</string>
+    <string name="notif_missed_title">Missed alarm</string>
+    <!-- %1$s is the alarm label, %2$s its time -->
+    <string name="notif_missed_text">%1$s at %2$s did not ring. Open Reveille → Health.</string>
+    <string name="notif_scheduling_failed_title">Alarms could not be scheduled</string>
+    <string name="notif_scheduling_failed_text">Reveille is not allowed to schedule exact alarms. Open Reveille → Health.</string>
+
+    <!-- Ringing screen -->
+    <!-- %1$s is the alarm label -->
+    <string name="ringing_backup_title">%1$s (backup)</string>
+    <!-- %1$s is the alarm label, %2$s its time -->
+    <string name="ringing_fallback_title">%1$s · %2$s</string>
+    <string name="ringing_dismiss">Dismiss</string>
+    <string name="ringing_snooze">Snooze</string>
+    <!-- %d is the snooze length in minutes -->
+    <plurals name="ringing_snooze_minutes">
+        <item quantity="one">Snooze %d min</item>
+        <item quantity="other">Snooze %d min</item>
+    </plurals>
+    <!-- %d is the number of minutes the alarm rings before it snoozes itself -->
+    <plurals name="ringing_auto_snooze">
+        <item quantity="one">Auto-snoozes after %d min of ringing</item>
+        <item quantity="other">Auto-snoozes after %d min of ringing</item>
+    </plurals>
+
+    <!-- Widget -->
+    <!-- %1$s is the day ("Today", "Tomorrow", a weekday…), %2$s the alarm label -->
+    <string name="widget_subtitle">%1$s · %2$s</string>
+    <string name="widget_tap_to_fix">Tap to fix</string>
+    <string name="widget_no_alarms">No alarms set</string>
+    <string name="widget_new_one_off">New one-off alarm</string>
 </resources>

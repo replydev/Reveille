@@ -242,7 +242,7 @@ class AlarmScheduler(
             true
         } catch (e: SecurityException) {
             Log.e(TAG, "Exact alarms not permitted", e)
-            notifier.showSchedulingFailed("Reveille is not allowed to schedule exact alarms. Open Reveille → Reliability.")
+            notifier.showSchedulingFailed()
             false
         }
     }

@@ -49,7 +49,6 @@ import com.replydev.reveille.MainActivity
 import com.replydev.reveille.R
 import com.replydev.reveille.container
 import com.replydev.reveille.engine.Armed
-import com.replydev.reveille.engine.TimeText
 import com.replydev.reveille.text.Labels
 import com.replydev.reveille.ui.components.CHECKS_FAILED
 import com.replydev.reveille.ui.home.issuesLabel
@@ -128,15 +127,16 @@ private fun Card(onClick: Action, radius: Dp = 28.dp, border: Boolean = false, c
 @Composable
 private fun Time(armed: Armed, size: TextUnit, tint: Color) {
     Text(
-        TimeText.time(armed.at.atZone(ZoneId.systemDefault()).toLocalTime()),
+        Labels.of(LocalContext.current).formats.time(armed.at.atZone(ZoneId.systemDefault()).toLocalTime()),
         style = TextStyle(color = color(tint), fontSize = size, fontFamily = LightSans),
         maxLines = 1,
     )
 }
 
 private fun subtitle(context: Context, armed: Armed, now: Instant): String {
-    val label = if (armed.isSnooze) "Snoozed: ${armed.label}" else armed.label
-    return "${Labels.of(context).dayPart(armed.at, now, ZoneId.systemDefault())} · $label"
+    val labels = Labels.of(context)
+    val label = if (armed.isSnooze) context.getString(R.string.today_snoozed, armed.label) else armed.label
+    return context.getString(R.string.widget_subtitle, labels.dayPart(armed.at, now, ZoneId.systemDefault()), label)
 }
 
 @Composable
@@ -160,7 +160,7 @@ private fun SkipButton(armed: Armed) {
             .clickable(actionRunCallback<SkipNextAction>(actionParametersOf(SkipNextAction.KEY to armed.key, SkipNextAction.AT to armed.at.toEpochMilli()))),
         contentAlignment = Alignment.Center,
     ) {
-        Text("Skip", style = TextStyle(color = color(Palette.OnBg), fontSize = 14.sp, fontWeight = FontWeight.Medium))
+        Text(LocalContext.current.getString(R.string.today_skip), style = TextStyle(color = color(Palette.OnBg), fontSize = 14.sp, fontWeight = FontWeight.Medium))
     }
 }
 
@@ -176,10 +176,10 @@ private fun Wide(context: Context, armed: Armed, failing: Int, now: Instant) {
                 } else {
                     Box(GlanceModifier.size(8.dp).cornerRadius(4.dp).background(color(Palette.Accent))) {}
                     Spacer(GlanceModifier.width(8.dp))
-                    Text("Next wake-up", style = TextStyle(color = color(Palette.Muted), fontSize = 13.sp))
+                    Text(context.getString(R.string.today_next_wake_up), style = TextStyle(color = color(Palette.Muted), fontSize = 13.sp))
                 }
                 Spacer(GlanceModifier.defaultWeight())
-                Text(TimeText.relative(armed.at, now), style = TextStyle(color = color(Palette.Muted), fontSize = 13.sp))
+                Text(Labels.of(context).relative(armed.at, now), style = TextStyle(color = color(Palette.Muted), fontSize = 13.sp))
             }
             Spacer(GlanceModifier.defaultWeight())
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
@@ -214,7 +214,7 @@ private fun SmallUnhealthy(context: Context, armed: Armed, failing: Int) {
             Issues(failing)
             Spacer(GlanceModifier.defaultWeight())
             Time(armed, 44.sp, Palette.OnBg)
-            Text("Tap to fix", style = TextStyle(color = color(Palette.Muted), fontSize = 14.sp))
+            Text(context.getString(R.string.widget_tap_to_fix), style = TextStyle(color = color(Palette.Muted), fontSize = 14.sp))
         }
     }
 }
@@ -244,11 +244,11 @@ private fun Empty(context: Context, row: Boolean) {
             GlanceModifier.size(40.dp).cornerRadius(20.dp).background(color(Palette.SurfaceHigh)).clickable(open(context, MainActivity.OPEN_ONE_OFF)),
             contentAlignment = Alignment.Center,
         ) {
-            Image(ImageProvider(R.drawable.ic_add), contentDescription = "New one-off alarm", modifier = GlanceModifier.size(18.dp), colorFilter = ColorFilter.tint(color(Palette.OnBg)))
+            Image(ImageProvider(R.drawable.ic_add), contentDescription = context.getString(R.string.widget_new_one_off), modifier = GlanceModifier.size(18.dp), colorFilter = ColorFilter.tint(color(Palette.OnBg)))
         }
     }
     val text = @Composable { modifier: GlanceModifier ->
-        Text("No alarms set", modifier = modifier, style = TextStyle(color = color(Palette.Muted), fontSize = 16.sp))
+        Text(context.getString(R.string.widget_no_alarms), modifier = modifier, style = TextStyle(color = color(Palette.Muted), fontSize = 16.sp))
     }
     Card(open(context), radius = 24.dp) {
         if (row) {

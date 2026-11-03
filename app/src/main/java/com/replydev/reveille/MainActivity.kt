@@ -21,6 +21,7 @@ import com.replydev.reveille.alarm.RingingService
 import com.replydev.reveille.alarm.WatchdogWorker
 import com.replydev.reveille.ui.ReveilleNavHost
 import com.replydev.reveille.ui.theme.ReveilleTheme
+import com.replydev.reveille.widget.WidgetUpdater
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -51,6 +52,9 @@ class MainActivity : ComponentActivity() {
                 Log.e("Reveille", "Re-arm on app start failed", e)
             }
         }
+        // The language or clock format may have changed while we were away; a per-app language change recreates this
+        // activity without sending a broadcast.
+        container.appScope.launch { WidgetUpdater.update(applicationContext) }
         WatchdogWorker.schedule(this)
         container.appScope.launch {
             try {
