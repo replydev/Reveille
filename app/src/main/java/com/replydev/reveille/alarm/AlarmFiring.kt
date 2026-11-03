@@ -171,7 +171,7 @@ class AlarmFiring(
             return recorded
         }
         val minutes = safely("read snooze length", 9) { settings.current().snoozeMinutes }.coerceAtLeast(1)
-        val snooze = Armed.snooze(clock().plus(Duration.ofMinutes(minutes.toLong())), armed.label)
+        val snooze = Armed.snooze(clock().plus(Duration.ofMinutes(minutes.toLong())), armed.label, armed.sourceKeys)
         snoozedFrom = armed to snooze
         val persisted = safely("persist snooze of ${armed.key}", false) {
             state.setAutoSnoozeCount(count)

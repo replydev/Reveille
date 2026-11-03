@@ -104,10 +104,13 @@ data class Armed(
         const val SNOOZE_PREFIX = "S:"
         private const val SEPARATOR = "\u001F"
 
-        /** [at] is truncated to milliseconds so the snooze survives [encode]/[decode] unchanged. */
-        fun snooze(at: Instant, label: String): Armed {
+        /**
+         * [at] is truncated to milliseconds so the snooze survives [encode]/[decode] unchanged. [sourceKeys] are those of
+         * the alarm it snoozes; only the ringing screen reads them (for its theme), the planner ignores them.
+         */
+        fun snooze(at: Instant, label: String, sourceKeys: List<String> = emptyList()): Armed {
             val millis = at.truncatedTo(ChronoUnit.MILLIS)
-            return Armed("$SNOOZE_PREFIX${millis.toEpochMilli()}", millis, label)
+            return Armed("$SNOOZE_PREFIX${millis.toEpochMilli()}", millis, label, sourceKeys)
         }
 
         fun decode(value: String): Armed? {

@@ -1,7 +1,11 @@
 package com.replydev.reveille.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.replydev.reveille.alarm.RingTheme
 import com.replydev.reveille.engine.Armed
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -52,5 +56,49 @@ class StoresTest {
         settings.setConfirmed("miui_recents", true)
         settings.setConfirmed("miui_recents", false)
         assertEquals(setOf("miui_autostart"), settings.confirmedChecks.first())
+    }
+
+    @Test
+    fun ringThemeDefaultsToDawnAndRoundTrips() = runBlocking {
+        val settings = SettingsStore(store())
+        assertEquals(RingTheme.DAWN, settings.current().ringTheme)
+        assertEquals(emptyMap<Long, RingTheme>(), settings.current().policyRingThemes)
+        settings.update { it.copy(ringTheme = RingTheme.MIDNIGHT) }
+        assertEquals(RingTheme.MIDNIGHT, settings.current().ringTheme)
+    }
+
+    @Test
+    fun policyOverridesAreSetClearedAndPrunedOfDeletedPolicies() = runBlocking {
+        val settings = SettingsStore(store())
+        settings.setPolicyRingTheme(1, RingTheme.PAPER, livePolicyIds = setOf(1, 2, 3))
+        settings.setPolicyRingTheme(3, RingTheme.HORIZON, livePolicyIds = setOf(1, 2, 3))
+        assertEquals(mapOf(1L to RingTheme.PAPER, 3L to RingTheme.HORIZON), settings.current().policyRingThemes)
+        // Policy 3 was deleted meanwhile: the next write drops it.
+        settings.setPolicyRingTheme(2, RingTheme.MIDNIGHT, livePolicyIds = setOf(1, 2))
+        assertEquals(mapOf(1L to RingTheme.PAPER, 2L to RingTheme.MIDNIGHT), settings.current().policyRingThemes)
+        // null means "Default".
+        settings.setPolicyRingTheme(1, null, livePolicyIds = setOf(1, 2))
+        assertEquals(mapOf(2L to RingTheme.MIDNIGHT), settings.current().policyRingThemes)
+    }
+
+    @Test
+    fun unknownStoredThemesMapToDawnAndMalformedOverridesAreIgnored() = runBlocking {
+        val prefs = store()
+        prefs.edit {
+            it[stringPreferencesKey("ring_theme")] = "SEPIA"
+            it[stringSetPreferencesKey("policy_ring_themes")] = setOf("1=PAPER", "2=SEPIA", "x=MIDNIGHT", "garbage")
+        }
+        val settings = SettingsStore(prefs)
+        assertEquals(RingTheme.DAWN, settings.current().ringTheme)
+        assertEquals(mapOf(1L to RingTheme.PAPER, 2L to RingTheme.DAWN), settings.current().policyRingThemes)
+    }
+
+    @Test
+    fun lastReadRemembersTheMostRecentSettings() = runBlocking {
+        val settings = SettingsStore(store())
+        assertNull(settings.lastRead)
+        settings.update { it.copy(ringTheme = RingTheme.PAPER) }
+        settings.current()
+        assertEquals(RingTheme.PAPER, settings.lastRead?.ringTheme)
     }
 }

@@ -284,7 +284,7 @@ private fun NextUpCard(
             val isRinging = ringingKey == armed.key
             Hero(
                 res.getString(if (isRinging) R.string.today_ringing_now else R.string.today_overdue), armed.at, armedLabel(res, armed),
-                sourceKeyColor(armed.sourceKeys), null,
+                sourceKeyColor(heroKeys(armed)), null,
                 armedOk = false,
                 warning = if (isRinging) null else res.getString(R.string.today_overdue_warning, labels.formats.time(armed.at.atZone(zone).toLocalTime())),
                 settling = false,
@@ -295,13 +295,13 @@ private fun NextUpCard(
             val armed = state.armed
             val earlier = state.earlierUnarmed?.takeIf { warn }
             Hero(
-                nextWakeUp, armed.at, armedLabel(res, armed), sourceKeyColor(armed.sourceKeys), backupText(labels, armed.at, zone),
+                nextWakeUp, armed.at, armedLabel(res, armed), sourceKeyColor(heroKeys(armed)), backupText(labels, armed.at, zone),
                 armedOk = earlier == null,
                 warning = earlier?.let {
                     res.getString(R.string.today_not_set_earlier, labels.dayAndTime(it.at.toInstant(), now, zone), it.label)
                 },
                 settling = false,
-                target = heroTarget(armed.sourceKeys),
+                target = heroTarget(heroKeys(armed)),
             )
         }
         is NextUp.NotSet -> Hero(
@@ -375,6 +375,9 @@ private fun NextUpCard(
         }
     }
 }
+
+/** A snooze carries its alarm's sources (for the ringing theme), but the hero shows it as before: accent, no editor link. */
+private fun heroKeys(armed: Armed): List<String> = if (armed.isSnooze) emptyList() else armed.sourceKeys
 
 private fun armedLabel(res: Resources, armed: Armed): String =
     if (armed.isSnooze) res.getString(R.string.today_snoozed, armed.label) else armed.label
