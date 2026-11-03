@@ -101,7 +101,7 @@
     <string name="policy_status_ended">Terminato il %1$s</string>
     <string name="policy_status_starts">Inizia il %1$s</string>
     <string name="policy_status_paused">In pausa, riprende il %1$s</string>
-    <string name="policy_status_paused_until_end">In pausa fino alla fine, il %1$s</string>
+    <string name="policy_status_paused_until_end">In pausa fino al termine (%1$s)</string>
     <string name="policy_deleted_recreate">Questo programma è stato eliminato. Salvando ne crei uno nuovo.</string>
     <string name="policy_delete">Elimina programma</string>
     <string name="policy_delete_title">Eliminare il programma?</string>
@@ -165,10 +165,14 @@
     <string name="oneoff_hour">Ora, %1$s</string>
     <string name="oneoff_minute">Minuti, %1$s</string>
     <string name="oneoff_pick_date">Scegli un’altra data</string>
-    <string name="oneoff_wont_ring">non suona</string>
+    <string name="oneoff_wont_ring">non suonerà</string>
     <string name="oneoff_also_rings">suona anche</string>
     <string name="health_title">Stato</string>
-    <string name="health_summary">%1$d controlli superati su %2$d</string>
+    <plurals name="health_summary">
+        <item quantity="one">%1$d su %2$d controllo superato</item>
+        <item quantity="many">%1$d su %2$d controlli superati</item>
+        <item quantity="other">%1$d su %2$d controlli superati</item>
+    </plurals>
     <string name="health_all_good">Tutto a posto</string>
     <string name="health_may_not_ring">Le sveglie potrebbero non suonare</string>
     <string name="health_note_hyperos">HyperOS</string>
@@ -238,7 +242,7 @@
     <string name="settings_snooze_length">Durata posticipo</string>
     <string name="settings_snooze_length_decrease">Riduci durata posticipo</string>
     <string name="settings_snooze_length_increase">Aumenta durata posticipo</string>
-    <string name="settings_auto_snooze">Posticipa da sola dopo aver suonato per</string>
+    <string name="settings_auto_snooze">Posticipo automatico dopo</string>
     <string name="settings_auto_snooze_decrease">Riduci il tempo prima del posticipo automatico</string>
     <string name="settings_auto_snooze_increase">Aumenta il tempo prima del posticipo automatico</string>
     <plurals name="settings_minutes">
@@ -347,7 +351,7 @@
     <string name="notif_dismiss">Ferma</string>
     <string name="notif_missed_title">Sveglia persa</string>
     <string name="notif_missed_text">%1$s delle %2$s non ha suonato. Apri Reveille → Stato.</string>
-    <string name="notif_scheduling_failed_title">Impossibile programmare le sveglie</string>
+    <string name="notif_scheduling_failed_title">Impossibile impostare le sveglie</string>
     <string name="notif_scheduling_failed_text">Reveille non ha il permesso di impostare sveglie esatte. Apri Reveille → Stato.</string>
     <string name="ringing_backup_title">%1$s (riserva)</string>
     <string name="ringing_fallback_title">%1$s · %2$s</string>

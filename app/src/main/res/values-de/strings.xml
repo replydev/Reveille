@@ -114,7 +114,7 @@
     <string name="policy_next_text">%1$s, %2$s</string>
     <string name="policy_change_time">Zeit ändern</string>
     <string name="policy_remove_alarm_time">Weckzeit entfernen</string>
-    <string name="policy_repeat_every">Wiederholen alle</string>
+    <string name="policy_repeat_every">Wiederholung alle</string>
     <plurals name="policy_weeks">
         <item quantity="one">%d Woche</item>
         <item quantity="other">%d Wochen</item>
@@ -151,14 +151,17 @@
     <string name="oneoff_mode_replace">Tag ersetzen</string>
     <string name="oneoff_mode_additive">Zusätzlich klingeln</string>
     <string name="oneoff_replaced_by_other">Ein anderer Wecker ersetzt bereits die wiederkehrenden Wecker an diesem Tag, sie klingeln also nicht.</string>
-    <string name="oneoff_set_for">Stellen für %1$s, %2$s</string>
+    <string name="oneoff_set_for">Für %1$s, %2$s stellen</string>
     <string name="oneoff_hour">Stunde, %1$s</string>
     <string name="oneoff_minute">Minute, %1$s</string>
     <string name="oneoff_pick_date">Anderes Datum wählen</string>
     <string name="oneoff_wont_ring">klingelt nicht</string>
     <string name="oneoff_also_rings">klingelt auch</string>
     <string name="health_title">Status</string>
-    <string name="health_summary">%1$d von %2$d Prüfungen bestanden</string>
+    <plurals name="health_summary">
+        <item quantity="one">%1$d von %2$d Prüfung bestanden</item>
+        <item quantity="other">%1$d von %2$d Prüfungen bestanden</item>
+    </plurals>
     <string name="health_all_good">Alles in Ordnung</string>
     <string name="health_may_not_ring">Wecker klingeln eventuell nicht</string>
     <string name="health_note_hyperos">HyperOS</string>
@@ -167,7 +170,7 @@
     <string name="health_mark_done">Als erledigt markieren</string>
     <string name="health_mark_not_done">Als nicht erledigt markieren</string>
     <string name="health_unconfirm_title">Als nicht erledigt markieren?</string>
-    <string name="health_unconfirm_text">„%1$s“ wird wieder als Handlungsbedarf angezeigt.</string>
+    <string name="health_unconfirm_text">„%1$s“ wird wieder unter Handlungsbedarf aufgeführt.</string>
     <string name="health_save_failed">Speichern fehlgeschlagen.</string>
     <string name="health_open_failed">Die Einstellungsseite konnte nicht geöffnet werden. Öffne sie über die Einstellungen-App des Telefons.</string>
     <string name="health_test_title">Testwecker klingeln lassen</string>
@@ -203,13 +206,13 @@
     <string name="health_check_alarm_volume_title">Weckerlautstärke nicht stumm</string>
     <string name="health_check_alarm_volume_detail">Wecker nutzen die Weckerlautstärke, die vom Klingelton getrennt ist.</string>
     <string name="health_check_oem_battery_title">Akku-Einstellungen des Herstellers</string>
-    <string name="health_check_oem_battery_detail">Manche Telefone beenden Apps trotz der Android-Einstellungen. Öffne die Akku-Einstellungen der App, wähle „Uneingeschränkt“ und tippe dann auf Als erledigt markieren.</string>
+    <string name="health_check_oem_battery_detail">Manche Telefone beenden Apps trotz der Android-Einstellungen. Öffne die Akku-Einstellungen der App, wähle „Nicht eingeschränkt“ und tippe dann auf Als erledigt markieren.</string>
     <string name="health_check_miui_autostart_title">Autostart an</string>
     <string name="health_check_miui_autostart_detail">Ohne Autostart teilt HyperOS Reveille nicht mit, dass das Telefon neu gestartet wurde, und Wecker gehen nach einem Neustart verloren.</string>
     <string name="health_check_miui_battery_title">Energiesparen: Keine Einschränkungen</string>
     <string name="health_check_miui_battery_detail">Wähle in der Energiespar-Einstellung der App „Keine Einschränkungen“.</string>
     <string name="health_check_miui_permissions_title">Sperrbildschirm- und Pop-up-Berechtigungen</string>
-    <string name="health_check_miui_permissions_detail">Erlaube unter Weitere Berechtigungen „Auf Sperrbildschirm anzeigen“ und „Pop-up-Fenster anzeigen, während im Hintergrund ausgeführt“.</string>
+    <string name="health_check_miui_permissions_detail">Erlaube unter Andere Berechtigungen „Auf Sperrbildschirm anzeigen“ und „Pop-up-Fenster während der Ausführung im Hintergrund anzeigen“.</string>
     <string name="health_check_miui_recents_title">In „Zuletzt verwendet“ fixiert</string>
     <string name="health_check_miui_recents_detail">Öffne die Übersicht der zuletzt verwendeten Apps, halte Reveille gedrückt und tippe auf das Schloss-Symbol.</string>
     <string name="settings_title">Einstellungen</string>
@@ -228,7 +231,7 @@
     <string name="settings_snooze_length">Schlummerdauer</string>
     <string name="settings_snooze_length_decrease">Schlummerdauer verringern</string>
     <string name="settings_snooze_length_increase">Schlummerdauer erhöhen</string>
-    <string name="settings_auto_snooze">Automatisch schlummern nach Klingeln von</string>
+    <string name="settings_auto_snooze">Automatisch schlummern nach</string>
     <string name="settings_auto_snooze_decrease">Zeit bis zum automatischen Schlummern verringern</string>
     <string name="settings_auto_snooze_increase">Zeit bis zum automatischen Schlummern erhöhen</string>
     <plurals name="settings_minutes">
@@ -304,7 +307,7 @@
     </plurals>
     <string name="update_due_now">%1$s ist jetzt fällig</string>
     <string name="update_alarm_soon_body">Updates warten, bis der Wecker geklingelt hat. Wir erinnern dich nach %1$s.</string>
-    <string name="update_remind_me">Erinnere mich</string>
+    <string name="update_remind_me">Später erinnern</string>
     <string name="update_install_anyway">Trotzdem installieren</string>
     <string name="update_failed_body">Der Download wurde gelöscht und nichts wurde installiert. Deine Wecker sind nicht betroffen.</string>
     <string name="update_failed_body_detail">%1$s %2$s</string>
@@ -328,8 +331,8 @@
     <string name="notif_channel_fallback_name">Reserve-Wecker</string>
     <string name="notif_channel_fallback_desc">Klingelt von selbst, wenn der normale Wecker nicht starten kann. Lass die Wichtigkeit auf „Hoch“ und den Ton an.</string>
     <string name="notif_channel_alerts_name">Verpasste Wecker und Probleme</string>
-    <string name="notif_alarm_for">Wecker für %1$s</string>
-    <string name="notif_alarm_for_fallback">Wecker für %1$s (Reserve)</string>
+    <string name="notif_alarm_for">Wecker um %1$s</string>
+    <string name="notif_alarm_for_fallback">Wecker um %1$s (Reserve)</string>
     <string name="notif_snooze">Schlummern</string>
     <string name="notif_dismiss">Beenden</string>
     <string name="notif_missed_title">Verpasster Wecker</string>

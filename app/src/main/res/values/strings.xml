@@ -195,7 +195,10 @@
 
     <!-- Health -->
     <string name="health_title">Health</string>
-    <string name="health_summary">%1$d of %2$d checks pass</string>
+    <plurals name="health_summary">
+        <item quantity="one">%1$d of %2$d check passes</item>
+        <item quantity="other">%1$d of %2$d checks pass</item>
+    </plurals>
     <string name="health_all_good">All good</string>
     <string name="health_may_not_ring">Alarms may not ring</string>
     <!-- Muted note on a passing check: HyperOS-only checks, and manual checks the user confirmed -->

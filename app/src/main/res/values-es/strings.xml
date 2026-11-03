@@ -71,7 +71,7 @@
     <string name="today_armed">Programada en el sistema</string>
     <string name="today_none_scheduled">Ninguna programada</string>
     <string name="today_snoozed">Pospuesta: %1$s</string>
-    <string name="today_overdue_warning">Debía sonar a las %1$s y sonará en cualquier momento. Si no suena, revisa Estado.</string>
+    <string name="today_overdue_warning">Debía sonar a las %1$s y debería sonar en cualquier momento. Si no suena, revisa Estado.</string>
     <string name="today_not_set_earlier">No programada en el sistema: %1$s %2$s está programada antes. Revisa Estado.</string>
     <string name="today_not_set">No programada en el sistema, así que no sonará. Revisa Estado.</string>
     <string name="today_setting">Programando la alarma…</string>
@@ -154,7 +154,7 @@
     <string name="oneoff_delete_failed">No se pudo eliminar la alarma.</string>
     <string name="oneoff_delete">Eliminar alarma</string>
     <string name="oneoff_delete_title">¿Eliminar la alarma?</string>
-    <string name="oneoff_delete_text">No sonará. Si ya está pospuesta, sonará igualmente al terminar la posposición.</string>
+    <string name="oneoff_delete_text">No sonará. Si ya está pospuesta, sonará igualmente cuando termine de posponerse.</string>
     <string name="oneoff_date">Fecha</string>
     <string name="oneoff_label_optional">Etiqueta (opcional)</string>
     <string name="oneoff_on_date">El %1$s</string>
@@ -168,7 +168,11 @@
     <string name="oneoff_wont_ring">no sonará</string>
     <string name="oneoff_also_rings">también suena</string>
     <string name="health_title">Estado</string>
-    <string name="health_summary">%1$d de %2$d comprobaciones superadas</string>
+    <plurals name="health_summary">
+        <item quantity="one">%1$d de %2$d comprobación superada</item>
+        <item quantity="many">%1$d de %2$d comprobaciones superadas</item>
+        <item quantity="other">%1$d de %2$d comprobaciones superadas</item>
+    </plurals>
     <string name="health_all_good">Todo bien</string>
     <string name="health_may_not_ring">Puede que las alarmas no suenen</string>
     <string name="health_note_hyperos">HyperOS</string>
@@ -235,10 +239,10 @@
     <string name="settings_volume_ramp">Aumentar el volumen gradualmente</string>
     <string name="settings_volume_ramp_hint">Empieza bajo y llega al volumen máximo</string>
     <string name="settings_snooze">Posponer</string>
-    <string name="settings_snooze_length">Duración al posponer</string>
-    <string name="settings_snooze_length_decrease">Reducir duración al posponer</string>
-    <string name="settings_snooze_length_increase">Aumentar duración al posponer</string>
-    <string name="settings_auto_snooze">Posponer sola tras sonar durante</string>
+    <string name="settings_snooze_length">Tiempo de posposición</string>
+    <string name="settings_snooze_length_decrease">Reducir tiempo de posposición</string>
+    <string name="settings_snooze_length_increase">Aumentar tiempo de posposición</string>
+    <string name="settings_auto_snooze">Posponer automáticamente tras sonar</string>
     <string name="settings_auto_snooze_decrease">Reducir el tiempo antes de posponer automáticamente</string>
     <string name="settings_auto_snooze_increase">Aumentar el tiempo antes de posponer automáticamente</string>
     <plurals name="settings_minutes">
@@ -307,7 +311,7 @@
     <string name="update_install">Instalar</string>
     <string name="update_installing">Instalando…</string>
     <string name="update_permission_title">Permitir que Reveille instale apps</string>
-    <string name="update_permission_body">Android lo pregunta una sola vez. Activa «Permitir de esta fuente» y vuelve.</string>
+    <string name="update_permission_body">Android lo pregunta una sola vez. Activa «Permitir desde esta fuente» y vuelve.</string>
     <string name="update_open_settings">Abrir ajustes</string>
     <string name="update_alarm_ringing">%1$s está sonando</string>
     <plurals name="update_rings_in">
@@ -365,6 +369,6 @@
     </plurals>
     <string name="widget_subtitle">%1$s · %2$s</string>
     <string name="widget_tap_to_fix">Toca para solucionarlo</string>
-    <string name="widget_no_alarms">No hay alarmas</string>
+    <string name="widget_no_alarms">No hay alarmas programadas</string>
     <string name="widget_new_one_off">Nueva alarma única</string>
 </resources>

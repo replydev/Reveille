@@ -70,7 +70,7 @@
     <string name="today_overdue">En retard</string>
     <string name="today_armed">Programmée dans le système</string>
     <string name="today_none_scheduled">Aucune programmée</string>
-    <string name="today_snoozed">Répétée : %1$s</string>
+    <string name="today_snoozed">En répétition : %1$s</string>
     <string name="today_overdue_warning">Prévue à %1$s, elle devrait sonner d’un instant à l’autre. Sinon, consultez État.</string>
     <string name="today_not_set_earlier">Non programmée dans le système : %1$s %2$s est prévue plus tôt. Consultez État.</string>
     <string name="today_not_set">Non programmée dans le système, elle ne sonnera donc pas. Consultez État.</string>
@@ -83,7 +83,7 @@
     <string name="today_skipped_ringing_again">Ignorée : %1$s %2$s · les alarmes de %3$s sonneront à nouveau ce jour-là</string>
     <string name="today_skip_failed">Impossible d’ignorer l’alarme.</string>
     <string name="today_unskip_failed">Impossible de rétablir l’alarme.</string>
-    <string name="today_undo_skip_failed">Impossible d’annuler l’omission.</string>
+    <string name="today_undo_skip_failed">Impossible d’annuler.</string>
     <plurals name="policy_every_n_weeks">
         <item quantity="one">toutes les %d sem.</item>
         <item quantity="many">toutes les %d sem.</item>
@@ -105,7 +105,7 @@
     <string name="policy_deleted_recreate">Ce programme a été supprimé. L’enregistrer en crée un nouveau.</string>
     <string name="policy_delete">Supprimer le programme</string>
     <string name="policy_delete_title">Supprimer le programme ?</string>
-    <string name="policy_delete_text">Ses prochaines alarmes ne sonneront pas. Une alarme déjà répétée sonnera quand même.</string>
+    <string name="policy_delete_text">Ses prochaines alarmes ne sonneront pas. Une alarme déjà en répétition sonnera quand même.</string>
     <string name="policy_save_failed">Impossible d’enregistrer le programme.</string>
     <string name="policy_delete_failed">Impossible de supprimer le programme.</string>
     <string name="policy_name">Nom</string>
@@ -122,7 +122,7 @@
     <string name="policy_next_text">%1$s, %2$s</string>
     <string name="policy_change_time">Modifier l’heure</string>
     <string name="policy_remove_alarm_time">Retirer l’heure d’alarme</string>
-    <string name="policy_repeat_every">Répéter toutes les</string>
+    <string name="policy_repeat_every">Intervalle</string>
     <plurals name="policy_weeks">
         <item quantity="one">%d semaine</item>
         <item quantity="many">%d semaines</item>
@@ -154,7 +154,7 @@
     <string name="oneoff_delete_failed">Impossible de supprimer l’alarme.</string>
     <string name="oneoff_delete">Supprimer l’alarme</string>
     <string name="oneoff_delete_title">Supprimer l’alarme ?</string>
-    <string name="oneoff_delete_text">Elle ne sonnera pas. Si elle est déjà répétée, la répétition sonnera quand même.</string>
+    <string name="oneoff_delete_text">Elle ne sonnera pas. Si elle est déjà en répétition, la répétition sonnera quand même.</string>
     <string name="oneoff_date">Date</string>
     <string name="oneoff_label_optional">Libellé (facultatif)</string>
     <string name="oneoff_on_date">Le %1$s</string>
@@ -168,7 +168,11 @@
     <string name="oneoff_wont_ring">ne sonnera pas</string>
     <string name="oneoff_also_rings">sonne aussi</string>
     <string name="health_title">État</string>
-    <string name="health_summary">%1$d vérifications réussies sur %2$d</string>
+    <plurals name="health_summary">
+        <item quantity="one">%1$d sur %2$d vérification réussie</item>
+        <item quantity="many">%1$d sur %2$d vérifications réussies</item>
+        <item quantity="other">%1$d sur %2$d vérifications réussies</item>
+    </plurals>
     <string name="health_all_good">Tout va bien</string>
     <string name="health_may_not_ring">Les alarmes risquent de ne pas sonner</string>
     <string name="health_note_hyperos">HyperOS</string>
@@ -193,8 +197,8 @@
     <string name="health_log_empty">Rien pour l’instant.</string>
     <string name="health_outcome_fired">a sonné, sans réponse pour l’instant</string>
     <string name="health_outcome_dismissed">arrêtée</string>
-    <string name="health_outcome_snoozed">répétée</string>
-    <string name="health_outcome_auto_snoozed">répétée automatiquement</string>
+    <string name="health_outcome_snoozed">mise en répétition</string>
+    <string name="health_outcome_auto_snoozed">mise en répétition automatiquement</string>
     <string name="health_outcome_skipped">ignorée</string>
     <string name="health_outcome_superseded">remplacée</string>
     <string name="health_outcome_missed">manquée</string>
@@ -220,7 +224,7 @@
     <string name="health_check_miui_battery_detail">Dans le réglage d’économie de batterie de l’application, choisissez « Aucune restriction ».</string>
     <string name="health_check_miui_permissions_title">Autorisations écran de verrouillage et pop-up</string>
     <string name="health_check_miui_permissions_detail">Dans Autres autorisations, autorisez « Afficher sur l’écran de verrouillage » et « Afficher des fenêtres pop-up en arrière-plan ».</string>
-    <string name="health_check_miui_recents_title">Verrouillée dans les applis récentes</string>
+    <string name="health_check_miui_recents_title">Verrouillée dans les applications récentes</string>
     <string name="health_check_miui_recents_detail">Ouvrez la vue des applications récentes, appuyez longuement sur Reveille et touchez l’icône du cadenas.</string>
     <string name="settings_title">Paramètres</string>
     <string name="settings_save_failed">Impossible d’enregistrer le paramètre.</string>
@@ -337,7 +341,7 @@
     <string name="update_notification_title">Reveille v%1$s est disponible</string>
     <string name="update_notification_text">Découvrez les nouveautés et installez-la depuis les Paramètres.</string>
     <string name="notif_channel_alarm_name">Alarmes en cours</string>
-    <string name="notif_channel_alarm_desc">Affichées pendant qu’une alarme sonne. Gardez ce canal en importance élevée.</string>
+    <string name="notif_channel_alarm_desc">Affichée pendant qu’une alarme sonne. Gardez ce canal en importance élevée.</string>
     <string name="notif_channel_fallback_name">Alarmes de secours</string>
     <string name="notif_channel_fallback_desc">Sonne d’elle-même quand l’alarme normale ne peut pas démarrer. Gardez ce canal en importance élevée avec son.</string>
     <string name="notif_channel_alerts_name">Alarmes manquées et problèmes</string>

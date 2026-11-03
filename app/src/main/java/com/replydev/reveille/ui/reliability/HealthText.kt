@@ -14,7 +14,7 @@ data class HealthSummary(val text: String, val verdict: String, val allGood: Boo
 fun healthSummary(res: Resources, passing: Int, total: Int): HealthSummary {
     val allGood = passing == total
     return HealthSummary(
-        res.getString(R.string.health_summary, passing, total),
+        res.getQuantityString(R.plurals.health_summary, total, passing, total),
         res.getString(if (allGood) R.string.health_all_good else R.string.health_may_not_ring),
         allGood,
     )

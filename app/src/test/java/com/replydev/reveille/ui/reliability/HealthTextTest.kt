@@ -41,6 +41,11 @@ class HealthTextTest {
     }
 
     @Test
+    fun `summary agrees with a single check`() {
+        assertEquals("1 of 1 check passes", healthSummary(res, passing = 1, total = 1).text)
+    }
+
+    @Test
     fun `passing note marks HyperOS and confirmed manual checks`() {
         assertEquals("HyperOS", passingNote(res, "miui_autostart", manual = true))
         assertEquals("Confirmed", passingNote(res, "oem_battery", manual = true))
