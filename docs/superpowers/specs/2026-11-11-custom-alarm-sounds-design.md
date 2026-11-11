@@ -67,7 +67,9 @@ specific alarm. The test alarm and unknown keys use `settings.sound`.
 3. the bundled `R.raw.fallback_alarm`.
 
 Each failure is logged and the player is `reset()` before the next step. If step 3 also fails, the existing path still
-applies: post the fallback notification and vibrate whatever the setting says. Settings that can't be read within the
+applies: post the fallback notification and vibrate whatever the setting says. The same happens if the player reports
+an error after it has started (a corrupt file that prepares fine but breaks mid-stream): the fallback notification
+rings and the phone vibrates regardless of the setting. Settings that can't be read within the
 existing 3 s timeout mean defaults, so `SystemDefault`, as today.
 
 Nothing in `alarm/` imports the UI or `SoundLibrary`'s import code. The ringing path only reads settings and a file path.
@@ -109,20 +111,22 @@ now pushes the **Alarm sound** screen instead of opening the system picker direc
 
 **Alarm sound screen** (`ui/settings/AlarmSoundScreen.kt`, pushed, no bottom bar, back arrow):
 
-- *Default sound* group: a radio list with "System default alarm", "System tone" (caption: the chosen tone's name;
-  tapping it opens the existing `ACTION_RINGTONE_PICKER` and selects the result), and each imported sound.
-- *Imported sounds* group: one row per file with a ▶/■ preview button (`contentDescription` "Play <name>" / "Stop")
-  and a delete button ("Delete <name>"). Deleting a sound that is in use asks for confirmation first ("Used by N
-  alarms; they'll go back to the default sound"). Below the rows sits "Import audio file…", which launches
-  `ActivityResultContracts.OpenDocument` with `audio/*`. While an import runs, the row shows progress and is disabled.
-  Results arrive as snackbar messages: imported / too large (20 MB max) / not a playable audio file / couldn't read
-  the file.
-- *Per policy* group: one row per policy (colour dot, name, current sound or "Default"). Tapping a row opens a bottom
-  sheet: "Default", "System default alarm", each imported sound. "System tone…" opens the system picker.
+- *Default sound* card: a radio list with "System default alarm", "System tone" (caption: the chosen tone's name, or
+  "Choose a system tone"; tapping it opens the existing `ACTION_RINGTONE_PICKER` and selects the result), and each
+  imported sound. An imported row has a ▶/■ preview button (`contentDescription` "Play <name>" / "Stop") and a delete
+  button ("Delete <name>"); tapping the row selects the sound. The last row is "Import audio file…", which launches
+  `ActivityResultContracts.OpenDocument` with `audio/*`. While an import runs, it reads "Importing…" and is disabled.
+  There is no separate "Imported sounds" card. Results arrive as snackbar messages: imported / too large (20 MB max) /
+  not a playable audio file / couldn't read the file. Deleting a sound always asks for confirmation; if it is in use,
+  the dialog says how many alarm choices go back to the default sound.
+- *Per policy* card (shown when there are policies): one row per policy (colour dot, name, current sound or
+  "Default", chevron). Tapping a row opens a bottom sheet (`SoundChoiceSheet`): "Default", "System default alarm",
+  "Choose a system tone" (opens the system picker), and each imported sound.
 - Preview uses a `MediaPlayer` with `USAGE_ALARM`. Only one plays at a time, and it stops on leaving the screen or
   starting another preview.
 
-**One-off sheet** (`OneOffEditorScreen`): a "Sound" row ("Default" or the sound's name) opens the same choice sheet.
+**One-off sheet** (`OneOffEditorScreen`): a "Sound" row below the label field (same look as the label field: `SurfaceHigh`,
+52 dp, radius 16, music icon; "Default" or the sound's name) opens the same choice sheet.
 The choice is saved with the one-off. A new one-off's override is written after the insert returns its id, inside the
 same `ScreenSession` write.
 
@@ -139,6 +143,7 @@ deleted file shows "Default".
 | Failure | Result |
 |---|---|
 | Imported file missing or corrupt at ring time | Logged; the system default alarm plays (then the bundled sound) |
+| Playback error after the sound started | Logged; the fallback notification rings and the phone vibrates, whatever the vibration setting |
 | Ringing before the first unlock | Imported file is readable (device-protected); `SystemTone` fails → bundled sound, as today |
 | Settings unreadable at ring time | Defaults → system default alarm, as today |
 | Import too large, unreadable or not audio | Snackbar; temp file deleted; nothing stored |
@@ -155,10 +160,12 @@ TDD; alarm-path Robolectric tests at `@Config(sdk = [31, 33, 35])`.
 - Robolectric: `RingingService` with an `Imported` ref whose file is missing → still rings (fallback path), no
   fallback notification; `SoundLibrary.import` rejects files that are too large or not audio and leaves no temp file;
   `delete` resets every ref, then removes the file; `sweepOrphans` removes stray files and keeps listed ones.
-- Maestro: `.maestro/alarm_sound.yaml`. Push `test.mp3` into Downloads with `adb push`, import it through the
-  document picker, set it as the default, assign it to a policy, and check the names shown.
+- Maestro: `.maestro/sounds/alarm_sound.yaml`, run by `scripts/maestro-sounds.sh`, which first pushes
+  `.maestro/sounds/test_tone.mp3` into Download (a subfolder, so `maestro test .maestro` skips it). The flow imports the
+  file through the document picker, sets it as the default, assigns it to a policy, and deletes it, checking that the
+  names shown follow.
 - Device only (added to the build report): an imported MP3 rings after reboot before the first unlock; a custom sound
-  plays at alarm volume while media is muted.
+  plays at alarm volume while media is muted; deleting the ringing sound doesn't stop the current ring.
 
 ## 7. Docs to update
 

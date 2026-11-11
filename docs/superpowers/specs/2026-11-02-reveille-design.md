@@ -12,7 +12,7 @@ Status: Implemented, pending device verification
 - A home-screen widget showing the next wake-up.
 - **Never miss a wake-up**, including on OEM ROMs with aggressive battery management (Xiaomi HyperOS/MIUI, Samsung, etc.).
 
-Non-goals (v1): Play Store distribution, cloud sync/backup, per-policy sounds, holiday calendars, smart/sleep-tracking alarms.
+Non-goals (v1): Play Store distribution, cloud sync/backup, holiday calendars, smart/sleep-tracking alarms.
 
 ## Platform & stack
 
@@ -51,7 +51,7 @@ Non-goals (v1): Play Store distribution, cloud sync/backup, per-policy sounds, h
 - A row = handled for the planner. FIRED = claimed but not yet resolved (the ring guard retries it); the rest are terminal. Used for dedupe, missed-alarm detection, and debugging reliability.
 
 **Settings** (DataStore, not Room)
-- Ringtone URI, vibration on/off, snooze minutes (default 9), max ring duration before auto-snooze (default 10 min), volume ramp on/off.
+- Alarm sound (`SoundRef`: system default, a system tone, or an imported file), with per-policy and per-one-off overrides, vibration on/off, snooze minutes (default 9), max ring duration before auto-snooze (default 10 min), volume ramp on/off.
 
 All times are stored as local wall-clock values (`LocalDate`/`LocalTime`), never as epoch instants; conversion to `Instant` happens only in the engine using the current zone.
 
@@ -104,7 +104,7 @@ Code: `AlarmReceiver` (thin), `RingingService`, `AlarmFiring` (everything the pa
 
 **2. Service goes foreground first, then claims and rings.** On RING `RingingService` calls `startForeground` (type `systemExempted`; on 31–33 the platform only checks the type against the manifest) before anything else — with the current alarm's notification if one already rings, otherwise a minimal notification without a full-screen intent, so a duplicate delivery never flashes the ringing screen; the full notification replaces it once the delivery is known to ring (and is itself retried as the minimal one if it throws). If that also fails it posts the fallback, arms the guard and only then stops (residual risk: the system may still crash the process for not calling `startForeground`; the fallback notification and the guard alarm survive that). Then, serialized per delivery:
 - `claim` (5 s timeout). A delivery for the occurrence already ringing in this process just keeps it. A guard re-ring or a **backup** delivery of an already-claimed occurrence rings while its fire-log outcome is still FIRED (whoever claimed it may have died before arming the guard); other later deliveries (catch-up) are quiet duplicates. Every duplicate still calls `rearm`. A failed or timed-out claim rings anyway — ringing twice beats not ringing.
-- Ringing: `MediaPlayer` with `USAGE_ALARM` (chosen tone → `RingtoneManager.getDefaultUri(TYPE_ALARM)` → bundled sound, which also covers the locked-boot state), prepared on `Dispatchers.IO` and started on the main thread only if that ring is still current, vibration, notification on the silent `IMPORTANCE_HIGH` alarm channel with a **full-screen intent** to `RingingActivity` and Snooze/Dismiss. Output start is a tracked job, so a newer RING or an action during settings load cannot leak a player.
+- Ringing: `MediaPlayer` with `USAGE_ALARM` (the alarm's resolved sound (`resolveSound`: one-off override → policy override → default; snoozes carry their sources) → `RingtoneManager.getDefaultUri(TYPE_ALARM)` → bundled sound, which also covers the locked-boot state. Imported files live in device-protected `files/sounds/`, so they ring before the first unlock), prepared on `Dispatchers.IO` and started on the main thread only if that ring is still current, vibration, notification on the silent `IMPORTANCE_HIGH` alarm channel with a **full-screen intent** to `RingingActivity` and Snooze/Dismiss. Output start is a tracked job, so a newer RING or an action during settings load cannot leak a player.
 - Then: arm the ring guard, cancel this occurrence's fallback notification (and the direct snooze alarm, for a snooze), consume the snooze if it is a snooze occurrence, reset the auto-snooze counter for a non-snooze occurrence, `rearm("alarm fired")`. Each step is guarded; failures are logged, never stop the ring.
 - A newer alarm that starts ringing while another rings replaces it; the old occurrence is recorded `SUPERSEDED`.
 
@@ -190,7 +190,7 @@ Top-level tabs in a bottom bar: Today, Policies, Health, Settings. The policy ed
 1. **Today**: date and reliability pill (if needed), next wake-up card (Skip this one, Open policy / Edit), timeline of the next 14 days grouped by day with Skip/Unskip (and Edit for one-offs) buttons; "One-off alarm" button.
 2. **Policies**: list with enable toggles and "New policy"; editor with name, start/end dates, rules (time, weekday toggles, every N weeks + anchor), pauses list, and a sticky bar with the next alarm and Save.
 3. **One-off editor** (bottom sheet): time, date strip, label, Replace the day / Ring in addition; shows which policy alarms would be replaced.
-4. **Settings**: ringtone, vibration, snooze length, max ring duration, volume ramp.
+4. **Settings**: alarm sound, vibration, snooze length, max ring duration, volume ramp.
 5. **Health** (Reliability): checklist with failing checks first, test alarm, recent FireLog entries.
 
 ## Error handling

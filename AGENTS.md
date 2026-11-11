@@ -21,7 +21,7 @@ Run all four (test, test, lint, assemble) before committing. For UI changes, als
 
 ## UI testing (Maestro)
 
-`.maestro/` holds end-to-end flows driven by [Maestro](https://maestro.dev): `navigation.yaml`, `one_off_alarm.yaml`, `policy.yaml`, `update.yaml`. Each one starts from `subflows/launch_clean.yaml` (except `update.yaml`, which launches with the `fake_updates` argument so the debug build serves a canned release) (cleared state, all permissions granted). Only top-level files run as flows.
+`.maestro/` holds end-to-end flows driven by [Maestro](https://maestro.dev): `navigation.yaml`, `one_off_alarm.yaml`, `policy.yaml`, `ringing_theme.yaml`, `update.yaml`. Each one starts from `subflows/launch_clean.yaml` (except `update.yaml`, which launches with the `fake_updates` argument so the debug build serves a canned release) (cleared state, all permissions granted). Only top-level files run as flows.
 
 - Setup: `brew install mobile-dev-inc/tap/maestro`; emulator `reveille` (Pixel 8, API 35 `google_apis` arm64). Start it headless with `$ANDROID_HOME/emulator/emulator -avd reveille -no-window -no-audio -no-boot-anim &`.
 - Set `MAESTRO_CLI_NO_ANALYTICS=1` to keep Maestro from sending analytics.
@@ -29,6 +29,7 @@ Run all four (test, test, lint, assemble) before committing. For UI changes, als
 - `maestro hierarchy` dumps what is on screen; `adb exec-out screencap -p > shot.png` takes a screenshot.
 - To check motion, record with `adb shell screenrecord`, then tile the distinct frames: `ffmpeg -i nav.mp4 -vf "mpdecimate,setpts=N/FRAME_RATE/TB,scale=270:-1,tile=8x2" -frames:v 1 grid.png`.
 - Flows assume the device is in `en-US` and select English labels. `scripts/maestro-i18n.sh` runs `.maestro/i18n/` with the app set to Italian. It runs `pm clear` itself, because clearing app data also drops the per-app locale, so that flow launches without `clearState`. Maestro doesn't recurse into subfolders, so `maestro test .maestro` skips it.
+- `scripts/maestro-sounds.sh` pushes `.maestro/sounds/test_tone.mp3` into Download and runs `.maestro/sounds/alarm_sound.yaml` (import, default, per-policy override, delete). It lives in a subfolder because it needs that file on the device first.
 - An emulator cannot prove HyperOS kills, Direct Boot ringing or full-screen intents; those still need a real phone.
 
 ## Layout
@@ -36,9 +37,11 @@ Run all four (test, test, lint, assemble) before committing. For UI changes, als
 - `engine/`: pure Kotlin, `java.time` only, no Android. `Model.kt` (policies, rules, one-offs, skips, `Source` keys, `Armed`), `ScheduleEngine.kt` (`upcoming`, `between`, DST resolution, global ordering), `ArmPlanner.kt` (what to arm, catch-up within 30 min, missed beyond), `Timeline.kt`, `TimeText.kt` (returns values, not text: `DayLabel`, `Relative`, `DaySet`). The engine holds no words; the default one-off label comes in through `ScheduleSnapshot.defaultOneOffLabel`.
 - `app/src/main/java/com/replydev/reveille/`:
   - `data/`: Room DB and DataStore, both in **device-protected storage**. `ScheduleRepository` calls `onChanged()` (which re-arms) after every write, under `NonCancellable`.
+    - `SoundLibrary`: imported alarm sounds, copied into device-protected `files/sounds/` (20 MB cap, probed with `prepare()`). Deleting one resets the default and removes the overrides that used it. Orphan files are swept at start when unlocked.
   - `alarm/`:
     - `AlarmScheduler`: `rearm()` is mutex-protected. It registers a primary and a backup alarm (+2 min), the ring guard and the direct snooze, and runs `restoreGuard`.
     - `AlarmReceiver` and `RingingService`: delivery and ringing.
+    - `SoundRef`: the sound choice, `resolveSound` and the fallback order (resolved sound, system default alarm, bundled sound). A playback error after start posts the fallback alarm and vibrates.
     - `AlarmFiring` and `RingDecisions`: the delivery protocol, kept testable.
     - `SystemEventsReceiver`: boot, time, time zone and locale changes.
     - `WatchdogWorker`: 6 h safety re-arm.
