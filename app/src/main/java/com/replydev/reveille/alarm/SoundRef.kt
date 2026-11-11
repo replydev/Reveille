@@ -1,5 +1,9 @@
 package com.replydev.reveille.alarm
 
+import com.replydev.reveille.data.RingSettings
+import com.replydev.reveille.engine.Armed
+import com.replydev.reveille.engine.Source
+
 /**
  * Which sound an alarm plays (docs/superpowers/specs/2026-11-11-custom-alarm-sounds-design.md). Stored with [encode];
  * [decode] never throws, and anything unreadable is [SystemDefault].
@@ -32,4 +36,50 @@ sealed interface SoundRef {
             else -> SystemDefault
         }
     }
+}
+
+/**
+ * The sound for [armed]: the override of a one-off among its sources (one-offs win in a merged occurrence: they were
+ * set for that alarm), else its policy's override, else the default. A snooze carries its alarm's sources.
+ */
+fun resolveSound(armed: Armed, settings: RingSettings): SoundRef {
+    val oneOff = (listOf(armed.key) + armed.sourceKeys).firstNotNullOfOrNull { key ->
+        (Source.parse(key) as? Source.OneOffAlarm)?.let { settings.oneOffSounds[it.oneOffId] }
+    }
+    return oneOff ?: ringPolicyId(armed)?.let(settings.policySounds::get) ?: settings.sound
+}
+
+/** Something MediaPlayer can be pointed at. */
+sealed interface SoundSource {
+    data class File(val path: String) : SoundSource
+    data class Uri(val uri: String) : SoundSource
+    data object SystemDefault : SoundSource
+    /** R.raw.fallback_alarm: always readable, even before the first unlock. */
+    data object Bundled : SoundSource
+}
+
+/** What to try, in order: the chosen sound, the system default alarm, then the bundled sound. */
+fun soundCandidates(ref: SoundRef, importedPath: (String) -> String): List<SoundSource> = buildList {
+    when (ref) {
+        is SoundRef.Imported -> add(SoundSource.File(importedPath(ref.id)))
+        is SoundRef.SystemTone -> add(SoundSource.Uri(ref.uri))
+        SoundRef.SystemDefault -> Unit
+    }
+    add(SoundSource.SystemDefault)
+    add(SoundSource.Bundled)
+}
+
+/** Runs [attempt] on each candidate until one succeeds and returns it; if none does, throws the last failure. */
+fun prepareFirst(candidates: List<SoundSource>, attempt: (SoundSource) -> Unit, onFailure: (SoundSource, Exception) -> Unit): SoundSource {
+    var last: Exception? = null
+    for (source in candidates) {
+        try {
+            attempt(source)
+            return source
+        } catch (e: Exception) {
+            onFailure(source, e)
+            last = e
+        }
+    }
+    throw last ?: IllegalStateException("No sound candidates")
 }
