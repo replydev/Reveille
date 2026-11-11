@@ -398,6 +398,32 @@
     <string name="widget_new_one_off">Nuova sveglia singola</string>
     <!-- Ringing theme picker (Settings › Ringing theme) -->
     <string name="settings_ringing_theme">Tema della sveglia</string>
+    <string name="sound_default_group">Suono predefinito</string>
+    <string name="sound_system_default">Sveglia predefinita di sistema</string>
+    <string name="sound_system_tone">Suoneria di sistema</string>
+    <string name="sound_system_tone_pick">Scegli una suoneria di sistema</string>
+    <string name="sound_import">Importa file audio…</string>
+    <string name="sound_importing">Importazione…</string>
+    <string name="sound_imported">%1$s importato</string>
+    <string name="sound_import_too_large">Il file è troppo grande (massimo 20 MB).</string>
+    <string name="sound_import_not_audio">Il file non è un audio riproducibile.</string>
+    <string name="sound_import_unreadable">Impossibile leggere il file.</string>
+    <string name="sound_play">Riproduci %1$s</string>
+    <string name="sound_stop">Interrompi</string>
+    <string name="sound_delete">Elimina %1$s</string>
+    <string name="sound_delete_title">Eliminare il suono?</string>
+    <string name="sound_delete_unused">%1$s verrà rimosso da Reveille.</string>
+    <plurals name="sound_delete_in_use">
+        <item quantity="one">%1$s è usato da %2$d scelta. Tornerà al suono predefinito.</item>
+        <item quantity="many">%1$s è usato da %2$d scelte. Torneranno al suono predefinito.</item>
+        <item quantity="other">%1$s è usato da %2$d scelte. Torneranno al suono predefinito.</item>
+    </plurals>
+    <string name="sound_per_policy">Per programma</string>
+    <string name="sound_follow_default">Predefinito</string>
+    <string name="sound_save_failed">Impossibile salvare il suono.</string>
+    <string name="sound_preview_failed">Impossibile riprodurre il suono.</string>
+    <string name="oneoff_sound">Suono</string>
+    <string name="oneoff_sound_save_failed">Sveglia salvata, ma non il suo suono.</string>
     <string name="ring_theme_dawn">Alba</string>
     <string name="ring_theme_midnight">Mezzanotte</string>
     <string name="ring_theme_policy_colour">Colore del programma</string>

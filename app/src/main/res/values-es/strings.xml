@@ -398,6 +398,32 @@
     <string name="widget_new_one_off">Nueva alarma única</string>
     <!-- Ringing theme picker (Settings › Ringing theme) -->
     <string name="settings_ringing_theme">Tema de la alarma</string>
+    <string name="sound_default_group">Sonido predeterminado</string>
+    <string name="sound_system_default">Alarma predeterminada del sistema</string>
+    <string name="sound_system_tone">Tono del sistema</string>
+    <string name="sound_system_tone_pick">Elegir un tono del sistema</string>
+    <string name="sound_import">Importar archivo de audio…</string>
+    <string name="sound_importing">Importando…</string>
+    <string name="sound_imported">%1$s importado</string>
+    <string name="sound_import_too_large">El archivo es demasiado grande (máximo 20 MB).</string>
+    <string name="sound_import_not_audio">El archivo no es un audio reproducible.</string>
+    <string name="sound_import_unreadable">No se pudo leer el archivo.</string>
+    <string name="sound_play">Reproducir %1$s</string>
+    <string name="sound_stop">Detener</string>
+    <string name="sound_delete">Eliminar %1$s</string>
+    <string name="sound_delete_title">¿Eliminar el sonido?</string>
+    <string name="sound_delete_unused">%1$s se quitará de Reveille.</string>
+    <plurals name="sound_delete_in_use">
+        <item quantity="one">%1$s se usa en %2$d elección. Volverá al sonido predeterminado.</item>
+        <item quantity="many">%1$s se usa en %2$d elecciones. Volverán al sonido predeterminado.</item>
+        <item quantity="other">%1$s se usa en %2$d elecciones. Volverán al sonido predeterminado.</item>
+    </plurals>
+    <string name="sound_per_policy">Por programa</string>
+    <string name="sound_follow_default">Predeterminado</string>
+    <string name="sound_save_failed">No se pudo guardar el sonido.</string>
+    <string name="sound_preview_failed">No se pudo reproducir el sonido.</string>
+    <string name="oneoff_sound">Sonido</string>
+    <string name="oneoff_sound_save_failed">Alarma guardada, pero no se pudo guardar su sonido.</string>
     <string name="ring_theme_dawn">Amanecer</string>
     <string name="ring_theme_midnight">Medianoche</string>
     <string name="ring_theme_policy_colour">Color del programa</string>
