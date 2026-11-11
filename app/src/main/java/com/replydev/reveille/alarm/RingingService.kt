@@ -257,6 +257,12 @@ class RingingService : Service() {
             runCatching { prepared.release() }
             return false
         }
+        // MediaPlayer calls back on the looper of the thread that created it, which for an IO thread (no looper) is the
+        // main one; hop to the main thread anyway, since this service's state is only touched there.
+        prepared.setOnErrorListener { failed, what, extra ->
+            scope.launch { onPlaybackError(ringing, failed, what, extra) }
+            true
+        }
         try {
             prepared.isLooping = true
             val startVolume = if (settings.volumeRamp) RAMP_START_VOLUME else 1f
@@ -279,6 +285,21 @@ class RingingService : Service() {
             }
         }
         return true
+    }
+
+    /**
+     * The sound prepared and started, then failed (a truncated file, a codec error mid-stream): ring through the
+     * fallback notification and vibration instead, as when no sound could be played at all.
+     */
+    private fun onPlaybackError(ringing: Ringing, failed: MediaPlayer, what: Int, extra: Int) {
+        if (current.value !== ringing || player !== failed) return // already stopped, released or replaced
+        Log.e(TAG, "Alarm sound failed during playback for ${ringing.armed.key} ($what, $extra); posting fallback alarm")
+        rampJob?.cancel()
+        rampJob = null
+        player = null
+        runCatching { failed.release() }
+        runCatching { container.notifier.postFallbackAlarm(ringing.armed) }
+        runCatching { startVibration() }.onFailure { Log.e(TAG, "Cannot vibrate", it) }
     }
 
     /** Prepares the first sound that works: the alarm's resolved sound, the system default, then the bundled one. */
