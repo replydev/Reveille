@@ -232,7 +232,6 @@
     <string name="settings_alarm_sound">Son de l’alarme</string>
     <string name="settings_choose_sound">Choisir le son de l’alarme</string>
     <string name="settings_no_sound_picker">Ce téléphone n’a pas de sélecteur de sons.</string>
-    <string name="settings_default_sound">Son d’alarme par défaut</string>
     <string name="settings_custom_sound">Son personnalisé</string>
     <string name="settings_vibrate">Vibreur</string>
     <string name="settings_vibrate_hint">Vibre pendant que l’alarme sonne</string>

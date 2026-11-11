@@ -95,7 +95,7 @@ fun toneTitle(context: Context, uri: String): String =
         ?: context.getString(R.string.settings_custom_sound)
 
 /** One preview at a time, at alarm volume; stops when the composable leaves. [playing] is the previewed id, or null. */
-class SoundPreview(private val context: Context) {
+class SoundPreview {
     private var player: MediaPlayer? = null
     var playing by mutableStateOf<String?>(null)
         private set
@@ -130,8 +130,7 @@ class SoundPreview(private val context: Context) {
 
 @Composable
 fun rememberSoundPreview(): SoundPreview {
-    val context = LocalContext.current
-    val preview = remember { SoundPreview(context.applicationContext) }
+    val preview = remember { SoundPreview() }
     DisposableEffect(preview) { onDispose { preview.stop() } }
     return preview
 }

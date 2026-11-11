@@ -232,7 +232,6 @@
     <string name="settings_alarm_sound">Suono sveglia</string>
     <string name="settings_choose_sound">Scegli il suono della sveglia</string>
     <string name="settings_no_sound_picker">Questo telefono non ha un selettore di suoni.</string>
-    <string name="settings_default_sound">Suono sveglia predefinito</string>
     <string name="settings_custom_sound">Suono personalizzato</string>
     <string name="settings_vibrate">Vibrazione</string>
     <string name="settings_vibrate_hint">Vibra mentre la sveglia suona</string>

@@ -1,14 +1,6 @@
 package com.replydev.reveille.ui.settings
 
-import android.app.Activity
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.media.RingtoneManager
-import android.net.Uri
 import androidx.annotation.StringRes
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +22,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,13 +31,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.content.IntentCompat
-import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.replydev.reveille.BuildConfig
 import com.replydev.reveille.R
 import com.replydev.reveille.alarm.RingDecisions
-import com.replydev.reveille.alarm.SoundRef
 import com.replydev.reveille.container
 import com.replydev.reveille.data.RingSettings
 import com.replydev.reveille.ui.components.Overline
@@ -62,13 +50,11 @@ import com.replydev.reveille.ui.components.topDivider
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.update.AboutRow
 import com.replydev.reveille.ui.update.UpdatesSection
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 private const val MAX_SNOOZE_MINUTES = 30
 
 @Composable
-fun SettingsScreen(onOpenUpdate: () -> Unit, onOpenRingTheme: () -> Unit) {
+fun SettingsScreen(onOpenUpdate: () -> Unit, onOpenRingTheme: () -> Unit, onOpenAlarmSound: () -> Unit) {
     val context = LocalContext.current
     val container = context.container
     val snackbar = remember { SnackbarHostState() }
@@ -78,26 +64,13 @@ fun SettingsScreen(onOpenUpdate: () -> Unit, onOpenRingTheme: () -> Unit) {
     val colors = ReveilleTheme.colors
     val type = ReveilleTheme.type
     val saveFailed = stringResource(R.string.settings_save_failed)
-    val noSoundPicker = stringResource(R.string.settings_no_sound_picker)
     val update: ((RingSettings) -> RingSettings) -> Unit = { transform ->
         session.write(saveFailed, guarded = false, action = { container.settings.update(transform) })
-    }
-
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val data = result.data
-        if (result.resultCode == Activity.RESULT_OK && data != null) {
-            val uri = IntentCompat.getParcelableExtra(data, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
-            update { it.copy(sound = uri?.let { SoundRef.SystemTone(it.toString()) } ?: SoundRef.SystemDefault) }
-        }
     }
 
     TabScaffold(snackbarHostState = snackbar) { padding ->
         // Wait for the stored values: showing defaults first would let a quick tap overwrite them.
         val current = settings ?: return@TabScaffold
-        // RingtoneManager reads the media database: off the main thread.
-        val ringtoneName by produceState("…", (current.sound as? SoundRef.SystemTone)?.uri) {
-            value = withContext(Dispatchers.IO) { ringtoneTitle(context, (current.sound as? SoundRef.SystemTone)?.uri) }
-        }
         Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
             TabHeader(stringResource(R.string.settings_title), bottom = 18.dp)
             Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
@@ -106,18 +79,7 @@ fun SettingsScreen(onOpenUpdate: () -> Unit, onOpenRingTheme: () -> Unit) {
                         Modifier
                             .fillMaxWidth()
                             .heightIn(min = 64.dp)
-                            .clickable(onClickLabel = stringResource(R.string.settings_choose_sound)) {
-                                val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                                    .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                                    .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
-                                    .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                                    .putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, (current.sound as? SoundRef.SystemTone)?.uri?.toUri())
-                                try {
-                                    picker.launch(intent)
-                                } catch (_: ActivityNotFoundException) {
-                                    session.message(UiMessage(noSoundPicker))
-                                }
-                            }
+                            .clickable(onClickLabel = stringResource(R.string.settings_choose_sound), onClick = onOpenAlarmSound)
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -127,7 +89,7 @@ fun SettingsScreen(onOpenUpdate: () -> Unit, onOpenRingTheme: () -> Unit) {
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(stringResource(R.string.settings_alarm_sound), style = type.bodyL)
-                            Text(ringtoneName, style = type.caption, color = colors.muted)
+                            Text(rememberSoundName(current.sound, current.importedSounds), style = type.caption, color = colors.muted)
                         }
                         ReveilleIcon(R.drawable.ic_chevron_right, null, tint = colors.muted, size = 18.dp)
                     }
@@ -251,10 +213,4 @@ private fun StepperRow(
             valueStyle = ReveilleTheme.type.bodyL.copy(fontWeight = FontWeight.Medium),
         )
     }
-}
-
-private fun ringtoneTitle(context: Context, uri: String?): String {
-    if (uri == null) return context.getString(R.string.settings_default_sound)
-    return runCatching { RingtoneManager.getRingtone(context, uri.toUri())?.getTitle(context) }.getOrNull()
-        ?: context.getString(R.string.settings_custom_sound)
 }

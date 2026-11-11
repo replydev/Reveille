@@ -221,7 +221,6 @@
     <string name="settings_alarm_sound">Weckton</string>
     <string name="settings_choose_sound">Weckton auswählen</string>
     <string name="settings_no_sound_picker">Dieses Telefon hat keine Tonauswahl.</string>
-    <string name="settings_default_sound">Standard-Weckton</string>
     <string name="settings_custom_sound">Eigener Ton</string>
     <string name="settings_vibrate">Vibration</string>
     <string name="settings_vibrate_hint">Vibriert, während der Wecker klingelt</string>
