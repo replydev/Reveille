@@ -8,6 +8,7 @@ import android.provider.OpenableColumns
 import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -59,11 +60,14 @@ class SoundLibrary(
                 val target = file(id)
                 if (!tmp.renameTo(target)) return@withLock ImportResult.Unreadable
                 val sound = ImportedSound(id, displayName.substringBeforeLast('.').ifBlank { displayName })
-                try {
-                    settings.addImportedSound(sound)
-                } catch (e: Exception) {
-                    target.delete()
-                    throw e
+                // Not cancellable: once the entry is committed, a cancellation must not delete the file it lists.
+                withContext(NonCancellable) {
+                    try {
+                        settings.addImportedSound(sound)
+                    } catch (e: Exception) {
+                        target.delete()
+                        throw e
+                    }
                 }
                 ImportResult.Imported(sound)
             } catch (e: CancellationException) {
@@ -116,7 +120,7 @@ class SoundLibrary(
                 player.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
                 player.setDataSource(file.path)
                 player.prepare()
-                player.duration > 0
+                true // some formats (raw AAC/ADTS) report no duration yet play
             } catch (e: Exception) {
                 false
             } finally {

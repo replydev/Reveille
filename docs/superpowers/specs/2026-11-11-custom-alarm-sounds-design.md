@@ -83,8 +83,9 @@ Nothing in `alarm/` imports the UI or `SoundLibrary`'s import code. The ringing 
   3. `MediaPlayer().setDataSource(tmp); prepare()`. If that fails → `NotAudio`;
   4. rename to `sounds/<id>`, then add `ImportedSound(id, displayName)` to `importedSounds` in one settings write;
   5. return `Imported(sound)`. Any I/O error → `Unreadable`. Every failure deletes the temp file.
-- `suspend fun delete(id)`: one settings write removes the entry and replaces every `SoundRef.Imported(id)` (global,
-  policy and one-off overrides) with `SystemDefault`. The file is deleted only after that write. An alarm that reads
+- `suspend fun delete(id)`: one settings write removes the entry, resets the global `sound` to `SystemDefault` if it
+  was `SoundRef.Imported(id)`, and removes every policy and one-off override that used it, so they follow the global
+  "Default" again. The file is deleted only after that write. An alarm that reads
   settings in between plays the default; one that read them just before finds no file and falls through the chain.
 - `suspend fun sweepOrphans()`: deletes files in `sounds/` (including `*.tmp`) that have no entry. It runs once per
   process start from `ReveilleApp`, in `appScope`, after the user is unlocked. It never runs on the alarm path.

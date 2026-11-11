@@ -1,8 +1,13 @@
 package com.replydev.reveille.data
 
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
 import com.replydev.reveille.alarm.SoundRef
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -56,6 +61,24 @@ class SoundLibraryTest {
         assertEquals(ImportResult.Unreadable, library().import("a.mp3", 10) { null })
         assertEquals(ImportResult.Unreadable, library().import("a.mp3", 10) { throw IOException("gone") })
         assertTrue(dir.list().orEmpty().isEmpty())
+    }
+
+    @Test
+    fun importCancelledAfterTheWriteCommittedKeepsTheFile() = runBlocking {
+        val real = PreferenceDataStoreFactory.create { File(tmp.root, "c.preferences_pb") }
+        lateinit var job: Job
+        // Commits, then the import is cancelled before the write returns (DataStore resuming its caller).
+        val cancelling = object : DataStore<Preferences> {
+            override val data = real.data
+            override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences =
+                real.updateData(transform).also { job.cancel(); yield() }
+        }
+        val store = SettingsStore(cancelling)
+        job = launch { SoundLibrary(dir, store, { true }, 1_000).import("a.mp3", 10, bytes(10)) }
+        job.join()
+        val listed = store.current().importedSounds
+        assertEquals(1, listed.size)
+        assertTrue(File(dir, listed.single().id).exists())
     }
 
     @Test

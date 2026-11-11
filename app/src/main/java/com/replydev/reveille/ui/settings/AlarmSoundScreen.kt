@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -73,7 +74,7 @@ fun AlarmSoundScreen(onBack: () -> Unit) {
     val unreadable = stringResource(R.string.sound_import_unreadable)
     val tooLarge = stringResource(R.string.sound_import_too_large)
     val notAudio = stringResource(R.string.sound_import_not_audio)
-    val importedText = stringResource(R.string.sound_imported, "%s")
+    val resources = LocalResources.current
     var editingPolicy by rememberSaveable { mutableStateOf<Long?>(null) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var importing by remember { mutableStateOf(false) }
@@ -100,7 +101,7 @@ fun AlarmSoundScreen(onBack: () -> Unit) {
             action = { try { container.sounds.importUri(context.contentResolver, uri) } finally { importing = false } },
             onSuccess = { result ->
                 val text = when (result) {
-                    is ImportResult.Imported -> importedText.replace("%s", result.sound.name)
+                    is ImportResult.Imported -> resources.getString(R.string.sound_imported, result.sound.name)
                     ImportResult.TooLarge -> tooLarge
                     ImportResult.NotAudio -> notAudio
                     ImportResult.Unreadable -> unreadable

@@ -102,15 +102,17 @@ class SettingsStore(private val store: DataStore<Preferences>) {
         update { it.copy(importedSounds = (it.importedSounds.filter { s -> s.id != sound.id } + sound).sortedBy { s -> s.name.lowercase() }) }
     }
 
-    /** Removes [id] and, in the same write, points every choice that used it back to the system default. */
+    /**
+     * Removes [id] and, in the same write, resets every choice that used it: the default sound to the system default,
+     * policy and one-off overrides removed so they follow the default again.
+     */
     suspend fun removeImportedSound(id: String) {
         val gone = SoundRef.Imported(id)
-        fun SoundRef.reset() = if (this == gone) SoundRef.SystemDefault else this
         update { current ->
             current.copy(
-                sound = current.sound.reset(),
-                policySounds = current.policySounds.mapValues { it.value.reset() },
-                oneOffSounds = current.oneOffSounds.mapValues { it.value.reset() },
+                sound = if (current.sound == gone) SoundRef.SystemDefault else current.sound,
+                policySounds = current.policySounds.filterValues { it != gone },
+                oneOffSounds = current.oneOffSounds.filterValues { it != gone },
                 importedSounds = current.importedSounds.filter { it.id != id },
             )
         }

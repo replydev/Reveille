@@ -98,8 +98,9 @@ class StoresTest {
         val now = settings.current()
         assertEquals(listOf(ImportedSound("b", "Bells")), now.importedSounds)
         assertEquals(SoundRef.SystemDefault, now.sound)
-        assertEquals(mapOf(1L to SoundRef.SystemDefault, 2L to SoundRef.Imported("b")), now.policySounds)
-        assertEquals(mapOf(5L to SoundRef.SystemDefault), now.oneOffSounds)
+        // Overrides that used it are removed, so they follow the default again.
+        assertEquals(mapOf(2L to SoundRef.Imported("b")), now.policySounds)
+        assertEquals(emptyMap<Long, SoundRef>(), now.oneOffSounds)
     }
 
     @Test
