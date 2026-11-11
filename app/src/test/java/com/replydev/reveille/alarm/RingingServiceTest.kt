@@ -193,4 +193,13 @@ class RingingServiceTest {
         val notifications = shadowOf(app.getSystemService(NotificationManager::class.java)).allNotifications
         assertTrue(notifications.any { it.channelId == Notifier.CHANNEL_ALARM_FALLBACK })
     }
+
+    @Test
+    fun missingImportedSoundStillRings() {
+        read { app.container.settings.update { it.copy(sound = SoundRef.Imported("deleted-file")) } }
+        ring(armed)
+        awaitUntil { RingingService.ringing.value != null && read { app.container.schedulerState.guard() } != null }
+        assertEquals(FireOutcome.FIRED, outcome(armed))
+        assertEquals(armed.key, RingingService.ringing.value?.armed?.key)
+    }
 }

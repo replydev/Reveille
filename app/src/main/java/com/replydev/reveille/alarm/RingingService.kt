@@ -243,7 +243,7 @@ class RingingService : Service() {
     private suspend fun startSound(ringing: Ringing, settings: RingSettings): Boolean {
         var created: MediaPlayer? = null
         val prepared = try {
-            withContext(Dispatchers.IO) { MediaPlayer().also { created = it; prepare(it, settings) } }
+            withContext(Dispatchers.IO) { MediaPlayer().also { created = it; prepare(it, settings, ringing.armed) } }
         } catch (e: CancellationException) {
             runCatching { created?.release() } // stopped or replaced while preparing: never leak the player
             throw e
@@ -281,28 +281,32 @@ class RingingService : Service() {
         return true
     }
 
-    private fun prepare(player: MediaPlayer, settings: RingSettings) {
+    /** Prepares the first sound that works: the alarm's resolved sound, the system default, then the bundled one. */
+    private fun prepare(player: MediaPlayer, settings: RingSettings, armed: Armed) {
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
-        val chosen = runCatching {
-            // getDefaultUri is the settings indirection (content://settings/system/alarm_alert), resolved at play time.
-            val uri = (settings.sound as? SoundRef.SystemTone)?.uri?.let(Uri::parse) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            player.setAudioAttributes(attributes)
-            player.setDataSource(this, uri)
-            player.prepare()
-        }
-        if (chosen.isFailure) {
-            // Media providers are unavailable before the first unlock; the bundled sound always works.
-            Log.w(TAG, "Falling back to bundled alarm sound", chosen.exceptionOrNull())
-            player.reset()
-            player.setAudioAttributes(attributes)
-            resources.openRawResourceFd(R.raw.fallback_alarm).use { afd ->
-                player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-            }
-            player.prepare()
-        }
+        val candidates = soundCandidates(resolveSound(armed, settings)) { id -> container.sounds.file(id).path }
+        prepareFirst(
+            candidates,
+            attempt = { source ->
+                player.reset()
+                player.setAudioAttributes(attributes)
+                when (source) {
+                    is SoundSource.File -> player.setDataSource(source.path)
+                    is SoundSource.Uri -> player.setDataSource(this, Uri.parse(source.uri))
+                    // The settings indirection (content://settings/system/alarm_alert), resolved at play time.
+                    SoundSource.SystemDefault -> player.setDataSource(this, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
+                    // Media providers are unavailable before the first unlock; the bundled sound always works.
+                    SoundSource.Bundled -> resources.openRawResourceFd(R.raw.fallback_alarm).use { afd ->
+                        player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                    }
+                }
+                player.prepare()
+            },
+            onFailure = { source, e -> Log.w(TAG, "Cannot play $source for ${armed.key}; trying the next sound", e) },
+        )
     }
 
     @Suppress("DEPRECATION")
