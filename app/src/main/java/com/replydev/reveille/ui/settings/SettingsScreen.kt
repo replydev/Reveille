@@ -46,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.replydev.reveille.BuildConfig
 import com.replydev.reveille.R
 import com.replydev.reveille.alarm.RingDecisions
+import com.replydev.reveille.alarm.SoundRef
 import com.replydev.reveille.container
 import com.replydev.reveille.data.RingSettings
 import com.replydev.reveille.ui.components.Overline
@@ -86,7 +87,7 @@ fun SettingsScreen(onOpenUpdate: () -> Unit, onOpenRingTheme: () -> Unit) {
         val data = result.data
         if (result.resultCode == Activity.RESULT_OK && data != null) {
             val uri = IntentCompat.getParcelableExtra(data, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
-            update { it.copy(ringtoneUri = uri?.toString()) }
+            update { it.copy(sound = uri?.let { SoundRef.SystemTone(it.toString()) } ?: SoundRef.SystemDefault) }
         }
     }
 
@@ -94,8 +95,8 @@ fun SettingsScreen(onOpenUpdate: () -> Unit, onOpenRingTheme: () -> Unit) {
         // Wait for the stored values: showing defaults first would let a quick tap overwrite them.
         val current = settings ?: return@TabScaffold
         // RingtoneManager reads the media database: off the main thread.
-        val ringtoneName by produceState("…", current.ringtoneUri) {
-            value = withContext(Dispatchers.IO) { ringtoneTitle(context, current.ringtoneUri) }
+        val ringtoneName by produceState("…", (current.sound as? SoundRef.SystemTone)?.uri) {
+            value = withContext(Dispatchers.IO) { ringtoneTitle(context, (current.sound as? SoundRef.SystemTone)?.uri) }
         }
         Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
             TabHeader(stringResource(R.string.settings_title), bottom = 18.dp)
@@ -110,7 +111,7 @@ fun SettingsScreen(onOpenUpdate: () -> Unit, onOpenRingTheme: () -> Unit) {
                                     .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
                                     .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
                                     .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                                    .putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, current.ringtoneUri?.toUri())
+                                    .putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, (current.sound as? SoundRef.SystemTone)?.uri?.toUri())
                                 try {
                                     picker.launch(intent)
                                 } catch (_: ActivityNotFoundException) {

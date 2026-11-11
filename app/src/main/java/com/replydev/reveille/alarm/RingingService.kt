@@ -288,7 +288,7 @@ class RingingService : Service() {
             .build()
         val chosen = runCatching {
             // getDefaultUri is the settings indirection (content://settings/system/alarm_alert), resolved at play time.
-            val uri = settings.ringtoneUri?.let(Uri::parse) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            val uri = (settings.sound as? SoundRef.SystemTone)?.uri?.let(Uri::parse) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             player.setAudioAttributes(attributes)
             player.setDataSource(this, uri)
             player.prepare()

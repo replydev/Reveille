@@ -2,6 +2,7 @@ package com.replydev.reveille.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.replydev.reveille.alarm.RingTheme
+import com.replydev.reveille.alarm.SoundRef
 import com.replydev.reveille.engine.Armed
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -43,10 +44,62 @@ class StoresTest {
     fun settingsHaveDefaultsAndUpdate() = runBlocking {
         val settings = SettingsStore(store())
         assertEquals(RingSettings(), settings.current())
-        settings.update { it.copy(snoozeMinutes = 5, vibrate = false, ringtoneUri = "content://x") }
-        assertEquals(RingSettings(ringtoneUri = "content://x", vibrate = false, snoozeMinutes = 5), settings.current())
-        settings.update { it.copy(ringtoneUri = null) }
-        assertNull(settings.current().ringtoneUri)
+        settings.update { it.copy(snoozeMinutes = 5, vibrate = false, sound = SoundRef.SystemTone("content://x")) }
+        assertEquals(RingSettings(sound = SoundRef.SystemTone("content://x"), vibrate = false, snoozeMinutes = 5), settings.current())
+        settings.update { it.copy(sound = SoundRef.SystemDefault) }
+        assertEquals(SoundRef.SystemDefault, settings.current().sound)
+    }
+
+    @Test
+    fun legacyRingtoneUriIsReadAsASystemToneAndDroppedOnWrite() = runBlocking {
+        val prefs = store()
+        prefs.edit { it[stringPreferencesKey("ringtone_uri")] = "content://legacy" }
+        val settings = SettingsStore(prefs)
+        assertEquals(SoundRef.SystemTone("content://legacy"), settings.current().sound)
+        settings.update { it.copy(vibrate = false) }
+        assertNull(prefs.data.first()[stringPreferencesKey("ringtone_uri")])
+        assertEquals(SoundRef.SystemTone("content://legacy"), settings.current().sound)
+    }
+
+    @Test
+    fun soundOverridesAreSetClearedAndPruned() = runBlocking {
+        val settings = SettingsStore(store())
+        val tone = SoundRef.SystemTone("content://a=b") // '=' inside the value must survive
+        settings.setPolicySound(1, tone, livePolicyIds = setOf(1, 2))
+        settings.setPolicySound(2, SoundRef.Imported("x"), livePolicyIds = setOf(1, 2))
+        settings.setPolicySound(1, null, livePolicyIds = setOf(1)) // policy 2 deleted meanwhile
+        assertEquals(emptyMap<Long, SoundRef>(), settings.current().policySounds)
+
+        settings.setOneOffSound(7, tone, liveOneOffIds = setOf(7, 8))
+        settings.setOneOffSound(8, SoundRef.SystemDefault, liveOneOffIds = setOf(7, 8))
+        settings.setOneOffSound(9, SoundRef.Imported("y"), liveOneOffIds = setOf(8, 9)) // 7 gone
+        assertEquals(mapOf(8L to SoundRef.SystemDefault, 9L to SoundRef.Imported("y")), settings.current().oneOffSounds)
+    }
+
+    @Test
+    fun malformedOverrideEntriesAreSkipped() = runBlocking {
+        val prefs = store()
+        prefs.edit { it[stringSetPreferencesKey("policy_sounds")] = setOf("nope", "3=file:z", "=tone:q") }
+        assertEquals(mapOf(3L to SoundRef.Imported("z")), SettingsStore(prefs).current().policySounds)
+    }
+
+    @Test
+    fun importedSoundsAddAndRemoveResettingEveryUse() = runBlocking {
+        val settings = SettingsStore(store())
+        settings.addImportedSound(ImportedSound("a", "Birds = morning"))
+        settings.addImportedSound(ImportedSound("b", "Bells"))
+        settings.update { it.copy(sound = SoundRef.Imported("a")) }
+        settings.setPolicySound(1, SoundRef.Imported("a"), setOf(1, 2))
+        settings.setPolicySound(2, SoundRef.Imported("b"), setOf(1, 2))
+        settings.setOneOffSound(5, SoundRef.Imported("a"), setOf(5))
+        assertEquals(3, settings.current().usesOf("a"))
+
+        settings.removeImportedSound("a")
+        val now = settings.current()
+        assertEquals(listOf(ImportedSound("b", "Bells")), now.importedSounds)
+        assertEquals(SoundRef.SystemDefault, now.sound)
+        assertEquals(mapOf(1L to SoundRef.SystemDefault, 2L to SoundRef.Imported("b")), now.policySounds)
+        assertEquals(mapOf(5L to SoundRef.SystemDefault), now.oneOffSounds)
     }
 
     @Test
