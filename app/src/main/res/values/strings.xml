@@ -262,7 +262,6 @@
     <string name="settings_alarm_sound">Alarm sound</string>
     <string name="settings_choose_sound">Choose the alarm sound</string>
     <string name="settings_no_sound_picker">This phone has no sound picker.</string>
-    <string name="settings_default_sound">Default alarm sound</string>
     <string name="settings_custom_sound">Custom sound</string>
     <string name="settings_vibrate">Vibrate</string>
     <string name="settings_vibrate_hint">Pulse while the alarm rings</string>
@@ -438,6 +437,31 @@
     <string name="widget_new_one_off">New one-off alarm</string>
     <!-- Ringing theme picker (Settings › Ringing theme) -->
     <string name="settings_ringing_theme">Ringing theme</string>
+    <string name="sound_default_group">Default sound</string>
+    <string name="sound_system_default">System default alarm</string>
+    <string name="sound_system_tone">System tone</string>
+    <string name="sound_system_tone_pick">Choose a system tone</string>
+    <string name="sound_import">Import audio file…</string>
+    <string name="sound_importing">Importing…</string>
+    <string name="sound_imported">Imported %1$s</string>
+    <string name="sound_import_too_large">That file is too large (20 MB max).</string>
+    <string name="sound_import_not_audio">That file isn\'t a playable audio file.</string>
+    <string name="sound_import_unreadable">Couldn\'t read that file.</string>
+    <string name="sound_play">Play %1$s</string>
+    <string name="sound_stop">Stop</string>
+    <string name="sound_delete">Delete %1$s</string>
+    <string name="sound_delete_title">Delete sound?</string>
+    <string name="sound_delete_unused">%1$s will be removed from Reveille.</string>
+    <plurals name="sound_delete_in_use">
+        <item quantity="one">%1$s is used by %2$d alarm choice. It will go back to the default sound.</item>
+        <item quantity="other">%1$s is used by %2$d alarm choices. They will go back to the default sound.</item>
+    </plurals>
+    <string name="sound_per_policy">Per policy</string>
+    <string name="sound_follow_default">Default</string>
+    <string name="sound_save_failed">Could not save the sound.</string>
+    <string name="sound_preview_failed">Couldn\'t play that sound.</string>
+    <string name="oneoff_sound">Sound</string>
+    <string name="oneoff_sound_save_failed">Alarm saved, but its sound could not be saved.</string>
     <string name="ring_theme_dawn">Dawn</string>
     <string name="ring_theme_midnight">Midnight</string>
     <string name="ring_theme_policy_colour">Policy colour</string>

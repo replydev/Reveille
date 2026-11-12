@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.replydev.reveille.R
+import com.replydev.reveille.alarm.SoundRef
 import com.replydev.reveille.container
 import com.replydev.reveille.data.OneOffEntity
 import com.replydev.reveille.engine.DayAlarm
@@ -60,6 +61,7 @@ import com.replydev.reveille.ui.components.PickDateDialog
 import com.replydev.reveille.ui.components.PickTimeDialog
 import com.replydev.reveille.ui.components.PillButton
 import com.replydev.reveille.ui.components.PolicyDot
+import com.replydev.reveille.ui.components.ReveilleIcon
 import com.replydev.reveille.ui.components.SegmentedControl
 import com.replydev.reveille.ui.components.SheetScaffold
 import com.replydev.reveille.ui.components.UiMessage
@@ -67,11 +69,15 @@ import com.replydev.reveille.ui.components.borderOutline
 import com.replydev.reveille.ui.components.dashedBorder
 import com.replydev.reveille.ui.components.rememberScreenSession
 import com.replydev.reveille.text.Labels
+import com.replydev.reveille.ui.settings.SoundChoiceSheet
+import com.replydev.reveille.ui.settings.rememberSoundName
+import com.replydev.reveille.ui.settings.rememberTonePicker
 import com.replydev.reveille.ui.text.rememberLabels
 import com.replydev.reveille.ui.theme.Motion
 import com.replydev.reveille.ui.theme.ReveilleTheme
 import com.replydev.reveille.ui.theme.lineBox
 import com.replydev.reveille.ui.theme.policyColor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -107,6 +113,10 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
     var label by rememberSaveable { mutableStateOf("") }
     var replaceDay by rememberSaveable { mutableStateOf(true) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    // The sound override, encoded (null: Default). Saved with the alarm.
+    var soundCode by rememberSaveable { mutableStateOf<String?>(null) }
+    var choosingSound by rememberSaveable { mutableStateOf(false) }
+    val ringSettings by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
 
     LaunchedEffect(Unit) {
         if (loaded) return@LaunchedEffect
@@ -117,6 +127,7 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
             time = existing.time
             label = existing.label.orEmpty()
             replaceDay = existing.mode == OneOffMode.REPLACE_DAY
+            soundCode = container.settings.current().oneOffSounds[existing.id]?.encode()
         } else if (id != 0L) {
             // Deleted since the link was opened (by the user, skipped from the widget, or cleaned up after its day
             // passed — ringing does not delete it): save as a new alarm, never resurrect the id.
@@ -144,10 +155,25 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
             )
             session.write(
                 res.getString(R.string.oneoff_save_failed),
-                action = { repository.saveOneOff(entity) },
-                onSuccess = { savedId ->
+                action = {
+                    val savedId = repository.saveOneOff(entity)
+                    // The alarm is saved; its sound is secondary and must not make the save look failed (a retry
+                    // would then create a second alarm).
+                    val soundSaved = try {
+                        val live = repository.snapshot().oneOffs.map { it.id }.toSet() + savedId
+                        container.settings.setOneOffSound(savedId, soundCode?.let(SoundRef::decode), live)
+                        true
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        false
+                    }
+                    savedId to soundSaved
+                },
+                onSuccess = { (savedId, soundSaved) ->
                     // Set before anything else: if the screen stays open, saving again updates this alarm.
                     session.editId = savedId
+                    if (!soundSaved) session.message(UiMessage(res.getString(R.string.oneoff_sound_save_failed)))
                     session.saved = true
                 },
             )
@@ -178,9 +204,37 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
                     val target = editId
                     session.write(
                         res.getString(R.string.oneoff_delete_failed),
-                        action = { repository.deleteOneOff(target) },
+                        action = {
+                            repository.deleteOneOff(target)
+                            // Best effort: a stale override is also dropped by the next sound write.
+                            try {
+                                container.settings.setOneOffSound(target, null, repository.snapshot().oneOffs.map { it.id }.toSet())
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                            }
+                        },
                         onSuccess = { session.saved = true },
                     )
+                },
+            )
+        }
+        val noPicker = stringResource(R.string.settings_no_sound_picker)
+        val pickTone = rememberTonePicker(onPicked = { soundCode = it.encode() }, onUnavailable = { session.message(UiMessage(noPicker)) })
+        val rs = ringSettings
+        if (choosingSound && rs != null) {
+            SoundChoiceSheet(
+                title = stringResource(R.string.oneoff_sound),
+                current = soundCode?.let(SoundRef::decode),
+                imported = rs.importedSounds,
+                onDismiss = { choosingSound = false },
+                onPick = { ref ->
+                    choosingSound = false
+                    soundCode = ref?.encode()
+                },
+                onPickTone = {
+                    choosingSound = false
+                    pickTone((soundCode?.let(SoundRef::decode) as? SoundRef.SystemTone)?.uri)
                 },
             )
         }
@@ -205,6 +259,9 @@ fun OneOffEditorScreen(onDone: () -> Unit) {
                     radius = 16.dp,
                     textStyle = ReveilleTheme.type.input,
                 )
+                ringSettings?.let { rs ->
+                    SoundRow(rememberSoundName(soundCode?.let(SoundRef::decode), rs.importedSounds)) { choosingSound = true }
+                }
                 Column(Modifier.padding(horizontal = 20.dp).animateContentSize(Motion.size), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Overline(modeOverline(labels, date, today))
                     SegmentedControl(listOf(stringResource(R.string.oneoff_mode_replace), stringResource(R.string.oneoff_mode_additive)), if (replaceDay) 0 else 1, { replaceDay = it == 0 })
@@ -362,5 +419,25 @@ private fun ImpactRow(alarm: DayAlarm, labels: Labels, replaced: Boolean) {
             Text(alarm.label, style = ReveilleTheme.type.body, maxLines = 1)
         }
         Text(stringResource(if (replaced) R.string.oneoff_wont_ring else R.string.oneoff_also_rings), style = ReveilleTheme.type.small, color = colors.muted)
+    }
+}
+
+/** "Sound": the alarm's sound override, or Default. Opens the sound choice sheet. */
+@Composable
+private fun SoundRow(name: String, onClick: () -> Unit) {
+    val colors = ReveilleTheme.colors
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(52.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = colors.surfaceHigh,
+        contentColor = colors.onBg,
+    ) {
+        Row(Modifier.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ReveilleIcon(R.drawable.ic_music, null, tint = colors.muted, size = 16.dp)
+            Text(stringResource(R.string.oneoff_sound), Modifier.weight(1f), style = ReveilleTheme.type.body)
+            Text(name, style = ReveilleTheme.type.body, color = colors.muted, maxLines = 1)
+            ReveilleIcon(R.drawable.ic_chevron_right, null, tint = colors.muted, size = 16.dp)
+        }
     }
 }

@@ -15,6 +15,7 @@ import com.replydev.reveille.data.ReveilleDatabase
 import com.replydev.reveille.data.ScheduleRepository
 import com.replydev.reveille.data.SchedulerState
 import com.replydev.reveille.data.SettingsStore
+import com.replydev.reveille.data.SoundLibrary
 import com.replydev.reveille.reliability.ReliabilityChecker
 import com.replydev.reveille.update.Updates
 import com.replydev.reveille.widget.WidgetUpdater
@@ -43,6 +44,9 @@ open class AppContainer(context: Context) {
     val schedulerState: SchedulerState by lazy { SchedulerState(preferences) }
     /** Open so tests can make the ringing screen's settings read fail. */
     open val settings: SettingsStore by lazy { SettingsStore(preferences) }
+
+    /** Imported alarm sounds, in device-protected storage: the alarm path reads them before the first unlock. */
+    val sounds: SoundLibrary by lazy { SoundLibrary(java.io.File(deviceStorage.filesDir, "sounds"), settings) }
     val notifier: Notifier by lazy { Notifier(app) }
     val reliability: ReliabilityChecker by lazy { ReliabilityChecker(app, settings) }
 

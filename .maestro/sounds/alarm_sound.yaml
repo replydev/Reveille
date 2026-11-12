@@ -1,0 +1,65 @@
+# Import an MP3, make it the default, override one policy with it, check the names, then delete it.
+appId: com.replydev.reveille
+name: Alarm sound
+---
+- runFlow: ../subflows/launch_clean.yaml
+- tapOn: "Policies"
+- tapOn: "New policy"
+- tapOn: "Name"
+- inputText: "Gym"
+- hideKeyboard
+- runFlow:
+    when:
+      notVisible: "Remove alarm time"
+    commands:
+      - tapOn: "\\+ Alarm time"
+- tapOn: "Save"
+- tapOn: "Settings"
+- assertVisible: "System default alarm"
+- tapOn: "Alarm sound"
+- assertVisible: "Default sound"
+# Import through the system document picker.
+- tapOn: "Import audio file…"
+# The picker opens in Recent, which is empty: open the roots drawer and go to Downloads.
+- runFlow:
+    when:
+      notVisible: "test_tone.mp3"
+    commands:
+      - runFlow:
+          when:
+            visible: "Show roots"
+          commands:
+            - tapOn: "Show roots"
+      - tapOn: "Downloads"
+- tapOn: "test_tone.mp3"
+- assertVisible: "Imported test_tone"
+# Make it the default.
+- tapOn: "test_tone"
+- assertVisible:
+    checked: true
+    containsDescendants:
+      - text: "test_tone"
+# Override Gym.
+- scrollUntilVisible:
+    element: "Gym"
+- tapOn: "Gym"
+- tapOn:
+    text: "test_tone"
+    below: "System default alarm"
+- assertVisible:
+    text: "test_tone"
+    rightOf: "Gym"
+# Back on Settings the row shows it.
+- tapOn: "Back"
+- assertVisible: "test_tone"
+# Delete it: both choices go back.
+- tapOn: "Alarm sound"
+- tapOn: "Delete test_tone"
+- assertVisible: "Delete sound?"
+- tapOn:
+    text: "Delete"
+    below: "Delete sound?"
+- assertNotVisible: "test_tone"
+- assertVisible:
+    text: "Default"
+    rightOf: "Gym"

@@ -14,6 +14,7 @@ The exact markup for every screen is in `mockups/*.dc.html`: HTML with inline st
 | `Ringing.dc.html` | Full-screen alarm | `alarm/RingingActivity.kt` |
 | `Widgets.dc.html` | Glance widgets | `widget/ReveilleWidget.kt` |
 | `Update*.dc.html` | In-app updates from GitHub (Settings section, Today card, release sheet, states) | see `updates.md` |
+| `AlarmSound.dc.html` | Alarm sound screen (default sound, imports, per-policy overrides) | Settings › Alarm sound |
 | `Ring*.dc.html` | Ringing themes (Midnight, Policy colour, Horizon, Paper) and the theme picker | see `ringing-themes.md` |
 
 Mockups are 390×844 CSS px. Treat 1 CSS px as 1 dp (and as 1 sp for text).
@@ -187,6 +188,7 @@ No emoji. The `✓` / `✗` text glyphs in ReliabilityScreen are replaced by ico
 - **Time**: two 120×104 boxes (`SurfaceHigh`, radius 20) for hour and minute, with a ":" between them. The focused box gets a 2 dp `Accent` border. Tapping opens the existing time picker; inline wheel input is a possible later enhancement.
 - **Date**: the "DATE" overline, then horizontally scrolling 56×68 day tiles (weekday overline plus day number). Show today + 7 days, matching the current `QuickDates`. Selected is `Accent`; the rest are `SurfaceHigh`. The last tile is a dashed calendar tile that opens the date picker.
 - **Label** field: 52 dp, `SurfaceHigh`, radius 16, with a label icon.
+- **Sound** row: below the label field, 52 dp, `SurfaceHigh`, radius 16, music icon, "Default" or the sound's name in `Muted`, and a chevron. It opens the choice sheet (Default, System default alarm, Choose a system tone, imported sounds).
 - **Mode**: the overline "ON {DAY DATE}", then a **segmented control** with "Replace the day" / "Ring in addition". The selected segment is `OnBg` fill with `Bg` text.
 - **Impact list**: the policy alarms on that date (`ScheduleEngine.policyAlarmsOn`). Each row shows the time (struck through when replacing), the policy colour and name, and "won't ring" or "also rings". Keep the "another alarm already replaces this day" message.
 - The past-time error goes in `DangerText` above the button.
@@ -204,7 +206,7 @@ No emoji. The `✓` / `✗` text glyphs in ReliabilityScreen are replaced by ico
 ### Settings (`Settings.dc.html`)
 - Grouped cards with overlines: **Sound**, **Snooze** and **About**.
 - Sound card:
-  - "Alarm sound" row: an `AccentContainer` icon tile, the ringtone name in `Muted`, and a chevron. It opens the system picker.
+  - "Alarm sound" row: an `AccentContainer` icon tile, the current sound name in `Muted`, and a chevron. It pushes the Alarm sound screen (`AlarmSound.dc.html`): a Default sound card (System default alarm, System tone, imported files with play/delete, Import audio file…) and a Per policy card whose rows open a choice sheet.
   - Two switch rows with sublines: "Vibrate" (*Pulse while the alarm rings*) and "Gradually increase volume" (*Starts quiet, reaches full volume*).
 - Snooze card: two rows with pill steppers (44 dp): "Snooze length" and "Auto-snooze after ringing for".
 - About card: an app-icon tile and "Reveille" with the version (`BuildConfig.VERSION_NAME`) in mono.

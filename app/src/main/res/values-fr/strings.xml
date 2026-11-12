@@ -232,7 +232,6 @@
     <string name="settings_alarm_sound">Son de l’alarme</string>
     <string name="settings_choose_sound">Choisir le son de l’alarme</string>
     <string name="settings_no_sound_picker">Ce téléphone n’a pas de sélecteur de sons.</string>
-    <string name="settings_default_sound">Son d’alarme par défaut</string>
     <string name="settings_custom_sound">Son personnalisé</string>
     <string name="settings_vibrate">Vibreur</string>
     <string name="settings_vibrate_hint">Vibre pendant que l’alarme sonne</string>
@@ -398,6 +397,32 @@
     <string name="widget_new_one_off">Nouvelle alarme ponctuelle</string>
     <!-- Ringing theme picker (Settings › Ringing theme) -->
     <string name="settings_ringing_theme">Thème de sonnerie</string>
+    <string name="sound_default_group">Son par défaut</string>
+    <string name="sound_system_default">Alarme par défaut du système</string>
+    <string name="sound_system_tone">Sonnerie du système</string>
+    <string name="sound_system_tone_pick">Choisir une sonnerie du système</string>
+    <string name="sound_import">Importer un fichier audio…</string>
+    <string name="sound_importing">Importation…</string>
+    <string name="sound_imported">%1$s importé</string>
+    <string name="sound_import_too_large">Ce fichier est trop volumineux (20 Mo max).</string>
+    <string name="sound_import_not_audio">Ce fichier n’est pas un audio lisible.</string>
+    <string name="sound_import_unreadable">Impossible de lire ce fichier.</string>
+    <string name="sound_play">Écouter %1$s</string>
+    <string name="sound_stop">Arrêter</string>
+    <string name="sound_delete">Supprimer %1$s</string>
+    <string name="sound_delete_title">Supprimer le son ?</string>
+    <string name="sound_delete_unused">%1$s sera retiré de Reveille.</string>
+    <plurals name="sound_delete_in_use">
+        <item quantity="one">%1$s est utilisé par %2$d choix. Il reviendra au son par défaut.</item>
+        <item quantity="many">%1$s est utilisé par %2$d choix. Ils reviendront au son par défaut.</item>
+        <item quantity="other">%1$s est utilisé par %2$d choix. Ils reviendront au son par défaut.</item>
+    </plurals>
+    <string name="sound_per_policy">Par programme</string>
+    <string name="sound_follow_default">Par défaut</string>
+    <string name="sound_save_failed">Impossible d’enregistrer le son.</string>
+    <string name="sound_preview_failed">Impossible de lire ce son.</string>
+    <string name="oneoff_sound">Son</string>
+    <string name="oneoff_sound_save_failed">Alarme enregistrée, mais pas son son.</string>
     <string name="ring_theme_dawn">Aube</string>
     <string name="ring_theme_midnight">Minuit</string>
     <string name="ring_theme_policy_colour">Couleur du programme</string>

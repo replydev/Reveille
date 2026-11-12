@@ -4,6 +4,8 @@ import android.app.Application
 import android.app.NotificationManager
 import android.content.Intent
 import android.os.Looper
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.replydev.reveille.container
@@ -12,6 +14,7 @@ import com.replydev.reveille.engine.Armed
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -23,6 +26,8 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.android.controller.ServiceController
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlarmManager
+import org.robolectric.shadows.ShadowMediaPlayer
+import org.robolectric.shadows.util.DataSource
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.CompletableFuture
@@ -192,5 +197,42 @@ class RingingServiceTest {
         assertEquals(armed.key, read { app.container.schedulerState.guard() }?.key)
         val notifications = shadowOf(app.getSystemService(NotificationManager::class.java)).allNotifications
         assertTrue(notifications.any { it.channelId == Notifier.CHANNEL_ALARM_FALLBACK })
+    }
+
+    @Test
+    fun missingImportedSoundStillRings() {
+        read { app.container.settings.update { it.copy(sound = SoundRef.Imported("deleted-file")) } }
+        ring(armed)
+        awaitUntil { RingingService.ringing.value != null && read { app.container.schedulerState.guard() } != null }
+        assertEquals(FireOutcome.FIRED, outcome(armed))
+        assertEquals(armed.key, RingingService.ringing.value?.armed?.key)
+    }
+
+    @Test
+    fun playbackErrorPostsFallbackAndVibrates() {
+        // A sound that prepares and starts fine, then fails mid-stream (a truncated MP3, a codec error).
+        val file = app.container.sounds.file("broken").apply { parentFile!!.mkdirs(); writeText("x") }
+        ShadowMediaPlayer.addMediaInfo(DataSource.toDataSource(file.path), ShadowMediaPlayer.MediaInfo(60_000, 0))
+        var shadow: ShadowMediaPlayer? = null
+        ShadowMediaPlayer.setCreateListener { _, created -> shadow = created }
+        read { app.container.settings.update { it.copy(sound = SoundRef.Imported("broken"), vibrate = false) } }
+        val notifications = shadowOf(app.getSystemService(NotificationManager::class.java))
+        val vibrator = shadowOf(app.getSystemService(VibratorManager::class.java).defaultVibrator as Vibrator)
+
+        ring(armed)
+        awaitUntil { shadow?.state == ShadowMediaPlayer.State.STARTED }
+        assertFalse(notifications.allNotifications.any { it.channelId == Notifier.CHANNEL_ALARM_FALLBACK })
+        assertFalse(vibrator.isVibrating)
+
+        shadow!!.invokeErrorListener(1, -1004)
+        awaitUntil { notifications.allNotifications.any { it.channelId == Notifier.CHANNEL_ALARM_FALLBACK } }
+        assertTrue(vibrator.isVibrating)
+        assertEquals(ShadowMediaPlayer.State.END, shadow!!.state)
+        assertEquals(armed.key, RingingService.ringing.value?.armed?.key)
+
+        // Released once already: dismissing must still stop cleanly.
+        action(RingingService.ACTION_DISMISS)
+        awaitUntil { RingingService.ringing.value == null }
+        assertEquals(FireOutcome.DISMISSED, outcome(armed))
     }
 }

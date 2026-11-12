@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reveille — Alarm sound</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@200..800&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FFB547}a:hover{color:#FFD08A}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0B0D11; color: #F3F4F6; font-family: 'Geist', system-ui, sans-serif; font-variant-numeric: tabular-nums; box-sizing: border-box">
+
+  <header style="display: flex; align-items: center; gap: 4px; padding: 44px 8px 4px">
+    <a href="Settings.dc.html" aria-label="Back" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; color: #F3F4F6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <h1 style="flex: 1; margin: 0; font-size: 18px; font-weight: 600">Alarm sound</h1>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 26px; padding: 12px 16px 0">
+
+    <section aria-labelledby="default-sound" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 id="default-sound" style="margin: 0 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #A1A9B5">Default sound</h2>
+      <div role="radiogroup" aria-label="Default sound" style="border-radius: 20px; background: #15181E; border: 1px solid #22262E; overflow: hidden">
+        <sc-for list="{{sounds}}" as="s" hint-placeholder-count="4">
+          <div style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 4px 0 16px; border-top: 1px solid {{s.line}}">
+            <button role="radio" aria-checked="{{s.checked}}" style="flex: 1; display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 0; border: none; background: transparent; color: #F3F4F6; text-align: left">
+              <span style="width: 20px; height: 20px; border-radius: 10px; box-sizing: border-box; border: 2px solid {{s.ring}}; display: flex; align-items: center; justify-content: center; flex: none"><span style="width: 10px; height: 10px; border-radius: 5px; background: {{s.dot}}"></span></span>
+              <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+                <span style="font-size: 15px">{{s.name}}</span>
+                <sc-if value="{{s.caption}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #A1A9B5">{{s.caption}}</span></sc-if>
+              </span>
+            </button>
+            <sc-if value="{{s.imported}}" hint-placeholder-val="{{ false }}">
+              <button aria-label="{{s.playLabel}}" style="flex: none; width: 44px; height: 44px; border-radius: 22px; border: none; background: transparent; color: #F3F4F6; display: flex; align-items: center; justify-content: center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
+              </button>
+              <button aria-label="{{s.deleteLabel}}" style="flex: none; width: 44px; height: 44px; border-radius: 22px; border: none; background: transparent; color: #A1A9B5; display: flex; align-items: center; justify-content: center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>
+              </button>
+            </sc-if>
+          </div>
+        </sc-for>
+        <button style="width: 100%; display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 0 16px; border: none; border-top: 1px solid #22262E; background: transparent; color: {{accent}}; text-align: left; font-size: 15px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"></path></svg>
+          Import audio file…
+        </button>
+      </div>
+    </section>
+
+    <section aria-labelledby="per-policy" style="display: flex; flex-direction: column; gap: 8px">
+      <h2 id="per-policy" style="margin: 0 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #A1A9B5">Per policy</h2>
+      <div style="border-radius: 20px; background: #15181E; border: 1px solid #22262E; overflow: hidden">
+        <sc-for list="{{overrides}}" as="o" hint-placeholder-count="2">
+          <button style="width: 100%; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 14px 0 16px; border: none; border-bottom: 1px solid {{o.line}}; background: transparent; color: #F3F4F6; text-align: left">
+            <span style="width: 10px; height: 10px; border-radius: 3px; background: {{o.color}}; flex: none"></span>
+            <span style="flex: 1; font-size: 15px">{{o.name}}</span>
+            <span style="font-size: 14px; color: {{o.valueColor}}">{{o.value}}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A9B5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#FFB547","options":["#FFB547","#8AB4FF","#7EE0C3","#F2A0C8"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#FFB547';
+    // Default sound is the imported "Morning birds"; "Bells" is imported too.
+    const selected = 'Morning birds';
+    const rows = [
+      { name: 'System default alarm', caption: '', imported: false },
+      { name: 'System tone', caption: 'Choose a system tone', imported: false },
+      { name: 'Morning birds', caption: '', imported: true },
+      { name: 'Bells', caption: '', imported: true }
+    ];
+    const sounds = rows.map((r, i) => {
+      const on = r.name === selected;
+      return {
+        ...r,
+        checked: on ? 'true' : 'false',
+        ring: on ? accent : '#7D8693',
+        dot: on ? accent : 'transparent',
+        line: i === 0 ? 'transparent' : '#22262E',
+        playLabel: 'Play ' + r.name,
+        deleteLabel: 'Delete ' + r.name
+      };
+    });
+    return {
+      accent, sounds,
+      overrides: [
+        { name: 'Work', color: '#8AB4FF', value: 'Default', valueColor: '#A1A9B5', line: '#22262E' },
+        { name: 'Gym', color: '#7EE0C3', value: 'Bells', valueColor: '#F3F4F6', line: 'transparent' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
