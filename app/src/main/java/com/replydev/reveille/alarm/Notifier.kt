@@ -174,6 +174,12 @@ open class Notifier(private val context: Context) {
         private const val OLD_CHANNEL_ALARM_FALLBACK = "alarm_fallback"
         const val CHANNEL_ALERTS = "alerts"
         const val RINGING_ID = 1
+
+        /**
+         * The minimal notification's own id. SystemUI launches a full-screen intent only when a notification is added,
+         * never on an update, so the ringing one must not replace this one under the same id.
+         */
+        const val PENDING_ID = 3
         private const val SCHEDULING_FAILED_ID = 2
         private const val MISSED_BASE_ID = 1000
         private const val FALLBACK_BASE_ID = 20_000

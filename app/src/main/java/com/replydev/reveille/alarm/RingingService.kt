@@ -62,6 +62,9 @@ class RingingService : Service() {
     private var actionInProgress = false
     private var destroyed = false
     private var lastStartId = 0
+
+    /** Whether the foreground notification is the minimal one ([Notifier.PENDING_ID]) rather than a ringing one. */
+    private var onPendingNotification = false
     private var player: MediaPlayer? = null
     private var outputJob: Job? = null
     private var rampJob: Job? = null
@@ -131,6 +134,9 @@ class RingingService : Service() {
             timeoutJob?.cancel()
             guardJob?.cancel()
         }
+        // The full-screen intent only fires when the ringing notification is newly added. A stale one can still be up if
+        // this RING was queued while the previous alarm was being stopped; moving to the pending id removes it first.
+        if (previous == null && !onPendingNotification) enterForeground(null)
         current.value = ringing
         enterForeground(ringing) // now the full notification, with the full-screen intent
         outputJob = scope.launch {
@@ -198,18 +204,23 @@ class RingingService : Service() {
     /**
      * Makes this service foreground with [ringing]'s full notification, or the minimal one (no full-screen intent) if
      * [ringing] is null or the full one fails. Returns false only if no notification could make it foreground.
+     *
+     * The two use different ids ([Notifier.RINGING_ID], [Notifier.PENDING_ID]); switching ids makes the system remove
+     * the previous foreground notification, so the ringing one is always added afresh and its full-screen intent fires.
      */
     private fun enterForeground(ringing: Ringing?): Boolean {
         if (ringing != null) {
             try {
                 startForeground(Notifier.RINGING_ID, container.notifier.ringingNotification(ringing), FGS_TYPE)
+                onPendingNotification = false
                 return true
             } catch (e: Exception) {
                 Log.e(TAG, "startForeground failed for ${ringing.armed.key}; retrying with a minimal notification", e)
             }
         }
         try {
-            startForeground(Notifier.RINGING_ID, Notifier.minimalRingingNotification(this), FGS_TYPE)
+            startForeground(Notifier.PENDING_ID, Notifier.minimalRingingNotification(this), FGS_TYPE)
+            onPendingNotification = true
             return true
         } catch (e: Exception) {
             Log.e(TAG, "startForeground with the minimal notification failed", e)
