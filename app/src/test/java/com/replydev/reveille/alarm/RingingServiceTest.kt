@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -185,6 +186,17 @@ class RingingServiceTest {
         assertNull(shadowOf(controller.get()).lastForegroundNotification.fullScreenIntent)
         awaitUntil { RingingService.ringing.value != null }
         assertNotNull(shadowOf(controller.get()).lastForegroundNotification.fullScreenIntent)
+    }
+
+    @Test
+    fun ringingNotificationIsPostedAsANewNotificationNotAnUpdateOfThePendingOne() {
+        ring(armed)
+        val pendingId = shadowOf(controller.get()).lastForegroundNotificationId
+        awaitUntil { RingingService.ringing.value != null }
+        // SystemUI only launches a full-screen intent when a notification is added; an update to the pending one would
+        // ring with the screen off (seen after a snooze, when the platform no longer deferred the pending notification).
+        assertNotEquals(pendingId, shadowOf(controller.get()).lastForegroundNotificationId)
+        assertEquals(Notifier.RINGING_ID, shadowOf(controller.get()).lastForegroundNotificationId)
     }
 
     @Test
